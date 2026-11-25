@@ -19,11 +19,19 @@ export class WebStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // /m/ ve /m -> /m/index.html (Expo web çıktısı); S3 klasör dizinini kendisi çözmez
+    const rewrite = new cf.Function(this, "DirIndex", {
+      runtime: cf.FunctionRuntime.JS_2_0,
+      code: cf.FunctionCode.fromInline(
+        "function handler(event){var r=event.request;if(r.uri==='/m'||r.uri==='/m/'){r.uri='/m/index.html';}return r;}",
+      ),
+    });
     const dist = new cf.Distribution(this, "Cdn", {
       defaultRootObject: "index.html",
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(bucket),
         viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        functionAssociations: [{ function: rewrite, eventType: cf.FunctionEventType.VIEWER_REQUEST }],
       },
       // SPA yönlendirmesi
       errorResponses: [403, 404].map((s) => ({

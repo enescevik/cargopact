@@ -268,7 +268,7 @@ function NewTrip({ onCreated }: { onCreated: (id: string) => void }) {
           <Field label="Araç">
             <select className="input" value={f.vehicle} onChange={(e) => set("vehicle", e.target.value)}>
               <option value="">Seçin…</option>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.vehicleType?.name ? ` · ${v.vehicleType.name}` : v.vehicleTypeName ? ` · ${v.vehicleTypeName}` : ""}</option>)}
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.vehicleType?.name ? ` · ${v.vehicleType.name}` : v.driverName ? ` · ${v.driverName}` : ""}</option>)}
             </select>
           </Field>
           <Field label="Baz fiyat, palet başı (TL)"><input type="number" className="input" value={f.price} onChange={(e) => set("price", e.target.value)} /></Field>
