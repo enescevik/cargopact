@@ -39,7 +39,7 @@ export class ApiStack extends cdk.Stack {
     const chat = fn("Chat", "chat.ts", { AGENT_RUNTIME_ARN: props.agentRuntimeArn ?? "" });
     chat.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ["bedrock-agentcore:InvokeAgentRuntime"],
+        actions: ["bedrock-agentcore:InvokeAgentRuntime", "bedrock-agentcore:InvokeAgentRuntimeForUser"],
         resources: [props.agentRuntimeArnPattern, `${props.agentRuntimeArnPattern}/*`],
       }),
     );
