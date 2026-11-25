@@ -6,6 +6,7 @@ import { dt, money } from "../format";
 import { RouteHead } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Reservation, Tracking } from "../types";
+import { QrTile } from "../qr";
 
 export function Reservations() {
   const [sel, setSel] = useState<string>();
@@ -93,10 +94,16 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
         <Card><Label>Durum</Label><Timeline steps={steps} /></Card>
         <Card style={{ gap: 12 }}>
           <Label>Palet kodları</Label>
+          {r.orderNumber && (
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "center", padding: 10, borderRadius: 12, backgroundColor: c.cobalt50, borderWidth: 1, borderColor: c.line }}>
+              <QrTile value={r.orderNumber} caption="Sipariş QR" size={84} />
+              <View style={{ flex: 1 }}><Text style={{ fontSize: 11, color: c.ink500 }}>Sipariş no</Text><Text style={{ fontFamily: mono, fontSize: 14, fontWeight: "700", color: c.ink900 }}>{r.orderNumber}</Text></View>
+            </View>
+          )}
           {r.palletCodes.length === 0 ? <Text style={{ color: c.ink500 }}>Kodlar taşıyıcı onayından sonra oluşur.</Text> :
             r.palletCodes.map((code) => (
               <View key={code} style={{ flexDirection: "row", gap: 12, alignItems: "center", padding: 10, borderRadius: 12, backgroundColor: c.porcelain, borderWidth: 1, borderColor: c.line }}>
-                <QrMock seed={code} />
+                <QrTile value={code} caption="Palet QR" size={84} />
                 <Text style={{ fontFamily: mono, fontSize: 14, fontWeight: "700", color: c.ink900, flex: 1 }}>{code}</Text>
               </View>
             ))}
@@ -139,23 +146,6 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
 
 function payLabel(s: string) {
   return ({ authorized: "Provizyon alındı", captured: "Tahsil edildi", partially_captured: "Kısmen tahsil edildi", refunded: "İade edildi", released: "Provizyon serbest", failed: "Başarısız" } as Record<string, string>)[s] ?? s;
-}
-
-function QrMock({ seed }: { seed: string }) {
-  const N = 9;
-  let h = 7;
-  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  const cells: boolean[] = [];
-  for (let i = 0; i < N * N; i++) { h = (h * 1103515245 + 12345) >>> 0; cells.push(((h >>> 16) & 1) === 1); }
-  const finder = (x: number, y: number) => (x < 3 && y < 3) || (x > N - 4 && y < 3) || (x < 3 && y > N - 4);
-  return (
-    <View style={{ width: 54, height: 54, backgroundColor: "#fff", padding: 3, borderRadius: 6, flexDirection: "row", flexWrap: "wrap" }}>
-      {cells.map((on, i) => {
-        const x = i % N, y = Math.floor(i / N);
-        return <View key={i} style={{ width: 48 / N, height: 48 / N, backgroundColor: finder(x, y) || on ? c.cobalt900 : "#fff" }} />;
-      })}
-    </View>
-  );
 }
 
 export function TrackingScreen({ initial }: { initial?: string }) {

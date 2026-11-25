@@ -9,7 +9,7 @@ import { Login } from "./src/Login";
 import { Chat } from "./src/common";
 import { Send } from "./src/customer/Send";
 import { Reservations, TrackingScreen } from "./src/customer/Reservations";
-import { Trips, Warehouse } from "./src/carrier/Carrier";
+import { Trips, Warehouse, QueuePill } from "./src/carrier/Carrier";
 import type { Me } from "./src/types";
 
 type Tab = { key: string; label: string; icon: string };
@@ -61,6 +61,7 @@ function Shell() {
               <Text style={{ fontSize: 11, color: c.ink500 }}>{me.displayName || me.email}</Text>
             </View>
           </Row>
+          {!isCustomer && <QueuePill />}
           <Pressable onPress={logout} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 4 }}>
             <Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 13 }}>Çıkış</Text>
           </Pressable>

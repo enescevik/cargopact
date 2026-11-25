@@ -1,6 +1,9 @@
-import { useState } from "react";
-import { Text, View } from "react-native";
-import { api } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import { api, uuid } from "../api";
+import { postEvent, useQueue, useQueueFlusher, setOfflineSim } from "../queue";
+import { Scanner } from "../scanner";
+import { PodSheet } from "./Pod";
 import { c, mono, serif } from "../theme";
 import { dt, num } from "../format";
 import { RouteHead } from "../common";
@@ -137,7 +140,12 @@ const NEXT: Record<string, { type: string; label: string }> = {
   VARISTA: { type: "TESLIM", label: "Teslim" },
 };
 const WH_STATES = ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"];
-
+const CODE_RE = /CP-\d{4}-\d{4,}(?:-P\d+)?/i;
+export function QueuePill() {
+  const { items } = useQueue();
+  if (!items.length) return null;
+  return <Badge tone="warning" label={`${items.length} işlem bekliyor`} />;
+}
 export function Warehouse() {
   const toast = useToast();
   const trips = useLoad(async () => {
@@ -146,26 +154,94 @@ export function Warehouse() {
     if (!trip) return undefined;
     return api<TripFull>("GET", `/carrier/trips/${trip.id}`);
   }, [], 5000);
+  const { items: queued, sim } = useQueue();
+  useQueueFlusher(() => { void trips.reload(true); });
+  const inflight = useRef(new Set<string>());
+  const keys = useRef(new Map<string, string>()); // aynı eylem için sabit Idempotency-Key
   const [busy, setBusy] = useState<string>();
   const [note, setNote] = useState<CarrierReservation>();
   const [noteTxt, setNoteTxt] = useState("");
-
-  const fire = async (r: CarrierReservation, type: string, n?: string) => {
-    setBusy(r.id + type);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState<{ code: string; id?: string }>();
+  const [pod, setPod] = useState<CarrierReservation>();
+  const [manual, setManual] = useState("");
+  const qlen = queued.length;
+  useEffect(() => { void trips.reload(true); }, [qlen]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fire = async (r: CarrierReservation, type: string, extra: Record<string, unknown> = {}) => {
+    const g = r.id + type;
+    if (inflight.current.has(g)) return; // arayüz çift dokunuş koruması
+    inflight.current.add(g); setBusy(g);
+    if (!keys.current.has(g)) keys.current.set(g, uuid());
     try {
-      await api("POST", `/carrier/reservations/${r.id}/events`, { type, note: n });
-      toast("Kaydedildi");
-      setNote(undefined); setNoteTxt("");
+      const res = await postEvent(r.id, type, extra, keys.current.get(g));
+      if (res === "queued") toast("Bekliyor – sunucu teyidi yok", "err");
+      else { toast("Kaydedildi"); keys.current.delete(g); }
+      setNote(undefined); setNoteTxt(""); setPod(undefined);
       await trips.reload(true);
-    } catch (e) { toast((e as Error).message, "err"); } finally { setBusy(undefined); }
+    } catch (e) { toast((e as Error).message, "err"); } finally { inflight.current.delete(g); setBusy(undefined); }
   };
-
   const t = trips.data;
-  const items = (t?.reservations ?? []).filter((r) => WH_STATES.includes(r.status));
+  const all = t?.reservations ?? [];
+  const items = all.filter((r) => WH_STATES.includes(r.status));
+  const find = (code: string) => {
+    const m = code.toUpperCase().match(CODE_RE)?.[0];
+    if (!m) return undefined;
+    return all.find((r) => r.orderNumber?.toUpperCase() === m || r.palletCodes.some((p) => p.toUpperCase() === m));
+  };
+  const onCode = (code: string) => {
+    setScanning(false);
+    const r = find(code);
+    setScanned({ code, id: r?.id });
+    if (!r) toast("Bu sefer için eşleşen yük bulunamadı", "err");
+  };
+  const hit = scanned?.id ? all.find((r) => r.id === scanned.id) : undefined;
+  const card = (r: CarrierReservation, hl = false) => {
+    const nx = NEXT[r.status];
+    const pending = queued.filter((q) => q.reservationId === r.id);
+    const pend = pending.some((q) => q.type === nx?.type);
+    return (
+      <Card key={(hl ? "hl-" : "") + r.id} style={{ gap: 10, ...(hl ? { borderWidth: 2, borderColor: c.mint500 } : {}) }}>
+        <Row style={{ justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 17, fontWeight: "800", color: c.ink900, flex: 1 }}>{r.customer.name}</Text>
+          <StatusBadge status={r.status} label={r.statusLabel} />
+        </Row>
+        <Text style={{ color: c.ink700 }}>{r.pallets} palet · {num(r.grossKg)} kg</Text>
+        <Text style={{ fontFamily: mono, fontSize: 12, color: c.ink500 }}>{r.orderNumber}</Text>
+        {r.palletCodes.length > 0 && <Text style={{ fontFamily: mono, fontSize: 11, color: c.ink300 }}>{r.palletCodes.join("  ")}</Text>}
+        {pending.map((q) => <Badge key={q.idempotencyKey} tone="warning" label={`Bekliyor – sunucu teyidi yok (${q.type})`} />)}
+        {nx && !pend && <Btn title={nx.label} loading={busy === r.id + nx.type} onPress={() => (nx.type === "TESLIM" ? setPod(r) : fire(r, nx.type))} style={{ minHeight: 60 }} />}
+        {r.status === "ONAYLI" && !pending.length && <Btn kind="outline" small title="Gelmedi" loading={busy === r.id + "GELMEDI"} onPress={() => fire(r, "GELMEDI")} />}
+        {["DEPO_KABUL", "YUKLENDI", "VARISTA"].includes(r.status) && !pending.length && <Btn kind="outline" small title="Eksik / hasar bildir" onPress={() => setNote(r)} />}
+      </Card>
+    );
+  };
   return (
     <View style={{ flex: 1 }}>
       <Screen>
-        <Title sub="Kabul, yükleme, varış ve teslim olayları. 5 sn’de bir yenilenir.">Depo</Title>
+        <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+          <View style={{ flex: 1 }}><Title sub="Kabul, yükleme, varış ve teslim olayları.">Depo</Title></View>
+          <QueuePill />
+        </Row>
+        <Btn title="▣  QR okut" onPress={() => setScanning(true)} style={{ minHeight: 60 }} />
+        <Row style={{ alignItems: "flex-end" }}>
+          <Field label="Kodu elle gir" value={manual} onChangeText={setManual} placeholder="CP-2026-000123-P1" autoCapitalize="characters" onSubmitEditing={() => manual.trim() && onCode(manual.trim())} />
+          <Btn kind="outline" small title="Bul" disabled={!manual.trim()} onPress={() => { onCode(manual.trim()); setManual(""); }} />
+        </Row>
+        <Pressable onPress={() => setOfflineSim(!sim)} style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
+          <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: sim ? c.warning : c.line, padding: 3, alignItems: sim ? "flex-end" : "flex-start" }}>
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff" }} />
+          </View>
+          <Text style={{ color: c.ink700, fontSize: 13, flex: 1 }}>Çevrimdışı simülasyonu {sim ? "(açık: işlemler kuyruğa alınır)" : ""}</Text>
+        </Pressable>
+        {scanned && (
+          <View style={{ gap: 8 }}>
+            <Row style={{ justifyContent: "space-between" }}>
+              <Text style={{ fontFamily: mono, fontSize: 13, color: c.ink700, flex: 1 }}>Okutulan: {scanned.code}</Text>
+              <Pressable onPress={() => setScanned(undefined)} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: c.cobalt600, fontWeight: "700" }}>Temizle</Text></Pressable>
+            </Row>
+            {hit ? card(hit, true) : <ErrorBox message="Bu koda ait yük bu seferin rezervasyonlarında yok." />}
+          </View>
+        )}
         {trips.loading && !t ? <Skeletons n={3} h={150} /> : trips.error && !t ? <ErrorBox message={trips.error} onRetry={() => trips.reload()} /> : !t ? <Empty title="Sefer yok" /> : (
           <>
             <Card>
@@ -174,23 +250,7 @@ export function Warehouse() {
               <Text style={{ fontSize: 12, color: c.ink500 }}>Son kabul (T−1): {dt(t.intakeCutoffAt)}</Text>
             </Card>
             {items.length === 0 && <Empty title="İşlenecek yük yok" text="Onaylanan rezervasyonlar burada görünür." />}
-            {items.map((r) => {
-              const nx = NEXT[r.status];
-              return (
-                <Card key={r.id} style={{ gap: 10 }}>
-                  <Row style={{ justifyContent: "space-between" }}>
-                    <Text style={{ fontSize: 17, fontWeight: "800", color: c.ink900, flex: 1 }}>{r.customer.name}</Text>
-                    <StatusBadge status={r.status} label={r.statusLabel} />
-                  </Row>
-                  <Text style={{ color: c.ink700 }}>{r.pallets} palet · {num(r.grossKg)} kg</Text>
-                  <Text style={{ fontFamily: mono, fontSize: 12, color: c.ink500 }}>{r.orderNumber}</Text>
-                  {r.palletCodes.length > 0 && <Text style={{ fontFamily: mono, fontSize: 11, color: c.ink300 }}>{r.palletCodes.join("  ")}</Text>}
-                  {nx && <Btn title={nx.label} loading={busy === r.id + nx.type} onPress={() => fire(r, nx.type)} style={{ minHeight: 60 }} />}
-                  {r.status === "ONAYLI" && <Btn kind="outline" small title="Gelmedi" loading={busy === r.id + "GELMEDI"} onPress={() => fire(r, "GELMEDI")} />}
-                  {["DEPO_KABUL", "YUKLENDI", "VARISTA"].includes(r.status) && <Btn kind="outline" small title="Eksik / hasar bildir" onPress={() => setNote(r)} />}
-                </Card>
-              );
-            })}
+            {items.map((r) => card(r))}
           </>
         )}
       </Screen>
@@ -198,10 +258,12 @@ export function Warehouse() {
         <Sheet onClose={() => setNote(undefined)}>
           <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>Eksik / hasar</Text>
           <Field label="Not" value={noteTxt} onChangeText={setNoteTxt} placeholder="Örn. 1 palette ezilme" />
-          <Btn kind="danger" title="Kaydet" loading={busy === note.id + "EKSIK_HASAR"} onPress={() => fire(note, "EKSIK_HASAR", noteTxt.trim() || undefined)} />
+          <Btn kind="danger" title="Kaydet" loading={busy === note.id + "EKSIK_HASAR"} onPress={() => fire(note, "EKSIK_HASAR", { note: noteTxt.trim() || undefined })} />
           <Btn kind="ghost" title="Vazgeç" onPress={() => setNote(undefined)} />
         </Sheet>
       )}
+      {pod && <PodSheet r={pod} busy={busy === pod.id + "TESLIM"} onClose={() => setPod(undefined)} onSubmit={(recipientName, podKeys) => fire(pod, "TESLIM", { recipientName, podKeys })} />}
+      {scanning && <Scanner onCode={onCode} onClose={() => setScanning(false)} />}
     </View>
   );
 }
