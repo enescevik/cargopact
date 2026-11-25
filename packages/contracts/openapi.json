@@ -11067,6 +11067,17 @@
           {
             "schema": {
               "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "description": "Aynı anahtar aynı yanıtı döner; farklı gövde 422"
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "uuid",
               "description": "Birden fazla üyelikte seçilen kiracı"
             },
@@ -11126,6 +11137,26 @@
           },
           "404": {
             "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Çakışma: tekillik veya sürüm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key farklı istekle kullanılmış",
             "content": {
               "application/json": {
                 "schema": {
@@ -11162,6 +11193,17 @@
           {
             "schema": {
               "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "description": "Aynı anahtar aynı yanıtı döner; farklı gövde 422"
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "uuid",
               "description": "Birden fazla üyelikte seçilen kiracı"
             },
@@ -11221,6 +11263,26 @@
           },
           "404": {
             "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Çakışma: tekillik veya sürüm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key farklı istekle kullanılmış",
             "content": {
               "application/json": {
                 "schema": {
@@ -11574,6 +11636,17 @@
           {
             "schema": {
               "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "description": "Aynı anahtar aynı yanıtı döner; farklı gövde 422"
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "uuid",
               "description": "Birden fazla üyelikte seçilen kiracı"
             },
@@ -11663,6 +11736,26 @@
           },
           "404": {
             "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Çakışma: tekillik veya sürüm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key farklı istekle kullanılmış",
             "content": {
               "application/json": {
                 "schema": {
@@ -11806,6 +11899,17 @@
           {
             "schema": {
               "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "description": "Aynı anahtar aynı yanıtı döner; farklı gövde 422"
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "uuid",
               "description": "Birden fazla üyelikte seçilen kiracı"
             },
@@ -11884,6 +11988,26 @@
           },
           "404": {
             "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Çakışma: tekillik veya sürüm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key farklı istekle kullanılmış",
             "content": {
               "application/json": {
                 "schema": {

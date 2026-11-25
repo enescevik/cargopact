@@ -374,7 +374,3 @@ body { font-size: 14px; font-variant-numeric: tabular-nums; }
 .who-line { font-size: 12px; color: var(--i5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
 /* Teslim kodu cüzdan kartında büyük gösterilir; alıcı kartında tekrar etmesin */
 .detail-2 [data-testid="pickup-card"] > div:has(> [data-testid="pickup-code"]) { display: none; }
-
-/* Depo yol tarifi kartı */
-.guide .guide-name { display: flex; align-items: center; gap: 6px; font-weight: 700; margin-top: 6px; color: var(--ink); }
-.guide .tiny svg { vertical-align: -2px; }

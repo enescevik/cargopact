@@ -4,7 +4,7 @@ import { api } from "./api";
 import { c, serif } from "./theme";
 import { dt, hm, money, place } from "./format";
 import { Card, Chip, Row } from "./ui";
-import type { Facility, Hours, TripCard } from "./types";
+import type { Facility, TripCard } from "./types";
 
 export function RouteHead({ trip, size = 26 }: { trip: TripCard; size?: number }) {
   return (
@@ -23,6 +23,23 @@ export function CutoffChips({ trip }: { trip: TripCard }) {
       <Chip tone="cobalt" label={`Son rezervasyon (T−3) ${hm(trip.bookingCutoffAt)}`} />
       <Chip tone="mint" label={`Çıkış deposu son kabul (T−1) ${hm(trip.intakeCutoffAt)}`} />
     </View>
+  );
+}
+
+export function WarehouseGuide({ title, facility, intakeCutoffAt }: { title: string; facility: Facility; intakeCutoffAt?: string }) {
+  const destination = facility.latitude != null && facility.longitude != null ? `${facility.latitude},${facility.longitude}` : facility.address;
+  const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  return (
+    <Card style={{ gap: 10 }}>
+      <Text style={{ fontFamily: serif, fontSize: 21, color: c.ink900 }}>{title}</Text>
+      <Text style={{ fontWeight: "700", color: c.ink900 }}>{facility.name}</Text>
+      <Text style={{ color: c.ink500, lineHeight: 19 }}>{facility.address} · {facility.district ? `${facility.district}, ` : ""}{facility.city}</Text>
+      {intakeCutoffAt && <Text style={{ color: c.pending, fontWeight: "600" }}>Son depo kabulü: {dt(intakeCutoffAt)}</Text>}
+      {facility.contactPhone && <Pressable onPress={() => Linking.openURL(`tel:${facility.contactPhone}`)}><Text style={{ color: c.cobalt700, fontWeight: "600" }}>{facility.contactPhone}</Text></Pressable>}
+      <Pressable onPress={() => Linking.openURL(mapUrl)} style={{ minHeight: 44, borderRadius: 12, backgroundColor: c.cobalt600, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#fff", fontWeight: "700" }}>Yol tarifi al</Text>
+      </Pressable>
+    </Card>
   );
 }
 
@@ -54,37 +71,6 @@ export function TripSummary({ trip, onPress, showPrice = true }: { trip: TripCar
       </Row>
       <CutoffChips trip={trip} />
       <Text style={{ fontSize: 12, color: c.ink500 }}>{trip.carrier.name} · {trip.vehicleType.name}</Text>
-    </Card>
-  );
-}
-
-const DAYS: [keyof Hours, string][] = [["mon", "Pzt"], ["tue", "Sal"], ["wed", "Çar"], ["thu", "Per"], ["fri", "Cum"], ["sat", "Cmt"], ["sun", "Paz"]];
-
-export function hoursText(h?: Hours | null) {
-  if (!h) return null;
-  const parts = DAYS.map(([k, l]) => { const r = h[k]; return r && r.length ? `${l} ${r.map(([a, b]) => `${a}–${b}`).join(", ")}` : null; }).filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
-}
-
-export function mapsUrl(f: Facility) {
-  const q = f.latitude != null && f.longitude != null ? `${f.latitude},${f.longitude}` : `${f.name} ${f.address} ${f.city}`;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-}
-
-/** Depo yol tarifi: adres, çalışma saatleri, son kabul, harita ve arama kısayolları. */
-export function WarehouseGuide({ title, facility, intakeCutoffAt }: { title: string; facility: Facility; intakeCutoffAt?: string }) {
-  const hours = hoursText(facility.openingHours);
-  return (
-    <Card style={{ gap: 10 }}>
-      <Text style={{ fontSize: 12, fontWeight: "700", color: c.ink500, textTransform: "uppercase", letterSpacing: 0.6 }}>{title}</Text>
-      <Text style={{ fontSize: 16, fontWeight: "700", color: c.ink900 }}>{facility.name}</Text>
-      <Text style={{ fontSize: 13, color: c.ink700 }}>{facility.address}{facility.district ? `, ${facility.district}` : ""} / {facility.city}</Text>
-      {hours && <Text style={{ fontSize: 12, color: c.ink500 }}>Çalışma saatleri: {hours}</Text>}
-      {intakeCutoffAt && <Chip tone="mint" label={`Son kabul ${dt(intakeCutoffAt)}`} />}
-      <Row>
-        <Chip tone="cobalt" label="Haritada aç" onPress={() => Linking.openURL(mapsUrl(facility))} />
-        {facility.contactPhone && <Chip label={`Ara ${facility.contactPhone}`} onPress={() => Linking.openURL(`tel:${facility.contactPhone}`)} />}
-      </Row>
     </Card>
   );
 }
