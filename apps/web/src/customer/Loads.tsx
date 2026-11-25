@@ -10,6 +10,7 @@ import { CarbonBadge, WalletCard } from "../components/extras";
 import { co2Saved, roadKm } from "../lib/carbon";
 import { loadAlarms, saveAlarms, type Alarm } from "../lib/store";
 import { PickupCard } from "../PickupCard";
+import { WarehouseGuide } from "../WarehouseGuide";
 
 type Tracking = {
   orderNumber: string; status: string; statusLabel: string; updatedAt: string; nextStep: string;
@@ -174,6 +175,8 @@ function LoadDetail({ id, fresh, onChanged }: { id: string; fresh?: boolean; onC
         <div className="col" style={{ gap: 14 }}>
           {r.orderNumber ? <WalletCard orderNumber={r.orderNumber} trip={r.trip} pallets={r.pallets} recipients={recips} code={r.pickup?.code} />
             : <div className="wallet pending"><div className="eyebrow light">Teslim kartı</div><p>Taşıyıcı onayından sonra yetkili alıcınız için QR’lı teslim kartı burada oluşur.</p></div>}
+          {["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL"].includes(r.status) && <WarehouseGuide title="Depoya nasıl giderim?" facility={r.trip.origin} intakeCutoffAt={r.trip.intakeCutoffAt} />}
+          {r.status === "VARISTA" && <WarehouseGuide title="Teslim alma adresi" facility={r.trip.destination} />}
           <PickupCard key={r.id + (r.pickup?.code ?? "")} r={r} onSaved={reload} />
           {r.measurement && (
             <div className={`alert ${r.measurement.outcome === "ok" ? "ok" : "warn"}`} data-testid="measurement-card">
