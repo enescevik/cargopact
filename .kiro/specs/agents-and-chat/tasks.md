@@ -1,0 +1,29 @@
+# Tasks – Çoklu Ajan ve Sohbet
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve çalıştırılarak/kodla doğrulandı; [ ] = yapılmadı (not belirtilir). Ajan için otomatik test yok; doğrulama canlı sohbetle yapıldı.
+- [ ] 1. Sohbet kanalı
+  - [x] 1.1 `POST /chat` → AgentCore Runtime `InvokeAgentRuntime`, oturum kimliği, yanıt (1.1) – commit `a6f0450` (runtime v4, `InvokeAgentRuntimeForUser`)
+  - [x] 1.2 AgentCore Memory, kullanıcı+oturum bazlı (1.2). Kullanıcılar arası izolasyon için otomatik test yok.
+  - [ ] 1.3 Mesaj uzunluğu ve oran sınırı (1.3). Not: uzunluk (4000) var; oran sınırı yok.
+  - [x] 1.4 Web ve mobil aynı `/chat` sözleşmesi (1.4) – `ChatRequest/ChatResponse`
+  - [x] 1.5 Anlaşılır hata ve zaman aşımı yanıtı (6.3) – web: dostça hata (`fb235d0`)
+- [ ] 2. Müşteri asistanı
+  - [x] 2.1 Sefer arama + fiyat önizleme (2.1): `search_trips`, `quote`
+  - [ ] 2.2 Rezervasyonu teyitle yazma (2.2). Not: ajan salt okunur; kullanıcı formdan yapar (karar).
+  - [x] 2.3 Sipariş durumu yalnız kendi firması (2.3): `track`, `my_reservations` (backend 404 ile kiracı zorlar)
+  - [x] 2.4 Başka firma verisi açıklanmaz (2.4) – araçlar kiracı filtreli API'yi çağırır
+- [ ] 3. Taşıyıcı asistanı
+  - [x] 3.1 Öncelik sırası + gerekçe: KB kuralı + API doğrulaması (3.1): `trip_detail` (`priorityRank`, `verifiedNoShows`), `carrier_knowledge`
+  - [ ] 3.2 Onay/ret ayrı teyit formu sonrası (3.2). Not: ajan yazamaz; onay/ret panelden.
+  - [x] 3.3 Kayıt yoksa "doğrulanmış gelmeme kaydı yok" (3.3) – istemde kural ve KB notu
+- [ ] 4. Araçlar ve yetki
+  - [ ] 4.1 Araçların AgentCore Gateway/MCP üzerinden sunulması (4.1). Not: doğrudan HTTP araçları.
+  - [x] 4.2 Araç çağrıları kullanıcının token'ı ve `/me` rolü/kiracısıyla (4.2)
+  - [x] 4.3 Yazma araçları yok (4.3 geçersiz; ajan yazmaz)
+- [ ] 5. Taşıyıcıya özel bilgi tabanı
+  - [x] 5.1 Bedrock KB `ATCPKGCFWE`, taşıyıcı başına doküman (Dinçer, Siva: kurallar + özet olaylar) (5.1) – commit `9b23d22`. Tek KB + `carrierId` metadata.
+  - [x] 5.2 `Retrieve` kiracı süzgeciyle, ham evrak/kişisel veri indekslenmez (5.2) – `carrierId` `/me`'den; sonuç ayrıca doğrulanır
+  - [ ] 5.3 KB çapraz-kiracı sızıntısı için otomatik test. Not: yok; elle sorguyla denendi.
+- [ ] 6. İzlenebilirlik ve güvenlik
+  - [ ] 6.1 Ajan çağrısı correlationId ve araç çağrı izi (jüri panosu) (6.1). Not: yok.
+  - [x] 6.2 Araç çıktısındaki talimatlar uyulmaz (6.2) – sistem istemi kuralı; otomatik enjeksiyon testi yok
+- [x] 7. Altyapı: `AgentsStack` (ECR, Memory, Runtime, rol, `bedrock:Retrieve`), `ApiStack` `/chat` + IAM; `agentImageTag` v5 dağıtıldı

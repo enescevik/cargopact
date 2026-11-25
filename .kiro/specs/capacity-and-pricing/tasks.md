@@ -1,39 +1,38 @@
 # Tasks – Kapasite Yayını ve Dinamik Fiyat
-
 Gereksinim numaraları `requirements.md` ile eşleşir. Bağımlılık: platform-foundation ve master-data-and-seed tamam.
-
+Durum (kodla doğrulandı): çekirdek **uygulandı ve dağıtıldı**, ancak tasarımdan iki sapma var: (1) `pricing_policies` ve `quotes` tabloları yok; fiyat parametreleri sefer satırında (`base_price_minor`, `floor_ratio`, `ceiling_ratio`) ve basamaklar `packages/domain/src/pricing.ts` varsayılanlarında; (2) teklif kalıcı değil: `POST /customer/trips/{id}/quote` yazmaz, rezervasyonda fiyat yeniden hesaplanıp rezervasyona kilitlenir.
 - [ ] 1. Şema
-  - [ ] 1.1 Migrasyonlar: pricing_policies, trips, trip_capacity, quotes (tek-DDL dosyalar, CHECK kısıtları) (1.1, 1.2, 2.1)
-  - [ ] 1.2 Async indeksler ve benzersizlikler (trips carrier+reference, policies carrier+code)
-  - [ ] 1.3 `db:grant` yeni tablolara uygulama yetkisi verir; deploy sonrası çalıştır
-- [ ] 2. Domain (saf, birim testli)
-  - [ ] 2.1 `checkEligibility`: tüm neden kodları, hepsini döndürür, plan reddi örneği (5.1, 5.2, 5.3)
-  - [ ] 2.2 `priceQuote`: talep/zaman basamakları, doluluk eşiğinde zaman indirimi kapalı, kırpma, yuvarlama, breakdown, determinizm (4.1–4.5)
-  - [ ] 2.3 Kapasite türetmeleri: kalan, planlanan/fiili doluluk, satış doluluğu (2.1, 2.2)
-  - [ ] 2.4 Arama tarihi → İstanbul günü UTC aralığı
-- [ ] 3. Veri erişimi
-  - [ ] 3.1 `applyCapacityDelta` (tek UPDATE + aşım kontrolü + `CapacityExceededError`) (2.2, 2.3)
-  - [ ] 3.2 Araç çakışma kontrolü: araç satırı `SELECT ... FOR UPDATE` + aralık kesişim sorgusu (master-data 2.4)
+  - [ ] 1.1 Migrasyonlar: pricing_policies, trips, trip_capacity, quotes (1.1, 1.2, 2.1). Yapıldı: `trips` (0030), `trip_capacity` (0031). Yapılmadı: `pricing_policies`, `quotes` (sapma 1–2).
+  - [x] 1.2 Async indeksler (0036 trips carrier+kalkış, 0037 durum+cutoff) ve benzersizlik. Not: `uq_trip_reference` global `reference` üzerinde (carrier+reference değil).
+  - [x] 1.3 `db:grant`; dağıtımda uygulandı (API sorgu yapıyor)
+- [x] 2. Domain (saf, birim testli)
+  - [x] 2.1 `checkEligibility`: tüm neden kodları, hepsini döndürür, plan reddi örneği (5.1, 5.2, 5.3) – `demo-flow.test.ts`
+  - [x] 2.2 `priceQuote`: talep/zaman basamakları, doluluk eşiğinde zaman indirimi kapalı, kırpma, yuvarlama, breakdown, determinizm (4.1–4.5) – `demo-flow.test.ts`
+  - [x] 2.3 Kapasite türetmeleri: kalan, planlanan/fiili doluluk (`capacityOf` – `lib/trips.ts`) (2.1, 2.2)
+  - [x] 2.4 Arama tarihi → İstanbul günü aralığı (`istanbulDate` – `routes/demo.ts`)
+- [x] 3. Veri erişimi
+  - [x] 3.1 Kapasite değişimi: `adjustCap` (tek UPDATE, `lib/trips.ts`) ve rezervasyonda taşma korumalı tek `UPDATE … WHERE` (2.2, 2.3). Ayrı `CapacityExceededError` yok; koşul sağlanmazsa 409 `CAPACITY_EXCEEDED`.
+  - [x] 3.2 Araç çakışma kontrolü: araç satırı `SELECT … FOR UPDATE` + aralık kesişim sorgusu (master-data 2.4) – smoke "aynı araç aynı aralık: 409 VEHICLE_OVERLAP"
 - [ ] 4. API – taşıyıcı
-  - [ ] 4.1 Fiyat politikası CRUD (zod: basamaklar sıralı, çarpan aralıkları) (4.1)
-  - [ ] 4.2 Sefer oluştur/güncelle (draft): tesis/araç/politika doğrulamaları, cutoff türetme, capacity_version artışı (1.1–1.5)
-  - [ ] 4.3 Durum geçişleri: publish, close, reopen, cancel (izinli geçiş tablosu, If-Match) (1.1, 1.3)
-  - [ ] 4.4 `GET /carrier/trips` listesi ve `/{id}/capacity` (planlanan/fiili ayrı) (2.1)
-  - [ ] 4.5 Satışı bloke+onaylı altına indirme 409 (design §4.7)
+  - [ ] 4.1 Fiyat politikası CRUD (4.1). Not: yok; taban fiyat ve alt/üst oran sefer oluştururken verilir (`floor_ratio`/`ceiling_ratio` varsayılan 0.80/1.50), basamaklar kodda sabit.
+  - [x] 4.2 Sefer oluştur (`POST /carrier/trips`) ve güncelle (`PUT /carrier/trips/{id}`, `If-Match` sürümü): tesis/araç doğrulamaları, cutoff türetme, `capacity_version` artışı (1.1–1.5). Güncelleme (0054, bekleyen talep yeniden değerlendirme) `devam ediyor`: kod yazıldı, commit/dağıtım bekliyor.
+  - [x] 4.3 Durum geçişleri `POST /carrier/trips/{id}/status`: publish, close, cancel (yeniden açma = `closed`'dan publish) (1.1, 1.3). `If-Match` yok; idempotency anahtarı var.
+  - [x] 4.4 `GET /carrier/trips` ve `/{id}`: kapasite alanları (planlanan/bloke/fiili ayrı) `CarrierTrip.capacity` içinde (2.1). Ayrı `/capacity` ucu yok.
+  - [x] 4.5 Satışı bloke+onaylı altına indirme 409 `CAPACITY_BELOW_COMMITTED` (design §4.7) – `devam ediyor` (PUT ile birlikte)
 - [ ] 5. API – müşteri
-  - [ ] 5.1 `GET /customer/trips` arama: filtreler, cutoff, aktif taşıyıcı, gizlilik, sayfalama (3.1, 3.2)
-  - [ ] 5.2 `GET /customer/trips/{id}/quote-preview` (yazmaz) (4.5, 4.6)
-  - [ ] 5.3 `POST /customer/quotes` (uygunsa yazar, değilse eligible:false), `GET /customer/quotes/{id}` (yalnız kendi) (4.5, 4.6, 5.1)
-- [ ] 6. Sözleşme
-  - [ ] 6.1 Yeni giriş/yanıt şemaları, `API_OPERATIONS`, `openapi.json` yeniden üret
-  - [ ] 6.2 Yönlendirici=belge testi geçer
+  - [x] 5.1 `GET /customer/trips` arama: şehir/tarih/palet filtreleri, T−3 sonrası ve yayında olmayan seferler yok, aktif taşıyıcı (3.1, 3.2). Sayfalama yok (liste).
+  - [x] 5.2 Teklif/önizleme: `POST /customer/trips/{id}/quote` (yazmaz; uygunsuzsa `eligible:false` + nedenler) (4.5, 4.6)
+  - [ ] 5.3 `POST /customer/quotes` ile kalıcı teklif ve `GET /customer/quotes/{id}` (4.5, 4.6, 5.1). Not: yapılmadı; `quoteExpiresAt` yalnız bilgi.
+- [x] 6. Sözleşme
+  - [x] 6.1 Şemalar `packages/contracts/src/demo.ts`, `openapi.json` yeniden üretildi
+  - [x] 6.2 Yönlendirici=belge testi (`router.test.ts`)
 - [ ] 7. Seed L2
-  - [ ] 7.1 Taşıyıcı başına varsayılan fiyat politikası
-  - [ ] 7.2 Design §11 seferleri (göreli tarihli), trip_capacity sıfır sayaçlarla
-  - [ ] 7.3 `seed:verify`: seferler tutarlı (cutoff = kalkış −3/−1 saat, araç çakışması yok, satış ≤ kapasite)
+  - [ ] 7.1 Taşıyıcı başına varsayılan fiyat politikası. Not: politika tablosu yok.
+  - [x] 7.2 Demo ve ek seferler (göreli tarihli, `trip_capacity` sıfır sayaçlı): `packages/db/src/seed/l2.ts`, `npm run seed:demo` (demo sefer `DNC-DEMO-GEB-ANK`, 25/33)
+  - [ ] 7.3 `seed:verify`'a sefer tutarlılık kontrolleri. Not: verify yalnız L1; demo akışı smoke sonunda 25/33 durumuna dönmesiyle doğrulanır.
 - [ ] 8. Testler
-  - [ ] 8.1 Entegrasyon (gerçek DSQL): aynı araca eşzamanlı iki sefer → bir; eşzamanlı son kapasite `applyCapacityDelta` → bir; satış < taahhüt 409
-  - [ ] 8.2 Smoke: design §12 senaryoları + canlı sözleşme kontrolü
+  - [ ] 8.1 Gerçek tablolarla entegrasyon testi. Not: eşzamanlı 6 istek testi genel tabloyla var (`dsql.integration.test.ts`); gerçek `trip_capacity` için smoke "son palet yarışı" ve "aynı araç aynı aralık" kullanıldı; satış<taahhüt 409 için test yok.
+  - [x] 8.2 Smoke: `scripts/smoke-demo.mjs` (54 kontrol: fiyat, uygunluk, yarış, araç çakışması, sefer iptali)
 - [ ] 9. Doğrulama ve belgeler
-  - [ ] 9.1 Typecheck, birim, entegrasyon, smoke, synth geçer; deploy
-  - [ ] 9.2 `docs/PROGRESS.md`, steering güncelle
+  - [x] 9.1 Typecheck, birim, smoke geçti; API ve web dağıtıldı
+  - [x] 9.2 `docs/PROGRESS.md` güncellendi

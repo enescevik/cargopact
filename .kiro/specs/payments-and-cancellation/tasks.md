@@ -1,0 +1,29 @@
+# Tasks – Ödeme ve İptal
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/smoke ile doğrulandı; [ ] = yapılmadı (not belirtilir).
+- [x] 1. Şema: `ledger_entries` (UNIQUE idempotency_key, tip CHECK), `reservations.payment_plan/deposit_percent` (migrasyon 0032, 0034, 0042)
+- [ ] 2. Ödeme planı
+  - [ ] 2.1 Planı taşıyıcının seçmesi, (a)(b)(c) (1.1). Not: müşteri `full`/`deposit` seçiyor, kapora %30 sabit; (c) "kalan teslimde" yok.
+  - [ ] 2.2 İptal politikasının siparişe sabitlenmesi (1.2). Not: plan ve kapora yüzdesi satırda sabit; politika tek ve kodda.
+  - [x] 2.3 Onayda tahsilat (1.3, kısmen). `ODEME_BEKLIYOR` bayrağı ve ödeme süresi iptali yok; ödeme talepte provizyonla alınır.
+  - [ ] 2.4 `PaymentProvider` arayüzü (1.4). Not: simülasyon route içinde (kart `4000000000000002` reddedilir); zaman aşımı/tekrar senaryosu yok.
+  - [x] 2.5 Çağrı başına idempotency; tekrarında çift tahsilat yok (1.5) – smoke "aynı Idempotency-Key aynı rezervasyon", ledger anahtarları
+- [ ] 3. Defter
+  - [x] 3.1 Yalnız-ekleme defter, tipler (2.1). `RELEASED` eklendi; `FAILED` tipi tanımlı ama yazılmıyor (red durumunda işlem geri alınır).
+  - [ ] 3.2 Para birimi ve correlationId alanları (2.2). Not: kolonlar yok.
+  - [x] 3.3 Bakiye defterden hesaplanır (2.3) – `paymentView`
+- [ ] 4. İptal ücreti
+  - [x] 4.1 Dilimli politika: ≥24 sa %100, 24 sa–T−3 %50, sonrası %0 (3.1) – birim testleri (`demo-flow.test.ts`). Taşıyıcı bazlı parametre değil.
+  - [x] 4.2 İptal önizleme + müşteri onayıyla işlem (3.2) – `cancel-preview`, `cancel`
+  - [x] 4.3 Onay öncesi iptal/ret/süre aşımı: provizyon serbest (3.3) – smoke "ret: RET + provizyon serbest"
+- [ ] 5. Taşıyıcı kaynaklı durumlar
+  - [x] 5.1 Taşıyıcı sefer iptali: aktif taleplere tam iade (4.1) – smoke "sefer iptali: bekleyen talep iade"
+  - [ ] 5.2 Yeniden planlama: müşteri yeni seferi ücretsiz kabul/iptal (4.2). Not: `YENIDEN_PLANLAMA` durumu yok; sefer düzenlenince bekleyen talepte yalnız `needs_review` bayrağı.
+- [ ] 6. Gelmeme
+  - [x] 6.1 `GELMEDI` yalnız `ONAYLI` ve T−1 sonrası; kapasite iade, ücret tutulur (5.1) – smoke "T−1 öncesi GELMEDI reddedilir"; T−1 sonrası yolu canlı testte yok
+  - [ ] 6.2 Gelmeme sayılmayan nedenlerin ayrı kodları (5.2). Not: reservation-and-approval 5.2 ile aynı eksik.
+- [ ] 7. Hasar ve eksik palet
+  - [ ] 7.1 Palet bazlı talep kaydı ve kısmi iade (6.1, 6.2). Not: `EKSIK_HASAR` yalnız durum olayı; talep tablosu/iade yok.
+- [ ] 8. Çift işlem koruması
+  - [x] 8.1 İptal/iade tekrarında kapasite ve para en fazla bir kez (7.1) – smoke "tekrar aynı, kapasite bir kez iade"
+  - [ ] 8.2 Mutabakat işi (7.2). Not: yok.
+- [x] 9. Sözleşme: `Reservation.payment`, `LedgerEntry`, `cancelInput`, `cancel-preview` yanıtı `packages/contracts`'ta; OpenAPI güncel

@@ -1,0 +1,39 @@
+# Tasks – Depo İşlemleri ve Takip
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/smoke ile ya da kodla doğrulandı; [ ] = yapılmadı; "devam ediyor" = kod yazıldı, dağıtım/doğrulama bitmedi (durumu `docs/PROGRESS.md` izler).
+- [ ] 1. Palet kimliği
+  - [x] 1.1 Onayda palet başına kod `CP-YYYY-NNNNNN-Pn` (`pallet_codes`) ve mobilde QR üretimi (1.1) – smoke "palet kodları"
+  - [ ] 1.1b SSCC eşleme alanı (1.1). Not: yok.
+  - [ ] 1.2 Teslim yetkisinin palet kodundan ayrı doğrulanması (1.2). Not: yetkili alıcı listesi yok; yalnız `recipientName` kaydı.
+- [ ] 2. Çıkış deposu kabulü
+  - [ ] 2.1 Ölçü/kg girişi, beyanla fark, ölçümün ayrı saklanması (2.1). Not: yok.
+  - [ ] 2.2 Fark eşiğinde uygunluğun yeniden çalışması, kısmi kabul/inceleme (2.2). Not: yok.
+  - [x] 2.3 T−1 sonrası standart kabul reddi (2.3) – 409 `INVALID_TRANSITION`; T−1 öncesi kabul smoke'ta. Gecikme için operasyon kuyruğu yok.
+  - [ ] 2.4 Kabul olayında depo/fotoğraf (2.4). Not: personel ve zaman `reservation_events`'te; depo ve fotoğraf yok.
+  - [ ] 2.5 Paletlenmemiş yük için inceleme kaydı (2.5). Not: koli kararı A (müşteri paletler); inceleme kaydı yok.
+- [ ] 3. Yükleme ve varış
+  - [x] 3.1 `YUKLENDI` olayı, `loaded_*` sayacı artar (3.1) – smoke "tekrarlanan olay çift hareket üretmez; fiili 33/33". Okunan/kalan palet sayacı yok.
+  - [x] 3.2 `VARISTA` olayı (3.2). Alıcıya bildirim yok.
+  - [ ] 3.3 Alım penceresi dışı operasyon uyarısı (3.3). Not: yok.
+- [ ] 4. Teslim ve e-POD
+  - [x] 4.1 `TESLIM`: alıcı adı zorunlu, e-POD dosya anahtarları doğrulanır (S3 `HeadObject`) ve bağlanır (4.1, rezervasyon düzeyi) – `devam ediyor`: kod yazıldı, canlı doğrulama/commit bekliyor
+  - [x] 4.1b `pod-upload-url` (presigned PUT, yalnız `VARISTA`, ≤20 dosya) – `devam ediyor`
+  - [ ] 4.1c Palet bazında teslim olayı/e-POD (4.1). Not: rezervasyon düzeyi; palet bazı yalnız WMS entegrasyonunda.
+  - [ ] 4.2 Yetkisiz alıcıya teslim reddi (4.2). Not: yetkili alıcı doğrulaması yok.
+  - [ ] 4.3 Kısmi teslimde palet/zaman/kişi görünümü (4.3). Not: kısmi teslim yok.
+- [ ] 5. Çift olay ve çevrimdışı
+  - [x] 5.1 Aynı olay türü ikinci kez çift hareket üretmez (5.1) – `UNIQUE(reservation_id,type)` + durum kontrolü; smoke
+  - [x] 5.2 Mobil çevrimdışı kuyruk: "bekliyor", idempotent eşitleme, sunucu teyidine kadar tamam sayılmaz (5.2) – commit `0b13a02`; birim/otomatik test yok, manuel doğrulama
+  - [x] 5.3 Mobil QR okuyucu (kamera, jsQR; elle kod girişi yedek) – commit `0b13a02`
+- [ ] 6. Takip
+  - [x] 6.1 Müşteri takip adımları ve sıradaki adım (6.1) – smoke "takip: TESLIM, adımlar, palet kodları"
+  - [ ] 6.1b Hasar/eksik palete bağlı görünüm (6.1). Not: yalnız rezervasyon durumu `EKSIK_HASAR`.
+  - [ ] 6.2 Canlı araç konumu (6.2). Not: kaynak yok; gösterilmiyor (kurala uygun).
+- [ ] 7. İstisnalar ve rapor
+  - [ ] 7.1 Gelmeme/geç bırakma/ölçüm farkı/hasar için durum-sorumlu-neden kodu-bildirim (7.1). Not: yalnız `GELMEDI`, `EKSIK_HASAR` durumları.
+  - [x] 7.2 Planlanan, bloke ve fiili doluluk ayrı (7.2) – `Capacity`, dashboard
+- [ ] 8. Entegrasyonlar (plan ek maddeleri) – hepsi `devam ediyor`
+  - [ ] 8.1 WMS palet olayı `POST /warehouse/integrations/wms/pallet-events` (idempotent, tüm paletler bildirilince geçiş)
+  - [ ] 8.2 TMS sefer `POST /carrier/integrations/tms/trips` (idempotent taslak sefer)
+  - [ ] 8.3 EventBridge olay yayını + dakikalık worker + `integrations/status|events/flush`
+  - [ ] 8.4 Sefer düzenleme `PUT /carrier/trips/{id}` ve bekleyen taleplerin yeniden değerlendirilmesi (`needs_review`)
+- [x] 9. Sözleşme ve test: `reservationEventInput`, takip yanıtı, OpenAPI; smoke-demo depo akışı (kabul, yükleme, varış, teslim, T−1 öncesi `GELMEDI` reddi)

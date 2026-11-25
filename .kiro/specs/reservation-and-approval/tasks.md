@@ -1,0 +1,37 @@
+# Tasks – Rezervasyon, Blokaj ve Taşıyıcı Onayı
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve smoke/birim testle ya da kodla doğrulandı; [ ] = yapılmadı (not belirtilir). Smoke: `scripts/smoke-demo.mjs` (54 kontrol).
+- [x] 1. Şema
+  - [x] 1.1 `reservations`, `reservation_events`, `order_counters`, indeksler (migrasyon 0032, 0033, 0035, 0038–0041)
+  - [x] 1.2 `needs_review`, `pod_recipient_name` (0052, 0053)
+- [ ] 2. Teklif kabulü ve blokaj
+  - [x] 2.1 `POST /customer/reservations`: tek işlemde blokaj + referans (`BV-…`) + `TASIYICI_ONAYI_BEKLIYOR` (1.1)
+  - [ ] 2.2 Süresi dolmuş teklif / sefer sürümü değişimi reddi (1.2). Not: teklif kalıcı değil; fiyat kabulde yeniden hesaplanır. `quotes` tablosu ve `GET /customer/quotes/{id}` yok.
+  - [x] 2.3 T−3 sonrası blokaj yok, sınır dahil (1.3) – `checkEligibility`, birim testi "sınır anı dahil"
+  - [x] 2.4 Blokaj süresi `min(2 saat, T−3)` (1.4)
+  - [x] 2.5 Son palet yarışında tek kazanan (1.5) – smoke "son palet yarışı", "yarış sonrası held = 1"
+  - [x] 2.6 Fiyat rezervasyona sabitlenir (1.6) – smoke "fiyat sunucuda hesaplandı"
+- [ ] 3. Taşıyıcı kararı
+  - [x] 3.1 Onay: uygunluk yeniden denetimi, held→confirmed, `CP-YYYY-NNNNNN`, palet kodları aynı işlemde (2.1)
+  - [ ] 3.1b Müşteriye bildirim (2.1). Not: uygulama içi/e-posta bildirimi yok; yalnız EventBridge olayı.
+  - [x] 3.2 Aynı onay tekrarı aynı numara (2.2) – smoke "çift onay aynı sipariş numarası"
+  - [x] 3.3 Ret: gerekçe zorunlu, kapasite bir kez iade (2.3) – smoke "ret gerekçesiz 400", "ret kapasiteyi bir kez iade eder"
+  - [x] 3.4 T−3 sonrası bekleyen talep kesinleşmez (2.4) – onayda uygunluk `BOOKING_CUTOFF_PASSED` döner; blokaj süresi T−3'ü aşmadığı için talep önce `SURESI_DOLDU` olur
+  - [x] 3.5 Onaylı fiyat sonradan değişmez (2.5)
+- [ ] 4. Süre aşımı
+  - [x] 4.1 `expireHolds`: `SURESI_DOLDU`, held bir kez düşer, provizyon serbest (3.1, 3.2)
+  - [ ] 4.2 Zamanlanmış süre aşımı işi. Not: yalnız tembel temizlik (okuma/yazma anında). Birim/smoke testi yok.
+- [ ] 5. Öncelik
+  - [x] 5.1 Gelmemesi olan firma sona, eşitlikte başvuru sırası; `priorityRank`, `verifiedNoShows` (4.1, 4.2)
+  - [ ] 5.2 Gelmeme sayılmayan nedenler için ayrı kod/alan (4.3). Not: yalnız `GELMEDI` sayılır.
+  - [ ] 5.3 Planlamacı seçim gerekçesi denetim izine (4.4). Not: yalnız ret gerekçesi saklanıyor.
+  - [x] 5.4 Müşteri yanıtında başka firma verisi/öncelik yok (4.5) – smoke "yalnız kendi + verifiedNoShows sızmaz"
+  - [ ] 5.5 Öncelik sıralaması için birim testi. Not: yalnız canlı akışta gözleniyor.
+- [x] 6. Müşteri iptali
+  - [x] 6.1 Onay öncesi iptal: blokaj serbest (5.1) – smoke "müşteri iptali"
+  - [x] 6.2 Onay sonrası iptal: kapasite bir kez iade, neden/ücret defterde (5.2)
+- [x] 7. Takip
+  - [x] 7.1 `GET /customer/orders/{orderNumber}/tracking`: durum, güncelleme saati, sıradaki adım, çıkış deposu + T−1, varış alım penceresi (6.1)
+  - [x] 7.2 Yalnız kendi firması; diğeri 404 (6.2) – smoke
+- [x] 8. Sözleşme ve test
+  - [x] 8.1 `packages/contracts` (`reservationInput`, `decisionInput`, `cancelInput`), OpenAPI yeniden üretildi, yönlendirici=belge testi
+  - [x] 8.2 Smoke `smoke-demo.mjs` (rezervasyon, onay, ret, iptal, yarış, kiracı izolasyonu)
