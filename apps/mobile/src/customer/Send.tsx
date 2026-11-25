@@ -3,7 +3,7 @@ import { Animated, Platform, Pressable, ScrollView, Text, View } from "react-nat
 import { api, ApiError, uuid } from "../api";
 import { c, sansBold, serif } from "../theme";
 import { dt, hm, money, num, place } from "../format";
-import { Btn, ErrorBox, KV, Row, Screen, Sheet, Skeletons, useLoad, useScrollToFocused, useToast } from "../ui";
+import { Btn, ErrorBox, Field, KV, Row, Screen, Sheet, Skeletons, useLoad, useScrollToFocused, useToast } from "../ui";
 import {
   CarbonBadge, ChipSelect, Eyebrow, Noir, NoirKV, OptionCard, PriceCalendar, RouteTitle, Segmented, Stepper, TruckMap,
   customerCells, dayNum, isoDay, today, weekday,
@@ -72,13 +72,24 @@ export function Send({ onDone }: { onDone: () => void }) {
   const [cardId, setCardId] = useState<(typeof CARDS)[number]["id"]>("ok");
   const [recips, setRecips] = useState<string[]>([]);
   const [recipient, setRecipient] = useState("");
+  const [me, setMe] = useState("");
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [other, setOther] = useState("");
   const [quote, setQuote] = useState<Quote>();
   const [qErr, setQErr] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(uuid);
   const [why, setWhy] = useState(false);
 
-  useEffect(() => { void loadAlarms().then(setAlarms); void loadRecipients().then(setRecips); }, []);
+  useEffect(() => {
+    void loadAlarms().then(setAlarms);
+    void loadRecipients().then(setRecips);
+    // Teslimde yetkili alıcı zorunlu: varsayılan olarak giriş yapan kişinin adı (sunucuya gerçekten gönderilir)
+    api<{ displayName?: string; email: string }>("GET", "/me").then((m) => {
+      const n = (m.displayName ?? "").trim();
+      if (n.length >= 2) { setMe(n); setRecipient((x) => x || n); }
+    }).catch(() => undefined);
+  }, []);
   useEffect(() => { if (!route && routes[0]) setRoute(routes[0].key); }, [routes, route]);
   useEffect(() => { if (pcs.length && !pcs.some((x) => x.code === pc)) setPc(pcs[0]!.code); }, [pcs, pc]);
 
@@ -168,7 +179,7 @@ export function Send({ onDone }: { onDone: () => void }) {
   if (!routes.length) return <Screen><Text style={{ color: c.ink500 }}>Şu an yayında sefer yok.</Text></Screen>;
 
   const pp = quote?.paymentPlans.find((x) => x.code === plan);
-  const canNext = step === 0 ? !!route : step === 1 ? !!trip && trip.remaining.pallets >= pallets : step === 2 ? !!quote?.eligible : !!quote?.eligible;
+  const canNext = step === 0 ? !!route : step === 1 ? !!trip && trip.remaining.pallets >= pallets : step === 2 ? !!quote?.eligible : !!quote?.eligible && recipient.trim().length >= 2;
 
   return (
     <View style={{ flex: 1 }}>
@@ -309,7 +320,16 @@ export function Send({ onDone }: { onDone: () => void }) {
                   );
                 })}
               </View>
-              <Line label="Teslim alacak"><ChipSelect small value={recipient} onChange={(v) => { tap(); setRecipient(v); }} options={[{ value: "", label: "Firma yetkilisi" }, ...recips.slice(0, 2).map((x) => ({ value: x, label: x })), ...(["Depo sorumlusu"].filter((x) => !recips.includes(x)).map((x) => ({ value: x, label: x })))]} /></Line>
+              <Line label="Teslim alacak (yetkili alıcı)">
+                <ChipSelect small value={otherOpen ? "__other" : recipient} onChange={(v) => { tap(); if (v === "__other") { setOtherOpen(true); setRecipient(other.trim()); } else { setOtherOpen(false); setRecipient(v); } }}
+                  options={[
+                    ...(me ? [{ value: me, label: `Ben · ${me}` }] : []),
+                    ...recips.filter((x) => x !== me).slice(0, 2).map((x) => ({ value: x, label: x })),
+                    { value: "__other", label: "Başka kişi…" },
+                  ]} />
+              </Line>
+              {otherOpen && <Field label="Alıcının adı soyadı" value={other} onChangeText={(t) => { setOther(t); setRecipient(t.trim()); }} placeholder="Ad Soyad" autoCapitalize="words" />}
+              {recipient.trim().length < 2 && <Text style={{ color: c.danger, fontSize: 11 }}>Teslimde kodu söyleyecek kişinin adını seçin veya yazın.</Text>}
               <CarbonCard carbon={quote.carbon} />
               <Pressable onPress={() => setWhy(true)}><Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 12 }}>Fiyat neden böyle? · İptal koşulları ›</Text></Pressable>
             </>
