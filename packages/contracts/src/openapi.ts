@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "./zod";
-import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, recipientsInput, reviewInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
+import { contractPreviewInput, cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, recipientsInput, reviewInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
 import type { Role } from "./common";
 import { integrationStatusResponse, tmsTripInput, wmsPalletEventInput } from "./integrations";
 import {
@@ -88,6 +88,10 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/customer/reservations", summary: "Rezervasyon oluştur (blokaj + provizyon)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: reservationInput, response: looseResponse, status: 201, idempotent: true },
   { method: "GET", path: "/customer/reservations", summary: "Rezervasyonlarım", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: itemsResponse },
   { method: "GET", path: "/customer/reservations/{id}", summary: "Rezervasyon ayrıntı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "POST", path: "/customer/trips/{id}/contract-preview", summary: "Taşıma sözleşmesi önizleme (yazmaz): { contractCode, version, isDraft, title, renderedMarkdown, renderedHash }", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: contractPreviewInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/customer/reservations/{id}/contract", summary: "Kabul edilmiş sözleşme (imza bölümü dolu) + kabul kaydı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "GET", path: "/customer/carbon/summary", summary: "Karbon özeti (kendi firma): { allocatedKg, declaredSavedKg, reservations, method, isDemoFactors }", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "GET", path: "/carrier/reservations/{id}/contract", summary: "Kabul edilmiş sözleşme (taşıyıcı, kendi rezervasyonu)", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, response: looseResponse },
   { method: "GET", path: "/customer/reservations/{id}/cancel-preview", summary: "İptal önizleme", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "POST", path: "/customer/reservations/{id}/cancel", summary: "Rezervasyon iptal", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: cancelInput, response: looseResponse, idempotent: true },
   { method: "PUT", path: "/customer/reservations/{id}/recipients", summary: "Yetkili alıcıları güncelle (en çok 3, TESLIM'e kadar)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: recipientsInput, response: looseResponse, idempotent: true },

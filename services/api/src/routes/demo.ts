@@ -2,11 +2,13 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { z } from "zod";
 import {
-  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, recipientsInput, reviewInput, type Role,
+  cancelInput, contractPreviewInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, recipientsInput, reviewInput, type Role,
 } from "@cargopact/contracts";
 import { hashPickupCode, normalizeName, PICKUP_MAX_ATTEMPTS, pickupFields, withTx } from "@cargopact/db";
 import { notify } from "../lib/notify";
+import { contractView, loadAcceptances, previewContract, signedFromAcceptance, type ContractInput } from "../lib/contract";
 import {
+  loadCarbon, CONTRACT_VERSION, CARBON_METHOD,
   CANCELLATION_POLICY_TABLE, cancellationRefund, checkEligibility, defaultVolume, isWithinCutoff,
   adjustedTotalMinor, classifyMeasurement, nonAcceptedShareMinor, proportionalKg,
 } from "@cargopact/domain";
@@ -17,7 +19,7 @@ import { idempotent } from "../lib/idempotency";
 import { objectExists, POD_EXT, POD_PUT_TTL, presignPut, uploadsBucket } from "../lib/s3";
 import {
   addEvent, addLedger, adjustCap, capacityOf, carrierTrip, COST_PER_PALLET_MINOR, CONFIRMED_STATES, round2, expireDue, expireHolds, HOLD_MS, iso,
-  contractFor, loadTrips, newReference, pendingCounts, quoteFor, RESERVATION_SELECT, reservationViews, setStatus, STATUS_LABELS, toPrice, tripCard, type Q,
+  contractFor, carbonOf, confirmedLoads, distanceOf, loadTrips, newReference, pendingCounts, quoteFor, RESERVATION_SELECT, reservationViews, setStatus, STATUS_LABELS, toPrice, tripCard, type Q,
 } from "../lib/trips";
 import type { Route } from "./master-data";
 
@@ -49,6 +51,20 @@ const EVENT_NOTES: Record<string, [string, string]> = {
 export function demoRoutes(pool: pg.Pool): Route[] {
   const oneView = async (q: Q, id: string, now: Date, carrierView: boolean) => (await reservationViews(q, await fetchRes(q, "where r.id = $1", [id]), now, { carrierView }))[0];
   const publishedTrip = async (q: Q, id: string) => (await loadTrips(q, "where t.id = $1 and t.status = 'published' and ca.status = 'active'", [uid(id)]))[0];
+
+  const contractInputOf = async (q: Q, t: Record<string, any>, customerId: string, pcName: string, i: { pallets: number; grossKg: number; volumeM3: number; paymentPlan: "full" | "deposit" }, price: { unitPriceMinor: number; totalPriceMinor: number }): Promise<ContractInput> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const cu = (await q.query("select name from tenants where id = $1", [customerId])).rows[0];
+    return { trip: t, customerName: cu?.name ?? "—", productClassName: pcName, ...i, ...price, depositPercent: DEPOSIT_PERCENT };
+  };
+  const activePc = async (q: Q, t: Record<string, any>, code: string) => (await q.query( // eslint-disable-line @typescript-eslint/no-explicit-any
+    `select pc.id, pc.code, pc.name, coalesce((select accepted from carrier_product_classes cpc where cpc.carrier_id = $2 and cpc.product_class_id = pc.id), true) accepted
+       from product_classes pc where pc.code = $1 and pc.status = 'active' and pc.tenant_id = any($3::uuid[])`,
+    [code, t.carrier_id, [t.carrier_id, "00000000-0000-4000-8000-000000000001"]])).rows[0];
+  const contractResponse = async (q: Q, r: Record<string, any>) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const a = (await loadAcceptances(q, [r.id])).get(r.id);
+    if (!a) throw notFound("Sözleşme");
+    return ok({ contractCode: "TASIMA", isDraft: true, renderedMarkdown: signedFromAcceptance(a), acceptance: contractView(a) });
+  };
 
   /** İptal ve iade çekirdeği: müşteri iptali, taşıyıcı sefer iptali. */
   async function cancelCore(c: pg.PoolClient, r: Record<string, any>, now: Date, opts: { full: boolean; reason?: string; userId: string }) { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -405,7 +421,57 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             { code: "deposit", label: `%${DEPOSIT_PERCENT} kapora, kalan depo kabulünde`, depositPercent: DEPOSIT_PERCENT, dueNowMinor: dep, remainingMinor: total - dep },
           ],
           cancellationPolicy: CANCELLATION_POLICY_TABLE,
+          carbon: carbonOf(t, input.pallets, input.alternativeScenario),
         });
+      },
+    },
+    {
+      method: "POST", pattern: "/customer/trips/{id}/contract-preview",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CUSTOMER);
+        const input = contractPreviewInput.parse(req.body);
+        await expireDue(pool, uid(req.params.id));
+        const t = await publishedTrip(pool, req.params.id);
+        if (!t) throw notFound("Sefer");
+        const now = new Date();
+        const pc = await activePc(pool, t, input.productClassCode);
+        if (!pc) throw validation("Ürün sınıfı bulunamadı.", { field: "productClassCode" });
+        const price = toPrice(quoteFor(t, input.pallets, now, await contractFor(pool, t, ctx.tenantId, now)));
+        const ci = await contractInputOf(pool, t, ctx.tenantId, pc.name, { pallets: input.pallets, grossKg: input.grossKg, volumeM3: input.volumeM3 ?? defaultVolume(input.pallets), paymentPlan: input.paymentPlan }, price);
+        return ok(previewContract(ci));
+      },
+    },
+    {
+      method: "GET", pattern: "/customer/reservations/{id}/contract",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CUSTOMER);
+        const r = (await fetchRes(pool, "where r.id = $1 and r.customer_id = $2", [uid(req.params.id), ctx.tenantId]))[0];
+        if (!r) throw notFound("Rezervasyon");
+        return contractResponse(pool, r);
+      },
+    },
+    {
+      method: "GET", pattern: "/carrier/reservations/{id}/contract",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CARRIER_ALL);
+        const r = (await fetchRes(pool, "where r.id = $1 and r.carrier_id = $2", [uid(req.params.id), ctx.tenantId]))[0];
+        if (!r) throw notFound("Rezervasyon");
+        return contractResponse(pool, r);
+      },
+    },
+    {
+      method: "GET", pattern: "/customer/carbon/summary",
+      handler: async (ctx) => {
+        requireRole(ctx, CUSTOMER);
+        const rows = await fetchRes(pool, "where r.customer_id = $1 and r.status not in ('IPTAL','RET','SURESI_DOLDU','RET_DEPO')", [ctx.tenantId]);
+        const trips = rows.length ? new Map((await loadTrips(pool, "where t.id = any($1::uuid[])", [[...new Set(rows.map((r) => r.trip_id))]])).map((t) => [t.id, t])) : new Map();
+        let alloc = 0, saved = 0;
+        for (const r of rows) {
+          const c = carbonOf(trips.get(r.trip_id), r.pallets, r.alternative_scenario);
+          alloc += c.allocatedKg; saved += c.savedKg ?? 0;
+        }
+        const r1 = (n: number) => Math.round(n * 10) / 10;
+        return ok({ allocatedKg: r1(alloc), declaredSavedKg: r1(saved), reservations: rows.length, method: CARBON_METHOD, isDemoFactors: true });
       },
     },
     {
@@ -413,6 +479,12 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       handler: async (ctx, req) => {
         requireRole(ctx, CUSTOMER);
         const input = reservationInput.parse(req.body);
+        const notAccepted = (msg: string) => validation(msg, { reason: "CONTRACT_NOT_ACCEPTED", field: "contract" });
+        if (!input.contract) throw notAccepted("Taşıma sözleşmesi onaylanmadan rezervasyon oluşturulamaz.");
+        if (input.contract.accepted !== true) throw notAccepted("Sözleşme kabul edilmedi.");
+        if (input.contract.version !== CONTRACT_VERSION) throw notAccepted(`Sözleşme sürümü geçersiz; güncel sürüm ${CONTRACT_VERSION}.`);
+        if (!/^[0-9a-f]{64}$/.test(input.contract.renderedHash)) throw notAccepted("Sözleşme parmak izi geçersiz.");
+        const contract = input.contract;
         const cardNo = input.card.number.replace(/\s/g, "");
         if (cardNo.length < 13) throw validation("Kart numarası geçersiz.");
         const [mm, yy] = input.card.expiry.split("/").map((x) => Number(x.trim()));
@@ -425,10 +497,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           await expireHolds(c, tripId, now);
           const t = (await loadTrips(c, "where t.id = $1 and t.status = 'published' and ca.status = 'active'", [tripId]))[0];
           if (!t) throw notFound("Sefer");
-          const pc = (await c.query(
-            `select pc.id, pc.code, pc.name, coalesce((select accepted from carrier_product_classes cpc where cpc.carrier_id = $2 and cpc.product_class_id = pc.id), true) accepted
-               from product_classes pc where pc.code = $1 and pc.status = 'active' and pc.tenant_id = any($3::uuid[])`,
-            [input.productClassCode, t.carrier_id, [t.carrier_id, "00000000-0000-4000-8000-000000000001"]])).rows[0];
+          const pc = await activePc(c, t, input.productClassCode);
           if (!pc) throw validation("Ürün sınıfı bulunamadı.", { field: "productClassCode" });
           const volume = input.volumeM3 ?? defaultVolume(input.pallets);
           const cap = capacityOf(t);
@@ -444,6 +513,12 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             throw validation("Talep bu sefer için uygun değil.", { reason: codes.includes("BOOKING_CUTOFF_PASSED") ? "BOOKING_CUTOFF_PASSED" : "NOT_ELIGIBLE", reasons: elig.reasons });
           }
           const price = toPrice(quoteFor(t, input.pallets, now, await contractFor(c, t, ctx.tenantId, now)));
+          // Sözleşme: önizlemeyle aynı girdilerden aynı metin ve parmak izi üretilmeli (fiyat değiştiyse yeniden önizleme).
+          const ci = await contractInputOf(c, t, ctx.tenantId, pc.name, { pallets: input.pallets, grossKg: input.grossKg, volumeM3: volume, paymentPlan: input.paymentPlan }, price);
+          const pv = previewContract(ci);
+          if (pv.renderedHash !== contract.renderedHash) {
+            throw new HttpError("CONFLICT", "Sözleşme içeriği (fiyat/saat) değişti; lütfen güncel sözleşmeyi yeniden önizleyip onaylayın.", { reason: "CONTRACT_STALE", version: pv.version, renderedHash: pv.renderedHash, renderedMarkdown: pv.renderedMarkdown });
+          }
           // Kapasite blokajı: taşma korumalı tek UPDATE; eşzamanlı yazım OCC ile serileşir.
           const upd = await c.query(
             `update trip_capacity set held_pallets = held_pallets + $2, held_kg = held_kg + $3, held_m3 = held_m3 + $4, version = version + 1, updated_at = now()
@@ -456,11 +531,16 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           const holdAt = new Date(Math.min(now.getTime() + HOLD_MS, t.booking_cutoff_at.getTime()));
           await c.query(
             `insert into reservations (id, customer_id, carrier_id, trip_id, reference, status, pallets, gross_kg, volume_m3, product_class_id, unit_price_minor, total_price_minor,
-               price_breakdown, payment_plan, deposit_percent, hold_expires_at, recipient_name, is_demo, created_at, updated_at, pickup_recipients)
-             values ($1,$2,$3,$4,$5,'TASIYICI_ONAYI_BEKLIYOR',$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$18,$19::jsonb)`,
+               price_breakdown, payment_plan, deposit_percent, hold_expires_at, recipient_name, is_demo, created_at, updated_at, pickup_recipients, alternative_scenario)
+             values ($1,$2,$3,$4,$5,'TASIYICI_ONAYI_BEKLIYOR',$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$18,$19::jsonb,$20)`,
             [id, ctx.tenantId, t.carrier_id, tripId, reference, input.pallets, input.grossKg, volume, pc.id, price.unitPriceMinor, price.totalPriceMinor,
               JSON.stringify(price.breakdown), input.paymentPlan, DEPOSIT_PERCENT, holdAt, input.recipientName ?? null, Boolean(t.is_demo), now,
-              JSON.stringify(input.recipients ?? (input.recipientName?.trim() ? [{ name: input.recipientName.trim() }] : []))]);
+              JSON.stringify(input.recipients ?? (input.recipientName?.trim() ? [{ name: input.recipientName.trim() }] : [])), input.alternativeScenario ?? null]);
+          await c.query(
+            `insert into contract_acceptances (reservation_id, customer_id, user_id, signer_name, contract_code, version, rendered_hash, rendered_markdown, ip, user_agent, accepted_at, is_demo)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [id, ctx.tenantId, ctx.userId, contract.signerName, pv.contractCode, pv.version, pv.renderedHash, pv.renderedMarkdown, req.sourceIp ?? null, (req.headers["user-agent"] ?? "").slice(0, 300) || null, now, Boolean(t.is_demo)]);
+          await audit(c, ctx, { action: "contract.accepted", entityType: "reservation", entityId: id, after: { contractCode: pv.contractCode, version: pv.version, renderedHash: pv.renderedHash, signerName: contract.signerName } });
           const authAmt = dueNow(price.totalPriceMinor, input.paymentPlan);
           await addLedger(c, id, "AUTHORIZED", authAmt, input.paymentPlan === "full" ? "Tam tutar provizyonu (simüle)" : `%${DEPOSIT_PERCENT} kapora provizyonu (simüle)`, `${id}:AUTHORIZED`, now, Boolean(t.is_demo));
           await addEvent(c, id, "TASIYICI_ONAYI_BEKLIYOR", "Talep oluşturuldu", ctx.userId, now, Boolean(t.is_demo));
@@ -569,7 +649,8 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const now = new Date();
         const rows = await loadTrips(pool, "where t.carrier_id = $1 and ($2::text is null or t.status = $2) order by t.departure_at", [ctx.tenantId, status ?? null]);
         const pc = await pendingCounts(pool, rows.map((r) => r.id));
-        return ok({ items: rows.map((r) => carrierTrip(r, now, pc.get(r.id) ?? 0)) });
+        const loads = await confirmedLoads(pool, rows.map((r) => r.id));
+        return ok({ items: rows.map((r) => carrierTrip(r, now, pc.get(r.id) ?? 0, loads.get(r.id))) });
       },
     },
     {
@@ -625,7 +706,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           return ap ? a.priorityRank - b.priorityRank : +new Date(b.createdAt) - +new Date(a.createdAt);
         });
         const pc = await pendingCounts(pool, [id]);
-        return ok({ ...carrierTrip(t, now, pc.get(id) ?? 0), reservations: views });
+        return ok({ ...carrierTrip(t, now, pc.get(id) ?? 0, (await confirmedLoads(pool, [id])).get(id)), reservations: views });
       },
     },
     {
@@ -666,7 +747,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           }
           t = (await loadTrips(c, "where t.id = $1", [id]))[0];
           const pc = await pendingCounts(c, [id]);
-          return ok(carrierTrip(t, now, pc.get(id) ?? 0));
+          return ok(carrierTrip(t, now, pc.get(id) ?? 0, (await confirmedLoads(c, [id])).get(id)));
         });
       },
     },
@@ -788,7 +869,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             after: { vehicleId, sellablePallets: sP, sellableKg: sKg, sellableM3: sM3, maxGrossKg: maxKg, departureAt: iso(dep), needsReview: reevaluated.filter((x) => !x.eligible).length },
           });
           const pc = await pendingCounts(c, [id]);
-          return ok({ ...carrierTrip(t2, now, pc.get(id) ?? 0), reevaluated, needsReviewCount: reevaluated.filter((x) => !x.eligible).length });
+          return ok({ ...carrierTrip(t2, now, pc.get(id) ?? 0, (await confirmedLoads(c, [id])).get(id)), reevaluated, needsReviewCount: reevaluated.filter((x) => !x.eligible).length });
         });
       },
     },
@@ -815,8 +896,11 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const cost = confirmed.reduce((a, v) => a + v.pallets * COST_PER_PALLET_MINOR, 0);
         const timeline = views.flatMap((v) => v.events.map((e) => ({ at: e.at, label: `${v.customer.name}: ${e.label}` }))).sort((a, b) => +new Date(a.at) - +new Date(b.at));
         const pc = await pendingCounts(pool, [tripId]);
+        const tripView = carrierTrip(t, now, pc.get(tripId) ?? 0, confirmed.map((v) => ({ pallets: v.pallets, scenario: v.carbon.alternativeScenario })));
+        const tc = tripView.carbon;
         return ok({
-          trip: carrierTrip(t, now, pc.get(tripId) ?? 0), grossRevenueMinor: revenue, variableCostMinor: cost, contributionMinor: revenue - cost, costPerPalletMinor: COST_PER_PALLET_MINOR,
+          trip: tripView,
+          carbon: { allocatedKg: tc.allocatedExternalKg, declaredSavedKg: tc.declaredSavedKg, perPalletAllocatedKg: tc.externalPallets > 0 ? Math.round((tc.allocatedExternalKg / tc.externalPallets) * 10) / 10 : 0, reservationsWithScenario: tc.reservationsWithScenario, reservationsTotal: tc.reservationsTotal, method: tc.method, isDemoFactors: true }, grossRevenueMinor: revenue, variableCostMinor: cost, contributionMinor: revenue - cost, costPerPalletMinor: COST_PER_PALLET_MINOR,
           customers: live.map((v) => ({ name: v.customer.name, pallets: v.pallets, kg: v.grossKg, totalMinor: v.totalPriceMinor, status: v.status, statusLabel: v.statusLabel })),
           timeline,
         });

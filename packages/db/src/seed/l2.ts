@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import type pg from "pg";
+import { CONTRACT_CODE, CONTRACT_VERSION, renderContract } from "@cargopact/domain";
 import { withTx } from "../tx";
 import { pickupFields } from "../pickup";
 import { demoId } from "./ids";
@@ -23,7 +25,7 @@ const LOADED = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
 async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknown[]) {
   const sub = `select id from reservations where ${where}`;
-  for (const t of ["notifications", "warehouse_measurements", "ledger_entries", "reservation_events", "reservation_attachments"]) {
+  for (const t of ["notifications", "warehouse_measurements", "ledger_entries", "reservation_events", "reservation_attachments", "contract_acceptances"]) {
     await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id in (${sub})`, params));
   }
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
@@ -175,7 +177,32 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     if (!pending) ledgerRows.push({ reservation_id: id, type: "CAPTURED", amount_minor: total, reason: "Onayda tam tahsilat", idempotency_key: `${id}:CAPTURED:approve`, is_demo: true, created_at: at(s.createdHoursBeforeDep - 1) });
     if (s.status === "GELMEDI") ledgerRows.push({ reservation_id: id, type: "RETAINED", amount_minor: total, reason: "Yük getirilmedi: iptal ücreti tutuldu", idempotency_key: `${id}:RETAINED`, is_demo: true, created_at: at(0) });
   }
-    await upsert(pool, "reservations", resRows, ["id"], log);
+  // Karbon senaryosu: kimi rezervasyonlara müşteri alternatifi (dedicated / groupage), kalanında yok.
+  resRows.forEach((r, i) => { r.alternative_scenario = i % 3 === 0 ? "dedicated" : i % 3 === 1 ? "groupage" : null; });
+  await upsert(pool, "reservations", resRows, ["id"], log);
+  // Sözleşme kabulleri: her seed rezervasyonu için, oluşturulma anında imzalanmış (demo).
+  {
+    const names = new Map<string, string>((await pool.query("select id, name from tenants")).rows.map((x) => [x.id, x.name]));
+    const facs = new Map<string, Row>((await pool.query("select id, name, pickup_window from facilities")).rows.map((x) => [x.id, x]));
+    const pcName = (await pool.query("select name from product_classes where id = $1", [pcId])).rows[0].name as string;
+    const tripById = new Map(tripRows.map((t) => [t.id, t]));
+    const accRows = resRows.map((r) => {
+      const t = tripById.get(r.trip_id)!;
+      const pw = facs.get(t.destination_facility_id)?.pickup_window as { from?: string; to?: string } | null;
+      const preview = renderContract({
+        customerName: names.get(r.customer_id) ?? "—", carrierName: names.get(r.carrier_id) ?? "—", tripReference: t.reference,
+        originName: facs.get(t.origin_facility_id)?.name ?? "—", destinationName: facs.get(t.destination_facility_id)?.name ?? "—",
+        departureAt: t.departure_at, bookingCutoffAt: t.booking_cutoff_at, intakeCutoffAt: t.intake_cutoff_at, pickupWindow: pw?.from && pw?.to ? `${pw.from}–${pw.to}` : null,
+        pallets: r.pallets, grossKg: r.gross_kg, volumeM3: r.volume_m3, productClass: pcName, unitPriceMinor: r.unit_price_minor, totalPriceMinor: r.total_price_minor,
+        paymentPlan: r.payment_plan, depositPercent: r.deposit_percent,
+      });
+      return {
+        id: demoId("contract_acceptances", r.id), reservation_id: r.id, customer_id: r.customer_id, user_id: null, signer_name: "Mehmet Yılmaz", contract_code: CONTRACT_CODE,
+        version: CONTRACT_VERSION, rendered_hash: createHash("sha256").update(preview).digest("hex"), rendered_markdown: preview, ip: "203.0.113.10", user_agent: "seed", accepted_at: r.created_at, is_demo: true,
+      };
+    });
+    await upsert(pool, "contract_acceptances", accRows, ["id"], log);
+  }
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
   // KPI hunisi: her seed rezervasyonu için uygun teklif + dönüşmeyen birkaç teklif (tutarlı, is_demo).

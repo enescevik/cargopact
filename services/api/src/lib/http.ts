@@ -22,6 +22,7 @@ export interface Req {
   body: unknown;
   claims: Record<string, unknown>;
   correlationId: string;
+  sourceIp?: string;
 }
 export interface Res { status: number; body?: unknown; headers?: Record<string, string> }
 export const ok = (body: unknown, status = 200): Res => ({ status, body });

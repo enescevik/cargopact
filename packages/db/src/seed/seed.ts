@@ -75,7 +75,7 @@ export async function seedUserRows(pool: pg.Pool, subs: Map<string, string>, log
 /** Yalnız is_demo satırları siler; çocuk tablolardan başlar. Platform kataloğu korunur. */
 export async function resetDemo(pool: pg.Pool, log: (m: string) => void = console.log): Promise<void> {
   assertSeedAllowed();
-  const order = ["ledger_entries", "reservation_events", "reservations", "trip_capacity", "trips", "carrier_product_classes", "memberships", "vehicles", "facilities", "packaging_types", "product_classes", "vehicle_types", "audit_log", "users", "tenants"];
+  const order = ["contract_acceptances", "ledger_entries", "reservation_events", "reservations", "trip_capacity", "trips", "carrier_product_classes", "memberships", "vehicles", "facilities", "packaging_types", "product_classes", "vehicle_types", "audit_log", "users", "tenants"];
   for (const t of order) {
     let total = 0;
     for (;;) {
@@ -117,6 +117,7 @@ export async function verifySeed(pool: pg.Pool): Promise<VerifyResult> {
        or c.loaded_pallets <> ${capSum("", LOAD, "pallets")} or c.loaded_kg <> ${capSum("", LOAD, "gross_kg")}`);
   await check("her seferin kapasite satırı var", "select count(*) n from trips t where not exists (select 1 from trip_capacity c where c.trip_id = t.id)");
   await check("onaylı rezervasyonların sipariş numarası var, bekleyenlerin yok", "select count(*) n from reservations where (status in ('ONAYLI','DEPO_KABUL','YUKLENDI','VARISTA','TESLIM') and order_number is null) or (status = 'TASIYICI_ONAYI_BEKLIYOR' and order_number is not null)");
+  await check("her rezervasyonun sözleşme kabulü var", "select count(*) n from reservations r where not exists (select 1 from contract_acceptances a where a.reservation_id = r.id)");
   await check("her rezervasyonun AUTHORIZED kaydı var", "select count(*) n from reservations r where not exists (select 1 from ledger_entries l where l.reservation_id = r.id and l.type = 'AUTHORIZED')");
   await check("demo sefer DNC-DEMO-GEB-ANK mevcut", "select count(*) n from trips where reference = 'DNC-DEMO-GEB-ANK'", false);
   return { ok: checks.every((c) => c.ok), checks };
