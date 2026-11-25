@@ -34,8 +34,11 @@ def api_call(token: str, method: str, path: str, query: dict | None = None, body
             err = json.loads(e.read().decode())
         except Exception:
             err = {}
-        return {"error": True, "status": e.code, "code": err.get("code"), "message": err.get("message"),
-                "details": err.get("details")}
+        out = {"error": True, "status": e.code, "code": err.get("code"), "message": err.get("message"),
+               "details": err.get("details")}
+        if e.code == 404 and err.get("code") == "NOT_FOUND" and "bulunamad" in str(err.get("message", "")):
+            out["note"] = "Veri şu an alınamadı (uç nokta veya kayıt bulunamadı)."
+        return out
     except Exception as e:  # ağ/zaman aşımı
         return {"error": True, "message": f"API çağrısı başarısız: {type(e).__name__}"}
 
@@ -83,6 +86,7 @@ def _slim_res(r: dict) -> dict:
 CARRIER_RULES = """Taşıyıcı kuralları (Dinçer/Siva ortak demo bilgi tabanı):
 - Zaman sınırları (T = planlanan kalkış): yer ayırma ve kesin rezervasyon en geç T-3 saat (sınır dahil). Çıkış deposu fiziksel kabul en geç T-1 saat; sonrası standart akışta işlenmez, operasyona gecikme bildirilir.
 - Öncelik: doğrulanmış gelmeme (T-1'e kadar getirilmeyen onaylı yük) kaydı olan firma, uygun talepler arasında daha düşük önceliktedir; eşitlikte başvuru sırası geçerlidir.
+- Sıralama özeti: önce uygun talepler; bunların içinde doğrulanmış gelmemesi (verifiedNoShows) az olan firma önde; gelmeme sayısı eşitse önce başvuran önde. Başvuru zamanı yalnızca eşitlik bozucudur.
 - Gelmeme SAYILMAYANLAR: zamanında bildirilmiş iptal, taşıyıcı kaynaklı aksama, inceleme bekleyen yük, geç gelen yük, ölçüm farkı.
 - Planlamacının seçim gerekçesi denetim izine yazılır. Başka firmanın geçmişi müşteriye gösterilmez.
 - Uygunluk: palet adedi, brüt kg, ölçü/yükseklik, m³, ürün uyumu, zaman penceresi ve iç yük rezervi birlikte kontrol edilir; iç transfer kapasitesine dokunulmaz.
