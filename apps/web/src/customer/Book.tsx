@@ -6,7 +6,7 @@ import { addDays, dayNum, full, isoDay, num, place, time, tl, today, weekday } f
 import { Empty, ErrorBox, Modal, PricePop, Skeleton, useFetch, useToast } from "../ui";
 import { ChipSelect, Countdown, OptionCard, RollNumber, Segmented, Stepper } from "../components/controls";
 import { TruckMap, customerCells } from "../components/TruckMap";
-import { CarbonBadge, PriceCalendar } from "../components/extras";
+import { CarbonBadge } from "../components/extras";
 import { parseDespatchAdvice, type Declaration } from "../lib/irsaliye";
 import { loadAlarms, loadRecipients, rememberRecipient, saveAlarms, type Alarm } from "../lib/store";
 
@@ -23,46 +23,51 @@ const FOOT = { EUR: { l: "Euro 80×120", a: 0.96 }, IND: { l: "Endüstriyel 100�
 
 const routeKey = (t: TripCard) => `${place(t.origin)}→${place(t.destination)}`;
 
-export function BookView({ onDone, alarmHits }: { onDone: (r: Reservation) => void; alarmHits: (a: Alarm[]) => void }) {
+export function BookView({ onDone, alarmHits, who }: { onDone: (r: Reservation) => void; alarmHits: (a: Alarm[]) => void; who?: string }) {
   const all = useFetch((s) => api<{ items: TripCard[] }>("GET", "/customer/trips", undefined, { signal: s }), [], 30000);
   const trips = all.data?.items ?? [];
 
-  /* ---- composer state ---- */
+  /* ---- seçim durumu ---- */
   const [origin, setOrigin] = useState<string | null>(null);
   const [dest, setDest] = useState<string | null>(null);
   const [pallets, setPallets] = useState(1);
-  const [date, setDate] = useState<string | null>(null);
-  const [weekStart, setWeekStart] = useState(today());
   const [tripId, setTripId] = useState<string | null>(null);
   const [alarmFor, setAlarmFor] = useState<string | null>(null);
 
   const origins = useMemo(() => countBy(trips.map((t) => place(t.origin))), [trips]);
   const dests = useMemo(() => countBy(trips.filter((t) => !origin || place(t.origin) === origin).map((t) => place(t.destination))), [trips, origin]);
-  const routeTrips = useMemo(() => trips.filter((t) => (!origin || place(t.origin) === origin) && (!dest || place(t.destination) === dest)), [trips, origin, dest]);
+  const routeTrips = useMemo(() => trips.filter((t) => (!origin || place(t.origin) === origin) && (!dest || place(t.destination) === dest))
+    .sort((x, y) => x.departureAt.localeCompare(y.departureAt)), [trips, origin, dest]);
 
-  // akıllı varsayılanlar: en çok sefer olan rota, ilk uygun gün, ilk uygun sefer
+  // akıllı varsayılan: en çok sefer olan rota
   useEffect(() => {
     if (!trips.length || origin) return;
     const top = Object.entries(countBy(trips.map(routeKey))).sort((a, b) => b[1] - a[1])[0]![0];
     const [o, d] = top.split("→");
     setOrigin(o!); setDest(d!);
   }, [trips, origin]);
-  useEffect(() => {
-    if (!routeTrips.length) { setDate(null); return; }
-    const days = routeTrips.filter((t) => t.remaining.pallets >= pallets).map((t) => isoDay(t.departureAt)).sort();
-    if (!date || !routeTrips.some((t) => isoDay(t.departureAt) === date)) {
-      const d = days[0] ?? isoDay(routeTrips[0]!.departureAt);
-      setDate(d);
-      if (d < weekStart || d > addDays(weekStart, 6)) setWeekStart(d < today() ? today() : addDays(d, -1) < today() ? today() : addDays(d, -1));
-    }
-  }, [routeTrips, pallets]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const dayTrips = useMemo(() => routeTrips.filter((t) => date && isoDay(t.departureAt) === date), [routeTrips, date]);
+  // esnek tarih: palet sığan en ucuz sefer "En uygun"
+  const best = useMemo(() => {
+    const fit = routeTrips.filter((t) => t.remaining.pallets >= pallets);
+    return fit.length > 1 ? fit.reduce((m, t) => (t.price.unitPriceMinor < m.price.unitPriceMinor ? t : m)).id : null;
+  }, [routeTrips, pallets]);
+
+  // gün grupları (kokpitteki gibi): Bugün · Yarın · gün adı
+  const groups = useMemo(() => {
+    const t0 = today(), t1 = addDays(t0, 1), m = new Map<string, TripCard[]>();
+    for (const t of routeTrips) { const d = isoDay(t.departureAt); m.set(d, [...(m.get(d) ?? []), t]); }
+    return [...m.entries()].map(([d, list]) => ({
+      d, list, label: d === t0 ? "Bugün" : d === t1 ? "Yarın" : `${weekday(d)} ${dayNum(d)}`,
+      min: Math.min(...list.filter((t) => t.remaining.pallets >= pallets).map((t) => t.price.unitPriceMinor)),
+    }));
+  }, [routeTrips, pallets]);
+
   useEffect(() => {
-    if (tripId && dayTrips.some((t) => t.id === tripId)) return;
-    setTripId(dayTrips.find((t) => t.remaining.pallets >= pallets)?.id ?? dayTrips[0]?.id ?? null);
-  }, [dayTrips, pallets, tripId]);
-  const trip = dayTrips.find((t) => t.id === tripId) ?? null;
+    if (tripId && routeTrips.some((t) => t.id === tripId)) return;
+    setTripId(routeTrips.find((t) => t.remaining.pallets >= pallets)?.id ?? routeTrips[0]?.id ?? null);
+  }, [routeTrips, pallets, tripId]);
+  const trip = routeTrips.find((t) => t.id === tripId) ?? null;
 
   // alarm eşleşmeleri
   useEffect(() => {
@@ -72,56 +77,40 @@ export function BookView({ onDone, alarmHits }: { onDone: (r: Reservation) => vo
     alarmHits(hits);
   }, [trips, alarmHits]);
 
-  if (all.loading) return <div className="book"><div className="composer"><Skeleton h={44} /></div><div className="book-grid"><Skeleton h={400} /><Skeleton h={400} /><Skeleton h={400} /></div></div>;
+  if (all.loading) return <div className="book"><Skeleton h={500} /><Skeleton h={500} /><Skeleton h={500} /></div>;
   if (all.error) return <div className="pagepad"><ErrorBox error={all.error} onRetry={all.reload} /></div>;
 
   return (
     <div className="book">
-      {/* ----- kompozitör: rota · gün · palet ----- */}
-      <section className="composer" aria-label="Gönderi seçimi">
-        <div className="comp-row">
-          <div className="comp-field">
-            <span className="eyebrow">Nereden</span>
+      {/* ----- sol: rota · palet · seferler (gün gruplu) ----- */}
+      <aside className="panel list-pane book-pane" aria-label="Gönderi seçimi ve seferler">
+        <div className="pane-head">
+          <div style={{ minWidth: 0 }}><span className="eyebrow">Palet gönder</span>{who && <div className="who-line" title={who}>{who}</div>}</div>
+          <div className="row between"><span className="mini-l">Palet adedi</span><Stepper value={pallets} min={1} max={33} onChange={setPallets} label="Palet adedi" testId="pallets" /></div>
+          <div className="comp-field"><span className="mini-l">Nereden</span>
             <ChipSelect size="sm" ariaLabel="Çıkış" value={origin} options={Object.keys(origins).map((c) => ({ value: c, label: c }))}
-              onChange={(v) => { setOrigin(v); const d = Object.keys(countBy(trips.filter((t) => place(t.origin) === v).map((t) => place(t.destination)))); if (!dest || !d.includes(dest)) setDest(d[0] ?? null); setDate(null); }} />
+              onChange={(v) => { setOrigin(v); const d = Object.keys(countBy(trips.filter((t) => place(t.origin) === v).map((t) => place(t.destination)))); if (!dest || !d.includes(dest)) setDest(d[0] ?? null); setTripId(null); }} />
           </div>
-          <ArrowRight className="comp-arrow" size={18} />
-          <div className="comp-field">
-            <span className="eyebrow">Nereye</span>
-            <ChipSelect size="sm" ariaLabel="Varış" value={dest} options={Object.keys(dests).map((c) => ({ value: c, label: c }))} onChange={(v) => { setDest(v); setDate(null); }} />
-          </div>
-          <div className="comp-field right">
-            <span className="eyebrow">Palet</span>
-            <Stepper value={pallets} min={1} max={33} onChange={setPallets} label="Palet adedi" testId="pallets" />
+          <div className="comp-field"><span className="mini-l"><ArrowRight size={11} /> Nereye</span>
+            <ChipSelect size="sm" ariaLabel="Varış" value={dest} options={Object.keys(dests).map((c) => ({ value: c, label: c }))} onChange={(v) => { setDest(v); setTripId(null); }} />
           </div>
         </div>
-        {date && (
-          <PriceCalendar trips={routeTrips} pallets={pallets} value={date} start={weekStart} onStart={setWeekStart}
-            onSelect={setDate} onAlarm={(d) => setAlarmFor(d)} />
-        )}
-      </section>
-
-      {!routeTrips.length ? (
-        <div className="book-empty panel">
-          <Empty title="Bu rotada yayında sefer yok" text="Yer açıldığında size haber verelim." icon={<BellRing size={26} />} />
-          <div style={{ textAlign: "center" }}><button className="btn primary" onClick={() => setAlarmFor(today())}><BellRing size={16} />Boş yer alarmı kur</button></div>
-        </div>
-      ) : (
-        <div className="book-grid">
-          {/* ----- sol: o günün seferleri ----- */}
-          <aside className="panel list-pane" aria-label="Seferler">
-            <div className="pane-head"><span className="eyebrow">{date ? `${weekday(date)} ${dayNum(date)}` : ""} · {dayTrips.length} sefer</span></div>
-            <div className="pane-scroll">
-              {dayTrips.length === 0 && (
-                <div className="mini-empty">
-                  <p>Bu gün sefer yok.</p>
-                  <button className="btn sm" onClick={() => setAlarmFor(date)}><BellRing size={14} />Alarm kur</button>
-                </div>
-              )}
-              {dayTrips.map((t) => {
+        <div className="pane-scroll">
+          {!routeTrips.length && (
+            <div className="mini-empty">
+              <BellRing size={22} />
+              <p>Bu rotada yayında sefer yok.</p>
+              <button className="btn sm primary" onClick={() => setAlarmFor(today())}><BellRing size={14} />Boş yer alarmı kur</button>
+            </div>
+          )}
+          {groups.map((g) => (
+            <div key={g.d}>
+              <div className="group-h row between"><span>{g.label}</span>{Number.isFinite(g.min) ? <span className="group-min">en düşük {tl(g.min).replace(",00", "")}</span> : <span className="group-min full">dolu</span>}</div>
+              {g.list.map((t) => {
                 const fits = t.remaining.pallets >= pallets;
                 return (
                   <button key={t.id} className={`trow ${t.id === tripId ? "on" : ""} ${fits ? "" : "dim"}`} onClick={() => setTripId(t.id)} data-testid="trip-row">
+                    {t.id === best && <span className="trow-best">En uygun</span>}
                     <div className="trow-top"><b className="trow-time">{time(t.departureAt)}</b><span className="trow-price"><RollNumber value={t.price.unitPriceMinor} format={(n) => tl(n).replace(",00", "")} /><small>/palet</small></span></div>
                     <div className="trow-sub">{t.carrier.name} · {t.vehicleType.name}</div>
                     <Meters t={t} />
@@ -130,12 +119,13 @@ export function BookView({ onDone, alarmHits }: { onDone: (r: Reservation) => vo
                 );
               })}
             </div>
-            <div className="pane-foot"><button className="link small" onClick={() => setAlarmFor(date)}><BellRing size={13} /> Bu rota için boş yer alarmı</button></div>
-          </aside>
-
-          {trip ? <TripAndQuote key={trip.id} trip={trip} pallets={pallets} setPallets={setPallets} onDone={onDone} /> : <div className="panel"><Empty title="Sefer seçin" /></div>}
+          ))}
         </div>
-      )}
+        <div className="pane-foot"><button className="link small" onClick={() => setAlarmFor(trip ? isoDay(trip.departureAt) : today())}><BellRing size={13} /> Bu rota için boş yer alarmı</button></div>
+      </aside>
+
+      {trip ? <TripAndQuote key={trip.id} trip={trip} pallets={pallets} setPallets={setPallets} onDone={onDone} />
+        : <><section className="panel"><Empty title="Sefer seçin" text="Soldan rota ve sefer seçtiğinizde araçtaki yeriniz ve teklif burada görünür." /></section><aside className="noir quote-pane" /></>}
 
       {alarmFor && origin && dest && (
         <AlarmModal origin={origin} dest={dest} date={alarmFor} pallets={pallets} onClose={() => setAlarmFor(null)} />
