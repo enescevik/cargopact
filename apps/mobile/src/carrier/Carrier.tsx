@@ -152,7 +152,6 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
     <View style={{ flex: 1 }}>
       <BackBar title="Seferler" onBack={onBack} />
       <Screen>
-<<<<<<< Updated upstream
         <Noir>
           <Eyebrow light>Operasyon kokpiti · {t.vehicle.plate}</Eyebrow>
           <RouteTitle from={place(t.origin)} to={place(t.destination)} size={26} light />
@@ -177,23 +176,10 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           })}
         </View>
         {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 12, fontWeight: "700" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
+        <TripCarbonLine carbon={t.carbon} />
         <Segmented value={tab} onChange={setTab} options={[{ value: "req", label: `Talepler ${pending.length}` }, { value: "ok", label: `Onaylı yükler ${others.length}` }]} />
         {tab === "req" && pending.length === 0 && <Empty title="Bekleyen talep yok" />}
         {tab === "req" && pending.map((r) => (
-=======
-        <RouteHead trip={t} size={30} />
-        <Text style={{ color: c.ink500 }}>{dt(t.departureAt)} · {t.vehicle.plate}</Text>
-        <Card>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: c.ink900 }}>{k.plannedPallets} / {k.totalPositions} <Text style={{ fontSize: 14, fontWeight: "500", color: c.ink500 }}>planlanan · fiili {k.actualPallets}/{k.totalPositions}</Text></Text>
-          {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 13, fontWeight: "600" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
-          <CapBars t={t} />
-          <Row gap={8}><Chip label="İç yük" /><Chip tone="cobalt" label="Onaylı" /><Chip tone="mint" label="Kalan" /></Row>
-        </Card>
-        <TripCarbonLine carbon={t.carbon} />
-        <Label>Bekleyen talepler (öncelik sırasıyla)</Label>
-        {pending.length === 0 && <Empty title="Bekleyen talep yok" />}
-        {pending.map((r) => (
->>>>>>> Stashed changes
           <Card key={r.id} style={{ gap: 10 }}>
             <Row style={{ justifyContent: "space-between" }}>
               <Row gap={8}>

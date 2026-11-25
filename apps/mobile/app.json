@@ -17,7 +17,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.cargopact.app",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, ApiError } from "./api";
 import { c, mono, serif } from "./theme";
 import { dt, num } from "./format";
-import { Btn, Card, ErrorBox, Field, KV, Label, Sheet, Skeletons } from "./ui";
+import { Btn, Card, ErrorBox, Field, KV, Label, Sheet, Skeletons, useKeyboardHeight, useScrollToFocused } from "./ui";
 import type { Carbon, ContractPreview, ContractView, TripCarbon } from "./types";
 
 /* ---------- Minik markdown çizicisi ---------- */
@@ -84,14 +84,16 @@ export function Markdown({ source }: { source: string }) {
 /* ---------- Tam ekran kaplama ---------- */
 export function FullSheet({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const kb = useKeyboardHeight(); // Modal uygulama kökünün dışında: klavye payını burada ayrıca bırak
+  const scroll = useScrollToFocused();
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: c.porcelain, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <View style={{ flex: 1, backgroundColor: c.porcelain, paddingTop: insets.top, paddingBottom: kb || insets.bottom }}>
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderBottomColor: c.line, backgroundColor: c.surface }}>
           <Text style={{ fontWeight: "800", fontSize: 16, color: c.ink900, flex: 1 }} numberOfLines={1}>{title}</Text>
           <Pressable accessibilityRole="button" onPress={onClose} hitSlop={10}><Text style={{ fontSize: 15, fontWeight: "700", color: c.cobalt700 }}>Kapat ✕</Text></Pressable>
         </View>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 18, gap: 14 }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+        <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={{ padding: 18, gap: 14 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">{children}</ScrollView>
         {footer && <View style={{ backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.line, padding: 14, paddingHorizontal: 20, gap: 10 }}>{footer}</View>}
       </View>
     </Modal>

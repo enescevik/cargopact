@@ -7,11 +7,8 @@ import { RouteHead, WarehouseGuide } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Recipient, Reservation, Tracking } from "../types";
 import { QrTile } from "../qr";
-<<<<<<< Updated upstream
 import { CarbonBadge, customerCells, Eyebrow, Segmented, TruckMap, WalletCard } from "../premium";
-=======
 import { CarbonCard, ContractViewer } from "../contract";
->>>>>>> Stashed changes
 
 export function Reservations() {
   const [sel, setSel] = useState<string>();
@@ -26,20 +23,17 @@ export function Reservations() {
   const count = (k: keyof typeof GROUPS) => (list.data?.items ?? []).filter((r) => GROUPS[k].includes(r.status)).length;
   return (
     <Screen>
-<<<<<<< Updated upstream
       <Title sub="Teklifleriniz, siparişleriniz ve teslim kartlarınız.">Yüklerim</Title>
       <Segmented value={seg} onChange={setSeg} options={[{ value: "active", label: `Aktif ${count("active")}` }, { value: "pending", label: `Onay bekliyor ${count("pending")}` }, { value: "past", label: `Geçmiş ${count("past")}` }]} />
-=======
-      <Title sub="Tüm tekliflerin ve siparişlerin.">Rezervasyonlarım</Title>
       {summary.data && summary.data.reservations > 0 && (
-        <Card style={{ backgroundColor: c.mint100, borderColor: c.mint200, gap: 4 }}>
-          <Label>Karbon özeti</Label>
-          <Text style={{ color: c.ink900, fontWeight: "700" }}>Toplam payınıza düşen emisyon ≈ {Math.round(summary.data.allocatedKg * 10) / 10} kg CO₂e · {summary.data.reservations} rezervasyon</Text>
-          {summary.data.declaredSavedKg > 0 && <Text style={{ color: c.mint600, fontWeight: "800" }}>Beyan ettiğiniz alternatiflere göre ≈ {Math.round(summary.data.declaredSavedKg * 10) / 10} kg daha az</Text>}
-          <Text style={{ color: c.ink500, fontSize: 12 }}>demo katsayıları · tahmini</Text>
-        </Card>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, backgroundColor: c.mint100, borderWidth: 1, borderColor: c.mint200 }}>
+          <Text style={{ fontSize: 14 }}>🌿</Text>
+          <Text style={{ flex: 1, color: c.ink900, fontSize: 12, fontWeight: "700" }} numberOfLines={2}>
+            {summary.data.reservations} yükte ≈ {Math.round(summary.data.allocatedKg * 10) / 10} kg CO₂e{summary.data.declaredSavedKg > 0 ? ` · alternatifinize göre ≈ ${Math.round(summary.data.declaredSavedKg * 10) / 10} kg daha az` : ""}
+          </Text>
+          <Text style={{ color: c.ink500, fontSize: 10 }}>tahmini</Text>
+        </View>
       )}
->>>>>>> Stashed changes
       {list.loading && !list.data ? <Skeletons n={3} h={110} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
         !items.length ? <Empty title="Bu grupta yük yok" text="“Gönder” sekmesinden bir sefer seçin." /> :
           items.map((r) => (
