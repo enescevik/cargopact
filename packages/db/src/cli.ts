@@ -1,6 +1,7 @@
 import { createPool } from "./connection";
 import { grantAppRole, migrate } from "./migrate";
 import { ensureCognitoUsers } from "./seed/cognito";
+import { seedDemo } from "./seed/l2";
 import { cleanupSmoke, resetDemo, seedL1, seedUserRows, verifySeed } from "./seed/seed";
 
 const cmd = process.argv[2];
@@ -19,6 +20,10 @@ try {
       break;
     case "seed":
       await seedL1(pool);
+      await seedDemo(pool);
+      break;
+    case "seed-demo":
+      await seedDemo(pool);
       break;
     case "seed-users": {
       const subs = await ensureCognitoUsers(need("USER_POOL_ID"), need("SEED_USER_PASSWORD"));

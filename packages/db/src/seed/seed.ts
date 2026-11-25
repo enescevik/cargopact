@@ -12,10 +12,10 @@ export function assertSeedAllowed(): void {
 }
 
 type Row = Record<string, unknown>;
-const JSON_COLS = new Set(["opening_hours", "intake_window", "pickup_window"]);
+const JSON_COLS = new Set(["opening_hours", "intake_window", "pickup_window", "price_breakdown", "pallet_codes"]);
 
 /** Satırları ≤3000'lik işlemlerle upsert eder. Kimlik deterministik olduğundan tekrar çalıştırma aynı satırları günceller. */
-async function upsert(pool: pg.Pool, table: string, rows: Row[], conflict: string[], log: (m: string) => void) {
+export async function upsert(pool: pg.Pool, table: string, rows: Row[], conflict: string[], log: (m: string) => void) {
   if (rows.length === 0) return;
   const cols = Object.keys(rows[0]);
   for (const part of chunk(rows, 500)) {
@@ -75,7 +75,7 @@ export async function seedUserRows(pool: pg.Pool, subs: Map<string, string>, log
 /** Yalnız is_demo satırları siler; çocuk tablolardan başlar. Platform kataloğu korunur. */
 export async function resetDemo(pool: pg.Pool, log: (m: string) => void = console.log): Promise<void> {
   assertSeedAllowed();
-  const order = ["carrier_product_classes", "memberships", "vehicles", "facilities", "packaging_types", "product_classes", "vehicle_types", "audit_log", "users", "tenants"];
+  const order = ["ledger_entries", "reservation_events", "reservations", "trip_capacity", "trips", "carrier_product_classes", "memberships", "vehicles", "facilities", "packaging_types", "product_classes", "vehicle_types", "audit_log", "users", "tenants"];
   for (const t of order) {
     let total = 0;
     for (;;) {
@@ -106,6 +106,19 @@ export async function verifySeed(pool: pg.Pool): Promise<VerifyResult> {
     `select count(*) n from tenants t where t.type='carrier' and t.is_demo and ((select count(*) from facilities f where f.carrier_id=t.id and f.kind in ('transfer_center','both')) < 2 or (select count(*) from facilities f where f.carrier_id=t.id and f.kind in ('distribution_center','both')) < 3)`);
   await check("onaysız (pending) demo müşteri var", "select count(*) n from tenants where type='customer' and status='pending' and is_demo", false);
   await check("her demo kiracıda en az bir kullanıcı var", "select count(*) n from tenants t where t.is_demo and not exists (select 1 from memberships m where m.tenant_id = t.id)");
+  const capSum = (col: string, states: string, f: string) =>
+    `coalesce((select sum(r.${f}) from reservations r where r.trip_id = c.trip_id and r.status in (${states})),0)`;
+  const HELD = "'TASIYICI_ONAYI_BEKLIYOR'";
+  const CONF = "'ONAYLI','DEPO_KABUL','YUKLENDI','VARISTA','TESLIM','EKSIK_HASAR'";
+  const LOAD = "'YUKLENDI','VARISTA','TESLIM','EKSIK_HASAR'";
+  await check("trip_capacity = rezervasyon toplamları (blokaj, onaylı, yüklenen; palet ve kg)",
+    `select count(*) n from trip_capacity c where c.held_pallets <> ${capSum("", HELD, "pallets")} or c.held_kg <> ${capSum("", HELD, "gross_kg")}
+       or c.confirmed_pallets <> ${capSum("", CONF, "pallets")} or c.confirmed_kg <> ${capSum("", CONF, "gross_kg")}
+       or c.loaded_pallets <> ${capSum("", LOAD, "pallets")} or c.loaded_kg <> ${capSum("", LOAD, "gross_kg")}`);
+  await check("her seferin kapasite satırı var", "select count(*) n from trips t where not exists (select 1 from trip_capacity c where c.trip_id = t.id)");
+  await check("onaylı rezervasyonların sipariş numarası var, bekleyenlerin yok", "select count(*) n from reservations where (status in ('ONAYLI','DEPO_KABUL','YUKLENDI','VARISTA','TESLIM') and order_number is null) or (status = 'TASIYICI_ONAYI_BEKLIYOR' and order_number is not null)");
+  await check("her rezervasyonun AUTHORIZED kaydı var", "select count(*) n from reservations r where not exists (select 1 from ledger_entries l where l.reservation_id = r.id and l.type = 'AUTHORIZED')");
+  await check("demo sefer DNC-DEMO-GEB-ANK mevcut", "select count(*) n from trips where reference = 'DNC-DEMO-GEB-ANK'", false);
   return { ok: checks.every((c) => c.ok), checks };
 }
 

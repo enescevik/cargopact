@@ -1,5 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "./zod";
+import { cancelInput, decisionInput, itemsResponse, looseResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput } from "./demo";
 import type { Role } from "./common";
 import {
   carrierProductClassesInput, estimatePalletsInput, facilityInput, packagingTypeInput, productClassInput,
@@ -69,6 +70,22 @@ export const API_OPERATIONS: Operation[] = [
   ...crud("/platform/catalog/packaging-types", "Platform ambalaj tipi", packagingType, packagingTypeInput, READ_ALL, ["platform_admin"]),
   ...crud("/platform/catalog/product-classes", "Platform ürün sınıfı", productClass, productClassInput, READ_ALL, ["platform_admin"]),
   { method: "POST", path: "/customer/shipments/estimate-pallets", summary: "Koli beyanından tahmini palet sayısı (kayıt yazmaz)", tag: "Müşteri", roles: ["customer_user"], body: estimatePalletsInput, response: estimatePalletsResponse },
+  { method: "GET", path: "/customer/trips", summary: "Yayındaki seferleri ara", tag: "Müşteri sefer", roles: ["customer_user"], query: z.object({ originCity: z.string().optional(), destinationCity: z.string().optional(), date: z.string().optional(), pallets: z.string().optional() }), response: itemsResponse },
+  { method: "GET", path: "/customer/trips/{id}", summary: "Sefer kartı", tag: "Müşteri sefer", roles: ["customer_user"], query: z.object({ pallets: z.string().optional() }), response: looseResponse },
+  { method: "POST", path: "/customer/trips/{id}/quote", summary: "Fiyat ve uygunluk teklifi (yazmaz)", tag: "Müşteri sefer", roles: ["customer_user"], body: quoteInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/customer/reservations", summary: "Rezervasyon oluştur (blokaj + provizyon)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: reservationInput, response: looseResponse, status: 201, idempotent: true },
+  { method: "GET", path: "/customer/reservations", summary: "Rezervasyonlarım", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: itemsResponse },
+  { method: "GET", path: "/customer/reservations/{id}", summary: "Rezervasyon ayrıntı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "GET", path: "/customer/reservations/{id}/cancel-preview", summary: "İptal önizleme", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "POST", path: "/customer/reservations/{id}/cancel", summary: "Rezervasyon iptal", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: cancelInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/customer/orders/{orderNumber}/tracking", summary: "Sipariş takibi", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
+  { method: "GET", path: "/carrier/trips", summary: "Seferler", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ status: z.string().optional() }), response: itemsResponse },
+  { method: "POST", path: "/carrier/trips", summary: "Sefer oluştur (aracım var, yük ekle)", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripCreateInput, response: looseResponse, status: 201, idempotent: true },
+  { method: "GET", path: "/carrier/trips/{id}", summary: "Sefer ve rezervasyonlar", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, response: looseResponse },
+  { method: "POST", path: "/carrier/trips/{id}/status", summary: "Sefer yayınla/kapat/iptal", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripStatusInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/carrier/reservations/{id}/decision", summary: "Talebi onayla/reddet", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: decisionInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/carrier/reservations/{id}/events", summary: "Depo/sefer olayı", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reservationEventInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
 ];
 
 export function buildOpenApiDocument(serverUrl?: string) {
