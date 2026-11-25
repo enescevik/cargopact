@@ -86,6 +86,7 @@ export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/customer/trips/{id}", summary: "Sefer kartı", tag: "Müşteri sefer", roles: ["customer_user"], query: z.object({ pallets: z.string().optional() }), response: looseResponse },
   { method: "POST", path: "/customer/trips/{id}/quote", summary: "Fiyat ve uygunluk teklifi (yazmaz)", tag: "Müşteri sefer", roles: ["customer_user"], body: quoteInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/customer/reservations", summary: "Rezervasyon oluştur (blokaj + provizyon)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: reservationInput, response: looseResponse, status: 201, idempotent: true },
+  { method: "GET", path: "/customer/recipients", summary: "Firmanın yetkili alıcı rehberi (geçmiş rezervasyonlardan) ve kullanıcının kendisi", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "GET", path: "/customer/reservations", summary: "Rezervasyonlarım", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: itemsResponse },
   { method: "GET", path: "/customer/reservations/{id}", summary: "Rezervasyon ayrıntı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "POST", path: "/customer/trips/{id}/contract-preview", summary: "Taşıma sözleşmesi önizleme (yazmaz): { contractCode, version, isDraft, title, renderedMarkdown, renderedHash }", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: contractPreviewInput, response: looseResponse, idempotent: true },

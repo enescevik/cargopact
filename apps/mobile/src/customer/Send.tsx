@@ -81,6 +81,7 @@ export function Send({ onDone }: { onDone: () => void }) {
   const [key, setKey] = useState(uuid);
   const [why, setWhy] = useState(false);
 
+<<<<<<< Updated upstream
   useEffect(() => {
     void loadAlarms().then(setAlarms);
     void loadRecipients().then(setRecips);
@@ -89,6 +90,21 @@ export function Send({ onDone }: { onDone: () => void }) {
       const n = (m.displayName ?? "").trim();
       if (n.length >= 2) { setMe(n); setRecipient((x) => x || n); }
     }).catch(() => undefined);
+=======
+  const [selfName, setSelfName] = useState("");
+  useEffect(() => {
+    void loadAlarms().then(setAlarms);
+    // Yetkili alıcı rehberi: firmanın kayıtlı yetkilileri (sunucu) + bu cihazda eklenenler; ilk yetkili varsayılan seçilir.
+    void Promise.all([
+      loadRecipients().catch(() => [] as string[]),
+      api<{ items: { name: string }[]; self?: { name?: string } }>("GET", "/customer/recipients").catch(() => ({ items: [] as { name: string }[], self: undefined })),
+    ]).then(([local, srv]) => {
+      const names = (srv.items ?? []).map((x) => x.name).filter(Boolean);
+      setRecips([...new Set([...names, ...local])].slice(0, 6));
+      setSelfName(srv.self?.name ?? "");
+      setRecipient((cur) => cur || names[0] || "");
+    });
+>>>>>>> Stashed changes
   }, []);
   useEffect(() => { if (!route && routes[0]) setRoute(routes[0].key); }, [routes, route]);
   useEffect(() => { if (pcs.length && !pcs.some((x) => x.code === pc)) setPc(pcs[0]!.code); }, [pcs, pc]);
@@ -143,7 +159,7 @@ export function Send({ onDone }: { onDone: () => void }) {
   const [contractOpen, setContractOpen] = useState(false);
   const reqBody = trip ? {
     tripId: trip.id, pallets, grossKg, volumeM3, productClassCode: pc, alternativeScenario: alt, paymentPlan: plan,
-    ...(recipient ? { recipientName: recipient } : {}),
+    ...((recipient || selfName) ? { recipientName: recipient || selfName } : {}),
   } : undefined;
   const submit = () => { if (quote && trip) { tap(); setContractOpen(true); } };
   /** ContractSheet çağırır; hata fırlatırsa (CONTRACT_STALE, kart reddi) sayfa kendisi gösterir. */
@@ -320,6 +336,7 @@ export function Send({ onDone }: { onDone: () => void }) {
                   );
                 })}
               </View>
+<<<<<<< Updated upstream
               <Line label="Teslim alacak (yetkili alıcı)">
                 <ChipSelect small value={otherOpen ? "__other" : recipient} onChange={(v) => { tap(); if (v === "__other") { setOtherOpen(true); setRecipient(other.trim()); } else { setOtherOpen(false); setRecipient(v); } }}
                   options={[
@@ -330,6 +347,9 @@ export function Send({ onDone }: { onDone: () => void }) {
               </Line>
               {otherOpen && <Field label="Alıcının adı soyadı" value={other} onChangeText={(t) => { setOther(t); setRecipient(t.trim()); }} placeholder="Ad Soyad" autoCapitalize="words" />}
               {recipient.trim().length < 2 && <Text style={{ color: c.danger, fontSize: 11 }}>Teslimde kodu söyleyecek kişinin adını seçin veya yazın.</Text>}
+=======
+              <Line label="Teslim alacak"><ChipSelect small value={recipient} onChange={(v) => { tap(); setRecipient(v); }} options={[...recips.slice(0, 3).map((x) => ({ value: x, label: x })), { value: "", label: selfName ? `Ben (${selfName})` : "Ben" }]} /></Line>
+>>>>>>> Stashed changes
               <CarbonCard carbon={quote.carbon} />
               <Pressable onPress={() => setWhy(true)}><Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 12 }}>Fiyat neden böyle? · İptal koşulları ›</Text></Pressable>
             </>

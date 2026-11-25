@@ -8572,6 +8572,92 @@
         }
       }
     },
+    "/customer/recipients": {
+      "get": {
+        "summary": "Firmanın yetkili alıcı rehberi (geçmiş rezervasyonlardan) ve kullanıcının kendisi",
+        "description": "Roller: customer_user",
+        "tags": [
+          "Müşteri rezervasyon"
+        ],
+        "security": [
+          {
+            "cognitoJwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Birden fazla üyelikte seçilen kiracı"
+            },
+            "required": false,
+            "name": "x-tenant-id",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kimlik doğrulanamadı. Token yok/geçersizse API Gateway `{message}` döner, aksi halde Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GatewayUnauthorized"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetki yok veya firma onaysız",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/customer/reservations/{id}": {
       "get": {
         "summary": "Rezervasyon ayrıntı",

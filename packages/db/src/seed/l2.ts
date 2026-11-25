@@ -4,6 +4,7 @@ import { CONTRACT_CODE, CONTRACT_VERSION, renderContract } from "@cargopact/doma
 import { withTx } from "../tx";
 import { pickupFields } from "../pickup";
 import { demoId } from "./ids";
+import { rosterFor, type SeedRecipient } from "./recipients";
 import { assertSeedAllowed, tenantId, upsert } from "./seed";
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -31,9 +32,8 @@ async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknow
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
 }
 
-/** Onaylı seed siparişlerine yetkili alıcı + teslim kodu (hash) yazar; bekleyenlere yalnız alıcı. */
-function seedPickup(id: string, approved: boolean) {
-  const recipients = [{ name: "Mehmet Yılmaz", phone: "+90 532 000 00 01" }];
+/** Seed rezervasyonlarına firmanın yetkili alıcı listesi + (onaylılarda) teslim kodu (hash) yazılır. */
+function seedPickup(id: string, approved: boolean, recipients: SeedRecipient[]) {
   const pk = pickupFields(id);
   return { pickup_recipients: recipients, pickup_code_hash: approved ? pk.pickup_code_hash : null, pickup_code_hint: approved ? pk.pickup_code_hint : null, pickup_failed_attempts: 0 };
 }
@@ -157,6 +157,8 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       events: [["TASIYICI_ONAYI_BEKLIYOR", 50], ["ONAYLI", 48], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -6], ["EKSIK_HASAR", -7]] },
   ];
   const resRows: Row[] = [], ledgerRows: Row[] = [], eventRows: Row[] = [];
+  const tenantNames = new Map<string, string>((await pool.query("select id, name from tenants")).rows.map((x) => [x.id, x.name]));
+  const rosterOf = (customerId: string) => rosterFor(tenantNames.get(customerId) ?? "Müşteri");
   for (const s of resSeeds) {
     const t = tripBy.get(s.trip)!;
     const id = demoId("reservations", s.key);
@@ -170,7 +172,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       unit_price_minor: t.base_price_minor, total_price_minor: total,
       price_breakdown: { basePriceMinor: t.base_price_minor, utilization: 0, demandMultiplier: 1, hoursToCutoff: 0, timeMultiplier: 1, timeDecayApplied: false, clampedTo: null, explanation: ["Standart fiyat: talep ve zaman etkisi yok"] },
       payment_plan: "full", deposit_percent: 30, hold_expires_at: pending ? t.booking_cutoff_at : null,
-      needs_review: false, pod_recipient_name: s.status === "TESLIM" ? "Mehmet Yılmaz" : null, ...seedPickup(id, orderNo !== null), pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
+      needs_review: false, pod_recipient_name: s.status === "TESLIM" ? rosterOf(tenantId(s.customer))[0].name : null, ...seedPickup(id, orderNo !== null, rosterOf(tenantId(s.customer))), pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
     });
     for (const [type, h] of s.events) eventRows.push({ reservation_id: id, type, note: null, is_demo: true, created_at: at(h) });
     ledgerRows.push({ reservation_id: id, type: "AUTHORIZED", amount_minor: total, reason: "Tam tutar provizyonu (simüle)", idempotency_key: `${id}:AUTHORIZED`, is_demo: true, created_at: at(s.createdHoursBeforeDep) });
@@ -197,7 +199,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
         paymentPlan: r.payment_plan, depositPercent: r.deposit_percent,
       });
       return {
-        id: demoId("contract_acceptances", r.id), reservation_id: r.id, customer_id: r.customer_id, user_id: null, signer_name: "Mehmet Yılmaz", contract_code: CONTRACT_CODE,
+        id: demoId("contract_acceptances", r.id), reservation_id: r.id, customer_id: r.customer_id, user_id: null, signer_name: rosterOf(r.customer_id)[0].name, contract_code: CONTRACT_CODE,
         version: CONTRACT_VERSION, rendered_hash: createHash("sha256").update(preview).digest("hex"), rendered_markdown: preview, ip: "203.0.113.10", user_agent: "seed", accepted_at: r.created_at, is_demo: true,
       };
     });

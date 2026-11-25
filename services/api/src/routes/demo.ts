@@ -48,6 +48,19 @@ const EVENT_NOTES: Record<string, [string, string]> = {
   GELMEDI: ["Yük kabul süresinde getirilmedi · {order}", "Gelmeme kaydı oluşturuldu; iptal politikası uygulandı."],
   EKSIK_HASAR: ["Eksik/hasar kaydı açıldı · {order}", "{note}"],
 };
+/**
+ * Yetkili alıcı verilmezse teslim yapılamaz (TESLIM yetkili alıcı ister). Bu yüzden boş liste yerine:
+ * firmanın en son kullandığı yetkili alıcılar, o da yoksa talebi yapan kullanıcı varsayılan yetkili alıcı olur.
+ */
+async function defaultRecipients(c: pg.PoolClient, ctx: AuthContext, given: { name: string; phone?: string }[]) {
+  if (given.length > 0) return given;
+  const prev = await c.query("select pickup_recipients from reservations where customer_id = $1 and pickup_recipients is not null order by created_at desc limit 20", [ctx.tenantId]);
+  for (const row of prev.rows) if (Array.isArray(row.pickup_recipients) && row.pickup_recipients.length > 0) return row.pickup_recipients.slice(0, 3);
+  const u = (await c.query("select display_name, email from users where id = $1", [ctx.userId])).rows[0];
+  const name = (u?.display_name ?? u?.email ?? "").trim();
+  return name ? [{ name }] : [];
+}
+
 export function demoRoutes(pool: pg.Pool): Route[] {
   const oneView = async (q: Q, id: string, now: Date, carrierView: boolean) => (await reservationViews(q, await fetchRes(q, "where r.id = $1", [id]), now, { carrierView }))[0];
   const publishedTrip = async (q: Q, id: string) => (await loadTrips(q, "where t.id = $1 and t.status = 'published' and ca.status = 'active'", [uid(id)]))[0];
@@ -535,7 +548,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
              values ($1,$2,$3,$4,$5,'TASIYICI_ONAYI_BEKLIYOR',$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$18,$19::jsonb,$20)`,
             [id, ctx.tenantId, t.carrier_id, tripId, reference, input.pallets, input.grossKg, volume, pc.id, price.unitPriceMinor, price.totalPriceMinor,
               JSON.stringify(price.breakdown), input.paymentPlan, DEPOSIT_PERCENT, holdAt, input.recipientName ?? null, Boolean(t.is_demo), now,
-              JSON.stringify(input.recipients ?? (input.recipientName?.trim() ? [{ name: input.recipientName.trim() }] : [])), input.alternativeScenario ?? null]);
+              JSON.stringify(await defaultRecipients(c, ctx, input.recipients ?? (input.recipientName?.trim() ? [{ name: input.recipientName.trim() }] : []))), input.alternativeScenario ?? null]);
           await c.query(
             `insert into contract_acceptances (reservation_id, customer_id, user_id, signer_name, contract_code, version, rendered_hash, rendered_markdown, ip, user_agent, accepted_at, is_demo)
              values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
@@ -548,6 +561,21 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           await notify(c, id, "carrier", "RESERVATION_REQUESTED", "Yeni talep: {customer} {pallets} palet", "Onay bekliyor · {ref}");
           return ok(await oneView(c, id, now, false), 201);
         });
+      },
+    },
+    {
+      method: "GET", pattern: "/customer/recipients",
+      handler: async (ctx) => {
+        requireRole(ctx, ["customer_user"]);
+        // Firmanın yetkili alıcı rehberi: geçmiş rezervasyonlardaki alıcılar (en yeni önce, ada göre tekil) + kullanıcının kendisi.
+        const { rows } = await pool.query("select pickup_recipients from reservations where customer_id = $1 and pickup_recipients is not null order by created_at desc limit 100", [ctx.tenantId]);
+        const seen = new Map<string, { name: string; phone?: string }>();
+        for (const r of rows) for (const p of (Array.isArray(r.pickup_recipients) ? r.pickup_recipients : []) as { name?: string; phone?: string }[]) {
+          const n = String(p?.name ?? "").trim();
+          if (n && !seen.has(n.toLocaleLowerCase("tr"))) seen.set(n.toLocaleLowerCase("tr"), { name: n, ...(p.phone ? { phone: String(p.phone) } : {}) });
+        }
+        const u = (await pool.query("select display_name, email from users where id = $1", [ctx.userId])).rows[0];
+        return ok({ items: [...seen.values()].slice(0, 10), self: { name: (u?.display_name ?? u?.email ?? "").trim() } });
       },
     },
     {

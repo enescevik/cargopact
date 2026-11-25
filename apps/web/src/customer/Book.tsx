@@ -171,8 +171,21 @@ function TripAndQuote({ trip, pallets, setPallets, onDone, displayName }: { trip
   const [fromDoc, setFromDoc] = useState<Set<string>>(new Set());
   const [plan, setPlan] = useState<"full" | "deposit">("full");
   const [cardId, setCardId] = useState<(typeof CARDS)[number]["id"]>("ok");
-  const [recips] = useState(loadRecipients);
+  // Yetkili alıcı rehberi: firmanın kayıtlı yetkilileri (sunucu) + bu tarayıcıda eklenenler. İlk yetkili varsayılan seçilir.
+  const [recips, setRecips] = useState<string[]>(loadRecipients);
+  const [selfName, setSelfName] = useState("");
   const [recipient, setRecipient] = useState<string>("");
+  useEffect(() => {
+    let live = true;
+    api<{ items: { name: string }[]; self?: { name?: string } }>("GET", "/customer/recipients").then((r) => {
+      if (!live) return;
+      const names = r.items.map((x) => x.name).filter(Boolean);
+      setRecips((local) => [...new Set([...names, ...local])].slice(0, 8));
+      setSelfName(r.self?.name ?? "");
+      setRecipient((cur) => cur || names[0] || "");
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
   const [addRecipient, setAddRecipient] = useState(false);
   const [showPolicy, setShowPolicy] = useState(false);
 
@@ -211,7 +224,7 @@ function TripAndQuote({ trip, pallets, setPallets, onDone, displayName }: { trip
     const ac = new AbortController();
     setPErr(null);
     api<ContractPreview>("POST", `/customer/trips/${trip.id}/contract-preview`,
-      { ...body, paymentPlan: plan, ...(recipient ? { recipientName: recipient } : {}) }, { signal: ac.signal })
+      { ...body, paymentPlan: plan, ...((recipient || selfName) ? { recipientName: recipient || selfName } : {}) }, { signal: ac.signal })
       .then((p) => { setPreview(p); setPErr(null); })
       .catch((e) => { if (e?.name !== "AbortError") { setPreview(null); setPErr(e); } });
     return () => ac.abort();
@@ -225,7 +238,7 @@ function TripAndQuote({ trip, pallets, setPallets, onDone, displayName }: { trip
     const c = CARDS.find((x) => x.id === cardId)!;
     try {
       const r = await api<Reservation>("POST", "/customer/reservations", {
-        tripId: trip.id, ...body, paymentPlan: plan, ...(recipient ? { recipientName: recipient } : {}),
+        tripId: trip.id, ...body, paymentPlan: plan, ...((recipient || selfName) ? { recipientName: recipient || selfName } : {}),
         card: { holder: c.holder, number: c.number, expiry: c.expiry, cvc: c.cvc },
         contract: { version: preview.version, renderedHash: preview.renderedHash, signerName, accepted: true },
       }, { idempotencyKey: idem });
@@ -321,7 +334,7 @@ function TripAndQuote({ trip, pallets, setPallets, onDone, displayName }: { trip
               <div className="decl-f wide"><span className="lbl">Varışta teslim alacak kişi</span>
                 <div className="row wrap" style={{ gap: 8 }}>
                   <ChipSelect size="sm" value={recipient} onChange={setRecipient}
-                    options={[{ value: "", label: "Firmamız (ben)" }, ...[...new Set([...recips, ...(recipient && !recips.includes(recipient) ? [recipient] : [])])].map((r) => ({ value: r, label: r }))]} />
+                    options={[...[...new Set([...recips, ...(recipient && !recips.includes(recipient) ? [recipient] : [])])].map((r) => ({ value: r, label: r })), { value: "", label: selfName ? `Ben (${selfName})` : "Firmamız (ben)" }]} />
                   {addRecipient ? (
                     <form className="inline-add" onSubmit={(e) => { e.preventDefault(); const v = new FormData(e.currentTarget).get("n")?.toString().trim(); if (v) setRecipient(v); setAddRecipient(false); }}>
                       <input name="n" className="input sm" placeholder="Ad Soyad" autoFocus maxLength={120} />
