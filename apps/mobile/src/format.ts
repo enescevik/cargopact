@@ -37,3 +37,4 @@ export function statusTone(s: string): "success" | "pending" | "danger" | "warni
     default: return "neutral";
   }
 }
+export const place = (f: { city: string; district?: string | null }) => f.district ?? f.city;

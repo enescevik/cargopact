@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 import { api } from "../api";
 import { c, mono, serif } from "../theme";
-import { dt, money } from "../format";
+import { dt, money, place } from "../format";
 import { RouteHead } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Reservation, Tracking } from "../types";
@@ -182,7 +182,7 @@ export function TrackingScreen({ initial }: { initial?: string }) {
               <Text style={{ fontFamily: mono, color: c.ink700 }}>{res.orderNumber}</Text>
               <StatusBadge status={res.status} label={res.statusLabel} />
             </Row>
-            <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>{res.origin.city} → {res.destination.city}</Text>
+            <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>{place(res.origin)} → {place(res.destination)}</Text>
             <Text style={{ color: c.ink500, fontSize: 13 }}>Son güncelleme {dt(res.updatedAt)}</Text>
             <View style={{ backgroundColor: c.mint100, padding: 12, borderRadius: 12 }}><Text style={{ color: c.ink900, fontWeight: "600" }}>Sıradaki adım: {res.nextStep}</Text></View>
           </Card>

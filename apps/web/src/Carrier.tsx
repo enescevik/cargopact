@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
-import { dt, full, isoToLocal, localToIso, num, time, tl, day } from "./format";
+import { dt, full, isoToLocal, localToIso, num, place, time, tl, day } from "./format";
 import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge, TripBarCompact, errText, useFetch, useToast } from "./ui";
 import { Chat } from "./Chat";
 import { DashboardView } from "./Dashboard";
@@ -61,7 +61,7 @@ function TripList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () =
           {data.items.map((t) => (
             <button key={t.id} className="card" onClick={() => onOpen(t.id)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", display: "grid", gridTemplateColumns: "1.2fr 1fr auto", gap: 24, alignItems: "center" }}>
               <div>
-                <div className="route" style={{ fontSize: 26 }}>{t.origin.city} → {t.destination.city}</div>
+                <div className="route" style={{ fontSize: 26 }}>{place(t.origin)} → {place(t.destination)}</div>
                 <div className="small muted" style={{ marginTop: 4 }}>{t.reference} · {t.vehicle.plate} · {day(t.departureAt)} {time(t.departureAt)}</div>
               </div>
               <TripBarCompact cap={t.capacity} />
@@ -117,7 +117,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
             <div>
               <div className="row"><span className="kicker">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span>
                 {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Seferi düzenle</button>}</div>
-              <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{t.origin.city} → {t.destination.city}</h1>
+              <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{place(t.origin)} → {place(t.destination)}</h1>
               <div className="muted" style={{ marginTop: 6 }}>{t.origin.name} → {t.destination.name}</div>
             </div>
             <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>

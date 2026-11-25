@@ -51,10 +51,10 @@ try {
     await c.locator('input[type="date"]').fill(tomorrow());
     await c.getByLabel("Palet", { exact: true }).fill("3");
     await c.getByRole("button", { name: /Sefer ara/ }).click();
-    await c.getByTestId("route").filter({ hasText: /Gebze\s*Sincan/ }).first().waitFor({ timeout: 15000 });
+    await c.getByTestId("route").filter({ hasText: /Gebze\s*→?\s*Ankara/ }).first().waitFor({ timeout: 15000 });
   });
   await step(c, "sefer-ac", async () => {
-    const card = c.locator(".card.trip", { hasText: TRIP === "" ? "" : "Sincan" }).first();
+    const card = c.locator(".card.trip", { hasText: "Dinçer Ankara Dağıtım Merkezi" }).first();
     await card.getByRole("button", { name: /Seç/ }).click();
     await c.getByText(TRIP).first().waitFor({ timeout: 15000 });
   });
@@ -95,7 +95,7 @@ try {
     await y.waitForTimeout(900);
     const cells = await y.locator(".pgrid .pos").count();
     if (cells !== 33) throw new Error(`33 hücre bekleniyordu, ${cells}`);
-    await y.locator("h1", { hasText: /Gebze\s*→\s*Sincan/ }).first().waitFor({ timeout: 5000 });
+    await y.locator("h1", { hasText: /Gebze\s*→\s*Ankara/ }).first().waitFor({ timeout: 5000 });
   });
   // ---------- MÜŞTERİ: sipariş no + takip ----------
   let order = "";
@@ -131,7 +131,7 @@ try {
     await b.getByLabel("Varış şehri").fill("Ankara");
     await b.locator('input[type="date"]').fill(tomorrow());
     await b.getByRole("button", { name: /Sefer ara/ }).click();
-    await b.locator(".card.trip", { hasText: "Sincan" }).first().getByRole("button", { name: /Seç/ }).click();
+    await b.locator(".card.trip", { hasText: "Dinçer Ankara Dağıtım Merkezi" }).first().getByRole("button", { name: /Seç/ }).click();
     await b.getByText(TRIP).first().waitFor({ timeout: 15000 });
   });
   await step(b, "agirlik-asimi-3-2600", async () => {

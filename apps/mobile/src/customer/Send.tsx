@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { api, ApiError, uuid } from "../api";
 import { c, serif } from "../theme";
-import { dt, money, num } from "../format";
+import { dt, money, num, place } from "../format";
 import { CutoffChips, RouteHead, TripSummary } from "../common";
 import { BackBar, Badge, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Skeletons, StickyBar, Title, useLoad, useToast } from "../ui";
 import type { Quote, Reservation, TripCard } from "../types";
@@ -259,7 +259,7 @@ function Success({ r, onDone }: { r: Reservation; onDone: () => void }) {
       <Card>
         <KV k="Başvuru no" v={r.reference} bold />
         <KV k="Durum" v={r.statusLabel} />
-        <KV k="Güzergâh" v={`${r.trip.origin.city} → ${r.trip.destination.city}`} />
+        <KV k="Güzergâh" v={`${place(r.trip.origin)} → ${place(r.trip.destination)}`} />
         <KV k="Tutar" v={money(r.totalPriceMinor)} />
       </Card>
       <Btn title="Rezervasyonlarıma git" onPress={onDone} />

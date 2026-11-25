@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { api } from "./api";
 import { c, serif } from "./theme";
-import { dt, hm, money } from "./format";
+import { dt, hm, money, place } from "./format";
 import { Card, Chip, Row } from "./ui";
 import type { TripCard } from "./types";
 
@@ -10,7 +10,7 @@ export function RouteHead({ trip, size = 26 }: { trip: TripCard; size?: number }
   return (
     <View style={{ gap: 2 }}>
       <Text style={{ fontFamily: serif, fontSize: size, color: c.ink900, letterSpacing: -0.4 }}>
-        {trip.origin.city} → {trip.destination.city}
+        {place(trip.origin)} → {place(trip.destination)}
       </Text>
       <Text style={{ fontSize: 12, color: c.ink500 }}>{trip.origin.name}  ›  {trip.destination.name}</Text>
     </View>

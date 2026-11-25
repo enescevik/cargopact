@@ -501,7 +501,7 @@ function Tracking({ initial }: { initial?: string }) {
             <div className="card">
               <div className="row between wrap">
                 <div><div className="mono" style={{ fontSize: 22, color: "var(--c8)" }}>{data.orderNumber}</div>
-                  <div className="route" style={{ fontSize: 26, marginTop: 4 }}>{data.origin.city} → {data.destination.city}</div></div>
+                  <div className="route" style={{ fontSize: 26, marginTop: 4 }}>{place(data.origin)} → {place(data.destination)}</div></div>
                 <StatusBadge status={data.status} label={data.statusLabel} />
               </div>
               <hr className="hr" />
