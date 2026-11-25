@@ -24,10 +24,10 @@ Parola hepsinde: `Cargopact2026!` (giriş ekranlarında hızlı doldurma düğme
 ## Sıfırlama (her prova ve sunumdan önce)
 
 ```bash
-cd /workshop && set -a && . ./.env.seed && set +a && npm run seed -w @cargopact/db
+cd /workshop && set -a && . ./.env.seed && set +a && npm run demo:reset
 ```
 
-Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyonları temizleyen "reset" yalnız seed'in L2 katmanı tamamlandıysa çalışır (steering: L2–L4 diğer spec'lerle). Provada sonrasında jüri panosunun **25/33** gösterdiğini doğrula. Gerekirse `npm run seed:reset -w @cargopact/db` sonra `npm run seed -w @cargopact/db`.
+Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyonları temizleyen "reset" yalnız seed'in L2 katmanı tamamlandıysa çalışır (steering: L2–L4 diğer spec'lerle). Provada sonrasında jüri panosunun **25/33** gösterdiğini doğrula. Gerekirse `npm run seed:reset -w @cargopact/db` sonra `npm run demo:reset`.
 
 ## Zaman çizelgesi
 

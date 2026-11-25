@@ -1,7 +1,7 @@
 # QA Raporu – Web müşteri akışı ve jüri panosu
 
 Tarih: 25.11.2026 · Ortam: https://d1xysc2r88pheq.cloudfront.net · Chromium headless 1440x900 · Betik: `scripts/e2e-ui.mjs`
-Çalıştırma: `set -a; . ./.env.seed; set +a; cd /tmp/pw && node /workshop/scripts/e2e-ui.mjs` (önce `npm run seed:demo -w @cargopact/db`).
+Çalıştırma: `set -a; . ./.env.seed; set +a; cd /tmp/pw && node /workshop/scripts/e2e-ui.mjs` (önce `npm run demo:reset`).
 
 ## Sonuç: 14/14 adım YEŞİL, konsol hatası 0
 

@@ -79,7 +79,7 @@ git ls-files | grep -E "\.env"
 - [ ] **Hesaplar, web:** `web.yonetici@…` ve `web.musteri@…` giriş yapıyor; doğru ekran açılıyor (`/me` → rol).
 - [ ] **Hesaplar, mobil `/m/`:** `mobil.musteri@…` ve `mobil.yonetici@…` giriş yapıyor. Telefonda ve dar tarayıcı penceresinde denendi.
 - [ ] **Başkent:** `user@baskent.example.test` giriş yapıyor (yedek hesap).
-- [ ] **Sıfırlama:** `cd /workshop && set -a && . ./.env.seed && set +a && npm run seed -w @cargopact/db` çalışıyor; sonra pano 25/33.
+- [ ] **Sıfırlama:** `cd /workshop && set -a && . ./.env.seed && set +a && npm run demo:reset` çalışıyor; sonra pano 25/33.
 - [ ] **Tam akış bir kez geçildi:** 25 → 28 → 30 → ret → 33 → fiili 33. Her adımın süresi not edildi (toplam ≈7 dk).
 - [ ] **Sıfırlama sonrası ikinci geçiş** da çalışıyor (veri tekrar kullanılabilir).
 - [ ] **Sohbet:** dört soru önceden soruldu (ısınma). Yanıt süresi < 15 sn.

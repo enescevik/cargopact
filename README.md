@@ -86,7 +86,7 @@ npm run test:integration                    # gerçek DSQL'de eşzamanlılık te
 npm run openapi                             # OpenAPI belgesini zod şemalarından üretir
 ```
 
-Demo verisini sıfırlama: `cd /workshop && set -a && . ./.env.seed && set +a && npm run seed -w @cargopact/db`
+Demo verisini sıfırlama: `cd /workshop && set -a && . ./.env.seed && set +a && npm run demo:reset`
 
 ## Kiro
 
