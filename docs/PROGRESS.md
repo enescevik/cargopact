@@ -9,18 +9,19 @@
 
 ## Sürüyor
 - [x] Altı spec'in requirements onayı alındı
-- [ ] master-data-and-seed requirements onayı (koli kararı A işlendi)
-- [ ] platform-foundation + master-data-and-seed design
+- [x] master-data-and-seed requirements onayı (koli kararı A işlendi)
+- [x] platform-foundation + master-data-and-seed design yazıldı (DSQL davranışları gerçek cluster'da doğrulandı, geçici cluster silindi)
+- [ ] design + tasks onayı, ardından uygulama
 
 ## Spec durumu
 | Spec | Requirements | Design | Tasks | Uygulama |
 |---|---|---|---|---|
-| platform-foundation | onaylı | – | – | – |
+| platform-foundation | onaylı | taslak | taslak | – |
 | capacity-and-pricing | onaylı | – | – | – |
 | reservation-and-approval | onaylı | – | – | – |
 | payments-and-cancellation | onaylı | – | – | – |
 | warehouse-and-tracking | onaylı | – | – | – |
-| master-data-and-seed | taslak | – | – | – |
+| master-data-and-seed | onaylı | taslak | taslak | – |
 | agents-and-chat | onaylı | – | – | – |
 
 ## Henüz deploy edilmedi
