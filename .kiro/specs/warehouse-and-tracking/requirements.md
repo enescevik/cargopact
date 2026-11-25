@@ -16,6 +16,8 @@
 3. IF sunucu saati T−1'i geçmişse THEN standart kabul reddedilecek ve gecikme operasyon kuyruğuna düşecek.
 4. Kabul olayı personel, depo, zaman ve fotoğraf (S3) bilgisi taşıyacak.
 
+5. Depo yalnız paletleri kabul eder; paletlenmemiş koli veya dökme yük kabul edilmez ve inceleme kaydı açılır.
+
 ### 3. Yükleme ve varış
 1. WHEN personel sefer manifestosundaki paleti okutursa THEN `YUKLENDI` olayı yazılacak; okunan/kalan sayacı güncellenecek.
 2. WHEN araç varışta paletler okutulursa THEN `VARISTA` olayı yazılacak ve alıcıya bildirim gidecek.

@@ -9,7 +9,7 @@
 
 ## Sürüyor
 - [x] Altı spec'in requirements onayı alındı
-- [ ] master-data-and-seed requirements onayı
+- [ ] master-data-and-seed requirements onayı (koli kararı A işlendi)
 - [ ] platform-foundation + master-data-and-seed design
 
 ## Spec durumu

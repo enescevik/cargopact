@@ -32,5 +32,5 @@ Taşıyıcı planlamacının sefer kapasitesini yayınlaması, müşterinin uygu
 
 ### 5. Uygunluk
 1. WHEN talep değerlendirilirse THEN palet adedi, brüt kg (toplam azami yük dahil), m³, ürün sınıfı uyumu ve zaman pencereleri kontrol edilecek; ret gerekçesi kodla ve metinle dönecek.
-2. Koli beyanlarında kapasite ve fiyat, master-data-and-seed spec'indeki palet eşdeğeri üzerinden hesaplanacak; sefer paletlenmemiş koli kabul etmiyorsa talep reddedilecek.
+2. Kapasite ve fiyat yalnız palet üzerinden hesaplanacak. Koli beyanı, master-data-and-seed spec'indeki tahmini palet sayısına çevrilip müşteri paletleri onayladıktan sonra değerlendirilecek; paletlenmemiş koli talebi kabul edilmeyecek.
 3. Örnek kabul: 3+2+3 senaryosunda 22.300 kg talebi (azami 22.000) reddedilecek ve kalan kapasite değişmeyecek.

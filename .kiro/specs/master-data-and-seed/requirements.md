@@ -24,7 +24,8 @@ Taşıyıcıların transfer merkezlerini, dağıtım merkezlerini, araçlarını
 2. Ambalaj tipi alanları: kod, ad, tür (`pallet`, `carton`, `other`), ölçü (en/boy/yükseklik), azami brüt ağırlık, palet eşdeğeri hesaplama kuralı, istiflenebilirlik.
 3. Ürün sınıfları (ör. genel kuru yük, gıda-ambalajlı, kırılgan, tehlikeli madde) ve taşıyıcının kabul ettiği sınıf listesi tanımlanabilecek. Kabul edilmeyen sınıf talep uygunluğunda reddedilecek.
 4. Yük beyanında müşteri ambalaj tipi ve adet seçecek; sistem toplam brüt kg ve m³ değerini hesaplayıp müşteriye gösterecek, müşteri düzeltebilecek.
-5. Koli: WHEN müşteri koli beyan ederse THEN sistem palet eşdeğeri pozisyonu `ceil(toplam koli hacmi / (palet kullanılabilir hacmi × doluluk katsayısı))` ile hesaplayacak; fiyat ve kapasite palet eşdeğeri üzerinden işlenecek. Taşıyıcı sefer bazında paletlenmemiş koli kabul edip etmediğini belirleyecek.
+5. Koli (karar: müşteri paletler): WHEN müşteri koli beyan ederse THEN sistem toplam kg ve m³ değerini ve tahmini palet sayısını (`ceil(toplam koli hacmi / (palet kullanılabilir hacmi × doluluk katsayısı))`) hesaplayıp müşteriye gösterecek ve yükü paletlemesi gerektiğini bildirecek. Müşteri nihai palet adedini, her palet için içerik/ağırlık/ölçü beyanıyla onaylayacak. Kapasite, fiyat ve depo kabulü yalnız palet üzerinden işlenecek; çıkış deposu paletlenmemiş koli kabul etmeyecek.
+5a. Şema ambalaj tipi ve palet eşdeğeri alanlarını baştan taşıyacak; ileride taşıyıcı bazlı paletlenmemiş koli kabulü eklenirse şema değişmeden yalnız kural ve ekran eklenecek.
 6. Standart palet ölçü/yükseklik sınırı aşılırsa talep uygunluk kontrolünde reddedilecek.
 
 ### 4. Yönetim yetkileri
