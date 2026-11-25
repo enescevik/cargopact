@@ -63,4 +63,9 @@ export const users: SeedUser[] = [
     { email: `depo@${c.key}.example.test`, name: `${c.name} Depo`, tenant: c.key, role: "carrier_warehouse" },
   ]),
   ...customers.map((c) => ({ email: `user@${c.key}.example.test`, name: `${c.name} Kullanıcısı`, tenant: c.key, role: "customer_user" })),
+  // Sunum/demo hesapları: web ve mobil için ayrı müşteri ve transfer merkezi yöneticisi
+  { email: "web.musteri@cargopact.example.test", name: "Marmara Ambar (Web)", tenant: "marmara", role: "customer_user" },
+  { email: "web.yonetici@cargopact.example.test", name: "Dinçer Gebze TM Yöneticisi (Web)", tenant: "dincer", role: "carrier_admin" },
+  { email: "mobil.musteri@cargopact.example.test", name: "Anadolu Parsiyel (Mobil)", tenant: "anadolu", role: "customer_user" },
+  { email: "mobil.yonetici@cargopact.example.test", name: "Dinçer Gebze TM Yöneticisi (Mobil)", tenant: "dincer", role: "carrier_admin" },
 ];
