@@ -42,6 +42,8 @@ export type Reservation = {
   measurement?: Measurement | null;
   /** Teslim yetkisi: düz `code` yalnız müşteri yanıtında gelir. */
   pickup?: Pickup;
+  carbon?: Carbon | null;
+  contract?: ContractAcceptance | null;
 };
 export type CarrierReservation = Reservation & {
   priorityRank: number; verifiedNoShows: number;
@@ -50,12 +52,14 @@ export type CarrierReservation = Reservation & {
 };
 export type CarrierTrip = TripCard & {
   status: string; vehicle: { id: string; plate: string }; capacity: Capacity; pendingCount: number;
+  carbon?: TripCarbon | null;
 };
 export type Quote = {
   eligible: boolean; reasons: { code: string; message: string }[]; price: Price;
   bookingCutoffAt: string; intakeCutoffAt: string; quoteExpiresAt: string;
   paymentPlans: { code: "full" | "deposit"; label: string; dueNowMinor: number; depositPercent?: number; remainingMinor?: number }[];
   cancellationPolicy: { label: string; refundPercent: number }[];
+  carbon?: Carbon | null;
 };
 export type Me = {
   userId: string; email: string; displayName: string;
@@ -67,3 +71,16 @@ export type Tracking = {
   origin: Facility; destination: Facility; intakeCutoffAt: string; pickupWindow: { from: string; to: string } | null;
   palletCodes: string[];
 };
+export type AlternativeScenario = "dedicated" | "groupage";
+export type Carbon = {
+  distanceKm: number; vehicleClass: string; vehicleFactorKgPerKm: number; allocatedKg: number;
+  alternativeScenario: AlternativeScenario | null; alternativeKg: number | null; savedKg: number | null;
+  method: string; isDemoFactors: boolean; note: string;
+};
+export type TripCarbon = {
+  distanceKm: number; vehicleFactorKgPerKm: number; tripKg: number; externalPallets: number; allocatedExternalKg: number;
+  declaredSavedKg: number; reservationsWithScenario: number; reservationsTotal: number; method: string; isDemoFactors: boolean;
+};
+export type ContractPreview = { contractCode: string; version: string; isDraft: boolean; title: string; renderedMarkdown: string; renderedHash: string };
+export type ContractAcceptance = { signerName: string; acceptedAt: string; version: string; renderedHash: string };
+export type ContractView = { renderedMarkdown: string; acceptance: ContractAcceptance };
