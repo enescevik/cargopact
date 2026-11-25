@@ -5,6 +5,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from strands import tool
 
@@ -43,6 +45,22 @@ def api_call(token: str, method: str, path: str, query: dict | None = None, body
         return {"error": True, "message": f"API çağrısı başarısız: {type(e).__name__}"}
 
 
+_TR = ZoneInfo("Europe/Istanbul")
+def _tr(v):
+    """ISO UTC -> 'GG.AA.YYYY SS:DD' (Europe/Istanbul)."""
+    if not v or not isinstance(v, str):
+        return v
+    try:
+        return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(_TR).strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        return v
+def _fold(x) -> str:
+    return str(x or "").translate(str.maketrans("İIıŞşĞğÜüÖöÇç", "iiissgguuoocc")).lower()
+def _place_match(f: dict, q: str) -> bool:
+    if not q:
+        return True
+    hay = _fold(" ".join(str(f.get(k) or "") for k in ("city", "district", "name", "address")))
+    return all(w in hay for w in _fold(q).split())
 def _out(obj) -> str:
     s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
     return s[:_MAX_CHARS]
@@ -56,8 +74,8 @@ def _slim_trip(t: dict) -> dict:
         "origin": f"{(t.get('origin') or {}).get('name')} ({(t.get('origin') or {}).get('city')})",
         "destination": f"{(t.get('destination') or {}).get('name')} ({(t.get('destination') or {}).get('city')})",
         "vehicleType": (t.get("vehicleType") or {}).get("name"),
-        "departureAt": t.get("departureAt"), "arrivalEta": t.get("arrivalEta"),
-        "bookingCutoffAt": t.get("bookingCutoffAt"), "intakeCutoffAt": t.get("intakeCutoffAt"),
+        "departureIstanbul": _tr(t.get("departureAt")), "arrivalEtaIstanbul": _tr(t.get("arrivalEta")),
+        "bookingCutoffIstanbul": _tr(t.get("bookingCutoffAt")), "intakeCutoffIstanbul": _tr(t.get("intakeCutoffAt")),
         "remaining": t.get("remaining"),
         "unitPriceMinor": p.get("unitPriceMinor"), "totalPriceMinor": p.get("totalPriceMinor"),
         "priceExplanation": (p.get("breakdown") or {}).get("explanation"),
@@ -75,7 +93,7 @@ def _slim_res(r: dict) -> dict:
         "pallets": r.get("pallets"), "grossKg": r.get("grossKg"), "volumeM3": r.get("volumeM3"),
         "productClass": (r.get("productClass") or {}).get("name"),
         "totalPriceMinor": r.get("totalPriceMinor"), "paymentStatus": (r.get("payment") or {}).get("status"),
-        "holdExpiresAt": r.get("holdExpiresAt"), "createdAt": r.get("createdAt"),
+        "holdExpiresIstanbul": _tr(r.get("holdExpiresAt")), "createdIstanbul": _tr(r.get("createdAt")),
     }
     for k in ("priorityRank", "verifiedNoShows", "eligibility"):
         if k in r:
@@ -96,12 +114,14 @@ CARRIER_RULES = """Taşıyıcı kuralları (Dinçer/Siva ortak demo bilgi taban�
 def build_customer_tools(token: str) -> list:
     @tool
     def search_trips(originCity: str = "", destinationCity: str = "", date: str = "", pallets: int = 1) -> str:
-        """Uygun seferleri ara. date: YYYY-MM-DD (opsiyonel). Fiyat istenen palet adediyle hesaplanır."""
-        r = api_call(token, "GET", "/customer/trips", {
-            "originCity": originCity, "destinationCity": destinationCity, "date": date, "pallets": pallets})
+        """Uygun seferleri ara (originCity/destinationCity il, ilçe veya tesis adı olabilir, örn. Gebze). date: YYYY-MM-DD (opsiyonel). Fiyat istenen palet adediyle hesaplanır."""
+        # Şehir/ilçe adı eşleşmesi ('Gebze' ilçedir, şehir Kocaeli) için süzme burada yapılır.
+        r = api_call(token, "GET", "/customer/trips", {"date": date, "pallets": pallets})
         if r.get("error"):
             return _out(r)
-        return _out({"items": [_slim_trip(t) for t in r.get("items", [])]})
+        items = [t for t in r.get("items", [])
+                 if _place_match(t.get("origin") or {}, originCity) and _place_match(t.get("destination") or {}, destinationCity)]
+        return _out({"items": [_slim_trip(t) for t in items], "note": "Saatler Europe/Istanbul."})
 
     @tool
     def quote(tripId: str, pallets: int, grossKg: float, productClassCode: str = "GENEL", volumeM3: float = 0) -> str:
