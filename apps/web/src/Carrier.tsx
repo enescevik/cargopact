@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowRight, BarChart3, Check, ClipboardList, LayoutDashboard, Users, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
+  AlertTriangle, ArrowRight, BarChart3, Check, ClipboardList, Users, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
 } from "lucide-react";
 import { api, sendChat } from "./api";
 import type { CarrierTrip } from "./types";
 import { dayNum, full, isoDay, num, place, time, tl, today, addDays } from "./format";
 import { Empty, ErrorBox, Modal, Skeleton, SkeletonCards, StatusBadge, errText, useFetch, useToast } from "./ui";
 import { AssistantDrawer } from "./Chat";
-import { DashboardView } from "./Dashboard";
+import { TripProfit } from "./carrier/Profit";
 import { TracesView } from "./Traces";
 import { Notifications } from "./Notifications";
 import { EditTripModal } from "./carrier/EditTrip";
@@ -23,7 +23,7 @@ import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http"
 import { ChipSelect, Countdown, Segmented, Sheet } from "./components/controls";
 import { TruckMap, operatorCells } from "./components/TruckMap";
 
-type View = { name: "ops"; id?: string } | { name: "new" } | { name: "customers" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string } | { name: "dash" } | { name: "traces" };
+type View = { name: "ops"; id?: string } | { name: "new" } | { name: "customers" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string } | { name: "traces" };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
   const [view, setView] = useState<View>({ name: "ops" });
@@ -32,7 +32,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
   const nav: [View["name"], string, React.ReactNode][] = [
     ["ops", "Operasyon", <Truck size={19} />], ["new", "Aracım var, yük ekle", <PackagePlus size={19} />],
     ["exceptions", "İstisnalar", <AlertTriangle size={19} />], ["kpis", "Performans", <BarChart3 size={19} />],
-    ["dash", "Jüri panosu", <LayoutDashboard size={19} />], ["traces", "Asistan işlem izi", <ScrollText size={19} />],
+    ["traces", "Asistan işlem izi", <ScrollText size={19} />],
   ];
   if (role === "carrier_admin" || role === "carrier_planner") nav.splice(2, 0, ["customers", "Müşteriler", <Users size={19} />]);
   const active = view.name === "manifest" ? "ops" : view.name;
@@ -56,7 +56,6 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
         {view.name === "exceptions" && <Sheet><ExceptionsView onOpenTrip={(id) => setView({ name: "ops", id })} /></Sheet>}
         {view.name === "kpis" && <Sheet><KpiView /></Sheet>}
         {view.name === "manifest" && <Sheet><ManifestView tripId={view.id} onBack={() => setView({ name: "ops", id: view.id })} /></Sheet>}
-        {view.name === "dash" && <Sheet><DashboardView /></Sheet>}
         {view.name === "traces" && <Sheet><TracesView /></Sheet>}
       </main>
       <AssistantDrawer open={chat} onClose={closeChat} prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle", "Bugün hangi seferlerde boş yer var?", "Riskli müşterilerden gelen talepler hangileri?"]} />
@@ -231,6 +230,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
               );
             })}
           </div>
+          <TripProfit tripId={t.id} />
         </div>
       </section>
 

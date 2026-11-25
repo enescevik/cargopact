@@ -27,13 +27,13 @@ Parola hepsinde: `Cargopact2026!` (giriş ekranlarında hızlı doldurma düğme
 cd /workshop && set -a && . ./.env.seed && set +a && npm run demo:reset
 ```
 
-Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyonları temizleyen "reset" yalnız seed'in L2 katmanı tamamlandıysa çalışır (steering: L2–L4 diğer spec'lerle). Provada sonrasında jüri panosunun **25/33** gösterdiğini doğrula. Gerekirse `npm run seed:reset -w @cargopact/db` sonra `npm run demo:reset`.
+Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyonları temizleyen "reset" yalnız seed'in L2 katmanı tamamlandıysa çalışır (steering: L2–L4 diğer spec'lerle). Provada sonrasında operasyon kokpitinde Gebze → Ankara seferinin **25/33** gösterdiğini doğrula. Gerekirse `npm run seed:reset -w @cargopact/db` sonra `npm run demo:reset`.
 
 ## Zaman çizelgesi
 
 | Dk | Bölüm | Cihaz |
 |---|---|---|
-| 0:00–0:45 | 1. Jüri panosu: 25/33 | Web yönetici |
+| 0:00–0:45 | 1. Operasyon kokpiti: 25/33 | Web yönetici |
 | 0:45–2:00 | 2. Marmara 3 palet / 1.500 kg → onay → 28/33 | Web müşteri + web yönetici |
 | 2:00–3:15 | 3. Anadolu 2 palet / 1.200 kg, kaporalı, mobil → onay → 30/33 | Mobil + web yönetici |
 | 3:15–4:30 | 4. Başkent 3 palet / 2.600 kg reddi, sonra 1.900 kg → 33/33 planlanan | Başkent + web yönetici |
@@ -43,18 +43,19 @@ Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyo
 
 ---
 
-## 1. Jüri panosu (0:00–0:45) · Web yönetici
+## 1. Operasyon kokpiti (0:00–0:45) · Web yönetici
 
 **Tıkla**
-1. Sekme A → giriş yapılmış, transfer merkezi ekranı. Sol menü / ana sayfa: **Jüri panosu** (veya `Dashboard`).
-2. Demo seferini seç: Gebze → Ankara (`DNC-DEMO-GEB-ANK`).
+1. Sekme A → giriş yapılmış, transfer merkezi ekranı. Sol menü: **Operasyon** (açılış ekranı).
+2. Soldaki sefer listesinden demo seferini seç: Gebze → Ankara (`DNC-DEMO-GEB-ANK`).
+3. Orta panelde aşağı kaydır: **Sefer kârlılığı** bölümü (katkı payı, gelir/maliyet, planlanan ve fiili doluluk, tahmini CO₂ tasarrufu, müşteriler, son olaylar).
 
 **Ne söyle**
 > "CargoPact, taşıyıcının zaten planlanmış depo transferinde boş kalan paleti satışa açar. Bu Gebze–Ankara seferinde 33 pozisyon var, 25'i Dinçer'in kendi yükü. 8 palet, 5.000 kg ve 12 m³ satışa açık. Palet, kg ve m³ doluluğu ayrı izleniyor."
 
-**Beklenen ekran:** 33 pozisyon şeması (11×3), 25 gri iç yük, **25/33 planlanan**, aktüel 25/33. Brüt tutar 0 TL. "Satışa açık: 8 palet / 5.000 kg / 12 m³". Saat çipleri: son rezervasyon T−3 = 15:00, çıkış deposu son kabul T−1 = 17:00.
+**Beklenen ekran:** 33 pozisyon tır haritası (11×3), 25 gri iç yük, **25/33 planlanan**, fiili 25/33. Sefer kârlılığında katkı 0 TL, müşteri yok. "Satışa açık: 8 palet / 5.000 kg / 12 m³". Saat çipleri: son rezervasyon T−3 = 15:00, çıkış deposu son kabul T−1 = 17:00.
 
-**Fallback:** Pano açılmazsa `Seferler` listesinden seferi aç; kapasite çubukları aynı veriyi gösterir. API çökmüşse `https://765h182ijf.execute-api.us-east-1.amazonaws.com/health` 200 dönüyor mu bak; dönmüyorsa §Genel yedek planına geç.
+**Fallback:** Kârlılık bölümü yüklenmezse kokpitteki palet / kg / m³ kapasite kutuları aynı doluluğu gösterir; dönem özeti için sol menü → **Performans**. API çökmüşse `https://765h182ijf.execute-api.us-east-1.amazonaws.com/health` 200 dönüyor mu bak; dönmüyorsa §Genel yedek planına geç.
 
 ### 1A. Müşteri Yönetimi ve KB analizi (isteğe bağlı 45 sn) · Web yönetici
 
@@ -242,4 +243,4 @@ Kart bilgisi sohbette istenmez (demo: simüle kayıtlı kart).
 ## Sözleşme ve karbon (ek)
 1. **Web/mobil:** sefer seç → palet/kg gir → "Alternatif senaryo" (isteğe bağlı: ayrı araç / parsiyel) seç → sözleşme önizlemesini göster (TASLAK etiketi, hash) → "Kabul ediyorum" ile rezervasyon. Karbon kartı: "yükünüzün payı ≈ X kg CO₂e"; alternatif seçildiyse tahmini tasarruf. "Demo katsayıları, tahmini" etiketine dikkat çek.
 2. **Asistan:** "Yarın Gebze'den Ankara'ya 3 palet, 1500 kg, genel kargo, peşin; alternatif olarak ayrı araçla gönderirdim." → özet sözleşme başlığı, TASLAK uyarısı, 3-4 madde, kısa hash ve "Onaylamanız, bu taslak sözleşmeyi <ad> adına elektronik olarak kabul etmeniz anlamına gelir." cümlesini gösterir → "evet" → rezervasyon. "Bu rezervasyonun sözleşmesi ve karbonu?" ve "Karbon özetim?" soruları.
-3. **Jüri/yönetim:** taşıyıcı panosunda sefer karbonu (dış yükün payı, beyan edilen tasarruf, senaryo seçen rezervasyon sayısı). Vurgu: tasarruf yalnız müşteri beyanına dayanır; sözleşme basit e-kabuldür, hukuki inceleme pilotta (docs/CONTRACT.md, docs/CARBON.md).
+3. **Jüri/yönetim:** kokpitteki Sefer kârlılığı ve Performans raporundaki karbon bölümü (sefer karbonu (dış yükün payı, beyan edilen tasarruf, senaryo seçen rezervasyon sayısı). Vurgu: tasarruf yalnız müşteri beyanına dayanır; sözleşme basit e-kabuldür, hukuki inceleme pilotta (docs/CONTRACT.md, docs/CARBON.md).
