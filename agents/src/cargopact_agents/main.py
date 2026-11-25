@@ -5,7 +5,7 @@ import os
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 from .tools import TracedToken
-from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_identity
+from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_identity, save_history
 
 log = logging.getLogger("cargopact")
 app = BedrockAgentCoreApp()
@@ -37,24 +37,25 @@ def invoke(payload: dict, context) -> dict:
     if not token:
         return {"result": "Oturum bilgisi eksik; lütfen yeniden giriş yapın."}
     session_id = str(getattr(context, "session_id", None) or payload.get("sessionId") or "default-session-0000000000000000000")
-    token = TracedToken(token, str(payload.get("correlationId") or ""), session_id)
+    # user_message: yazma teyidi bu turdaki kullanıcı mesajından KODDA kontrol edilir (writes._gate).
+    token = TracedToken(token, str(payload.get("correlationId") or ""), session_id, prompt)
     log.info("turn correlationId=%s session=%s", token.correlation_id, session_id)
     role, name, tenant_id = get_identity(token)
     if role not in CUSTOMER_ROLES | CARRIER_ROLES:
         return {"result": "Kimliğiniz doğrulanamadı veya bu asistan için yetkiniz yok."}
+    token.display_name = name or ""
     actor_id = str(payload.get("userId") or "anonymous")
+    owner = f"{tenant_id}:{role}"
     sm = _session_manager(session_id, actor_id)
-    try:
-        agent = build_orchestrator(token, role, name, sm, tenant_id)
-        return {"result": str(agent(prompt))}
-    except Exception as e:
-        log.warning("agent with memory failed: %s", type(e).__name__)
-        if sm is None:
-            return {"result": "Şu an yanıt üretemedim, lütfen tekrar deneyin."}
+    for attempt_sm in ([sm, None] if sm is not None else [None]):
         try:
-            return {"result": str(build_orchestrator(token, role, name, None, tenant_id)(prompt))}
-        except Exception:
-            return {"result": "Şu an yanıt üretemedim, lütfen tekrar deneyin."}
+            agent = build_orchestrator(token, role, name, attempt_sm, tenant_id)
+            result = str(agent(prompt))
+            save_history(session_id, owner, agent.messages)
+            return {"result": result}
+        except Exception as e:
+            log.warning("agent failed (memory=%s): %s", attempt_sm is not None, type(e).__name__)
+    return {"result": "Şu an yanıt üretemedim, lütfen tekrar deneyin."}
 
 
 if __name__ == "__main__":

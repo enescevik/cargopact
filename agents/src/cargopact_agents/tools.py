@@ -19,18 +19,23 @@ _MAX_CHARS = 12000
 
 
 class TracedToken(str):
-    """ID token + izleme bağlamı. Araçlar token'ı olduğu gibi geçirir; api_call başlıkları buradan ekler."""
+    """ID token + izleme bağlamı. Araçlar token'ı olduğu gibi geçirir; api_call başlıkları buradan ekler.
+    user_message: bu turdaki kullanıcı mesajı (yazma teyidi koddan kontrol edilir; model değiştiremez)."""
     correlation_id: str = ""
     session_id: str = ""
+    user_message: str = ""
+    display_name: str = ""
 
-    def __new__(cls, token: str, correlation_id: str = "", session_id: str = ""):
+    def __new__(cls, token: str, correlation_id: str = "", session_id: str = "", user_message: str = ""):
         obj = super().__new__(cls, token)
         obj.correlation_id = correlation_id
         obj.session_id = session_id
+        obj.user_message = user_message
         return obj
 
 
-def api_call(token: str, method: str, path: str, query: dict | None = None, body: dict | None = None) -> dict:
+def api_call(token: str, method: str, path: str, query: dict | None = None, body: dict | None = None,
+             idempotency_key: str | None = None) -> dict:
     url = API_URL + path
     if query:
         q = {k: v for k, v in query.items() if v not in (None, "")}
@@ -45,7 +50,7 @@ def api_call(token: str, method: str, path: str, query: dict | None = None, body
     data = None
     if method in ("POST", "PUT", "PATCH"):
         headers["Content-Type"] = "application/json"
-        headers["Idempotency-Key"] = str(uuid.uuid4())
+        headers["Idempotency-Key"] = idempotency_key or str(uuid.uuid4())
         data = json.dumps(body or {}).encode()
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:

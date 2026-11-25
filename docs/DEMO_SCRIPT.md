@@ -220,3 +220,21 @@ Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyo
 2. **Ekran görüntüleri:** 25/33, 28/33, 30/33, ret gerekçesi, 33/33 planlanan, fiili 33/33, sohbet yanıtı.
 3. Tek adım takılırsa: o adımın fallback'ini uygula, geri kalanı atla, sürenin kalanında §Kapanış'a git. Hatayı gizleme; "bu adımı önceden kaydettik" de.
 4. Veri bozulursa: §Sıfırlama komutunu çalıştır (~1 dk) ve baştan başla.
+
+
+## Ek: Asistanla işlem (uygulamada elle yapılan işleri asistan yapar)
+Asistan eksik bilgiyi sorar, sunucudan aldığı özeti gösterir ve **yalnız kullanıcı "evet / onaylıyorum" dedikten sonra** işlemi yapar.
+Teyit kodda zorunludur: önizlenmemiş bir işlem "evet" ile çalışmaz, aynı turda önizleme+uygulama yapılamaz, teyit tek kullanımlıktır.
+
+| Kim | Söylenecek | Beklenen |
+|---|---|---|
+| Web müşteri (Asistan sekmesi) | "Yarın Gebze'den Ankara'ya 3 palet göndermek istiyorum." | Sefer bulunur; kg, ürün sınıfı ve ödeme planı sorulur |
+| | "Toplam 1500 kg, genel kargo, tamamını peşin." | Sunucu özeti: 3.750 TL, T−3/T−1 saatleri, iptal koşulları, simüle kart •••• 4242 → "Onaylıyor musunuz?" |
+| | "Evet, onaylıyorum." | BV-… referanslı talep oluşur ("Taşıyıcı onayı bekliyor") |
+| Web transfer merkezi (Asistan) | "DNC-DEMO-GEB-ANK seferinde bekleyen talepleri göster." | Öncelik sırasıyla talepler, müşteri geçmişi |
+| | "Marmara Ambar'ın talebini onayla." → "Evet" | CP-… sipariş numarası, 28/33 |
+| | "CP-… siparişini depoda kabul et, 3 palet 1480 kg ölçtük." → "Evet" | Depo kabulü + ölçüm |
+
+Asistanın yapabildikleri — müşteri: sefer arama, teklif, rezervasyon, iptal (iade önizlemeli), yetkili alıcı, rezervasyon/teslim kodu, takip.
+Transfer merkezi: talep bulma, onay/ret (ret gerekçesi zorunlu), depo olayları (kabul+ölçüm, yükleme, varış, teslim için alıcı adı + teslim kodu), yeni sefer açma ("Aracım var"), istisnaları listeleme/kapatma.
+Kart bilgisi sohbette istenmez (demo: simüle kayıtlı kart).

@@ -1,8 +1,8 @@
 # CargoPact – Mimari
 
-Bölge: `us-east-1`. IaC: AWS CDK (`infra/lib/*.ts`, yığınlar: Auth, Data, Agents, Api, Web). Ayrıntılı tasarım: `.kiro/specs/platform-foundation/design.md`.
+Bölge `us-east-1`. AWS CDK yığınları Auth, Data, Gateway, Agents, Api ve Web. Çizim ve servis tablosu [Draw.io](CargoPact_AWS_Mimarisi.drawio) ve [AWS servisleri](AWS_SERVISLERI.md) belgelerinde.
 
-> Durum notu: Diyagramlar hedef mimariyi gösterir. Ajan Runtime'ı (`CfnRuntime`) yalnızca imaj etiketi verilince (`-c agentImageTag=…`) oluşur; canlıda yayında olup olmadığı **doğrulanacak**. İş API'sindeki sefer/rezervasyon uçlarının canlı durumu da sunum öncesi `docs/REVIEW_CHECKLIST.md` ile doğrulanır.
+> Diyagramlar güncel kaynak kodu (`81ebd14`) gösterir. CDK Runtime imaj etiketi `assist-1`. Aynı commit mesajı asistan smoke sonucunu 12/12 olarak bildiriyor. Canlı AWS sürümü ve TMS/WMS uçtan uca akışı bu güncellemede yeniden doğrulanmadı.
 
 ## (a) Bileşen diyagramı
 
@@ -31,10 +31,14 @@ flowchart LR
   UP[("S3 uploads<br/>özel, presigned URL")]
 
   subgraph AI["Yapay zeka"]
-    RT["AgentCore Runtime<br/>(Strands: orkestratör + uzmanlar)"]
+    RT["AgentCore Runtime<br/>Strands: rol bazlı uzman + teyit"]
     MEM["AgentCore Memory"]
     BR["Amazon Bedrock<br/>Claude"]
     ECR[("ECR<br/>ajan imajı arm64")]
+    KB["Bedrock Knowledge Bases"]
+    VEC[("Amazon S3 Vectors")]
+    MCP["AgentCore Gateway<br/>MCP · Cognito JWT"]
+    TOOLS["MCP Tools Lambda<br/>GET araçları"]
   end
 
   GHA["GitHub Actions<br/>CI + deploy (OIDC)"]
@@ -56,7 +60,12 @@ flowchart LR
   CHAT -- "InvokeAgentRuntime" --> RT
   RT --> BR
   RT --> MEM
-  RT -- "kullanıcının token'ıyla HTTPS" --> APIGW
+  RT -- "seçili okumalar" --> MCP
+  MCP -- "IAM ile çağır" --> TOOLS
+  TOOLS -- "kullanıcı JWT’si ile GET" --> APIGW
+  RT -- "teyitli yazma ve doğrudan sorgular" --> APIGW
+  RT --> KB
+  KB --> VEC
   ECR --> RT
   GHA --> CDK
   CDK -. "provision" .-> API
@@ -69,7 +78,7 @@ flowchart LR
 - **İstemciler:** web ve mobil aynı API'yi ve aynı `packages/contracts` tiplerini kullanır. Mobil, Expo web çıktısı olarak CloudFront'ta `/m/` altında yayınlanır.
 - **Kimlik:** Cognito ID token'ı API Gateway'de doğrulanır. Lambda, kiracı ve rolü JWT `sub` üzerinden `users/memberships` tablosundan türetir; istemciden gelen kiracı bilgisine güvenilmez.
 - **Veri:** Lambda, DSQL'e parolasız, IAM token ile bağlanır. Lambda rolü `cargopact-api-lambda`, DSQL rolü `cargopact_app` ile eşlenir.
-- **Ajanlar:** Sohbet Lambda'sı çağıranın token'ını Runtime'a iletir. Ajan araçları iş API'sini bu token'la çağırır; yetki ve kiracı kontrolü backend'de kalır.
+- **Ajan:** Chat Lambda çağıranın token’ını ve iz kimliğini Runtime’a iletir. Runtime, `/me` yanıtından rolü ve firmayı alıp müşteri veya taşıyıcı uzmanını kodla seçer. MCP seçili GET araçlarını sunar. Teyitli yazılar aynı iş API’sine MCP’ye uğramadan gider.
 - **Dosyalar:** özel S3 bucket'ı; erişim presigned URL ile.
 
 ## (b) Sıra diyagramı: rezervasyon → onay (kapasite sıcak satırı + idempotency)
@@ -119,52 +128,52 @@ sequenceDiagram
 ```
 
 **Açıklama**
-- **Idempotency:** Her yazma isteği `Idempotency-Key` ister. Aynı anahtar ve gövde aynı yanıtı döner, farklı gövde 422.
+- **Idempotency:** Rezervasyon ve taşıyıcı onayı gibi bu mekanizmayı kullanan uçlarda aynı `Idempotency-Key` ve gövde aynı yanıtı döndürür, farklı gövde 422 döner.
 - **Sıcak satır:** `trip_capacity(trip_id PK)` satırı held/confirmed/loaded sayaçlarını taşır. Doğrulama: DSQL'de 6 eşzamanlı istekten 1 kazanan (`npm run test:integration`).
 - **Sipariş numarası:** DSQL'de sekans yalnız açık `CACHE` ile çalıştığı için yıllık sayaç tablosu (`order_counters`) kullanılır.
 - **Mevcut durum:** `trip_capacity`, `reservations`, `ledger_entries`, `order_counters` migrasyonları repoda var (0030–0042). İş mantığının uç noktalarının canlı durumu **doğrulanacak**.
 
-## (c) Sohbet çağrı yolu
+## (c) Sohbet çağrı yolu ve teyitli işlemler
 
 ```mermaid
 sequenceDiagram
   autonumber
-  actor U as Kullanıcı (web / mobil sohbet)
-  participant G as API Gateway (JWT)
-  participant CH as Chat Lambda
+  actor U as Kullanıcı
+  participant C as HTTP API ve Chat Lambda
   participant RT as AgentCore Runtime
-  participant MEM as AgentCore Memory
-  participant OR as Orkestratör (Strands)
-  participant SP as Uzman ajan (müşteri / taşıyıcı)
-  participant BR as Bedrock (Claude)
-  participant API as İş API (BusinessApi)
+  participant MCP as AgentCore Gateway ve Tools Lambda
+  participant API as HTTP API ve BusinessApi
 
-  U->>G: POST /chat {message, sessionId}<br/>Authorization: Bearer ID token
-  G->>CH: JWT doğrulandı
-  CH->>CH: doğrula (1..N karakter), sessionId yoksa üret, 26 sn zaman aşımı
-  CH->>RT: InvokeAgentRuntime {prompt, userId, idToken}<br/>runtimeSessionId, runtimeUserId
-  RT->>MEM: oturum belleği oku
-  RT->>API: GET /me (token) → rol
-  RT->>OR: rol'e göre orkestratör kur
-  OR->>BR: yönlendirme kararı
-  OR->>SP: "agents as tools": customer_specialist / carrier_specialist
-  SP->>BR: araç seçimi
-  SP->>API: search_trips, quote, my_reservations, track /<br/>list_trips, trip_detail, dashboard (kullanıcının token'ı)
-  API-->>SP: JSON (kiracı + rol backend'de zorlanır)
-  SP-->>OR: Türkçe yanıt
-  OR-->>RT: tek tutarlı cevap
-  RT->>MEM: oturumu kaydet
-  RT-->>CH: yanıt
-  CH-->>U: {sessionId, reply}
-  Note over SP,API: Ajan yazma işlemi yapamaz (rezervasyon, onay, ret, iptal).<br/>Kullanıcıyı uygulamadaki onay formuna yönlendirir.
+  U->>C: POST /chat ve Cognito ID token
+  C->>RT: InvokeAgentRuntime (oturum, kullanıcı, token, correlationId)
+  RT->>API: GET /me ile rol ve firma
+  alt Seçili MCP okuması
+    RT->>MCP: MCP araç çağrısı (kullanıcı JWT’si)
+    MCP->>API: Yetkili GET ve iz başlıkları
+    API-->>MCP: Firma ve rol kapsamındaki veri
+    MCP-->>RT: Araç sonucu
+    RT-->>C: Yanıt
+    C-->>U: Sefer, durum veya öneri
+  else İşlem isteği
+    RT->>RT: Eksik alanları iste, aynı işlem için önizleme hazırla
+    RT-->>C: Önizleme ve teyit isteği
+    C-->>U: İşlem özeti
+    U->>C: Sonraki turda açık teyit
+    C->>RT: Yeni tur, aynı oturum
+    RT->>RT: Kodda önceki tur ve aynı işlem kontrolü
+    RT->>API: Geçerli teyitte doğrudan yazma (JWT ve Idempotency-Key)
+    API-->>RT: Sonuç veya kural ihlali
+    RT-->>C: İşlem sonucu
+    C-->>U: Yanıt ve correlationId
+  end
 ```
 
 **Açıklama**
-- **Kimlik taşıma:** Chat Lambda ham ID token'ı Runtime'a iletir (loglanmaz). Ajan araçları iş API'sini bu token'la çağırır. Başka firmanın verisi, kullanıcının kendi yetkisiyle zaten görünmez.
-- **Rol:** Ajan rolü `GET /me` ile backend'den öğrenir; prompt veya kullanıcı girdisinden seçilemez.
-- **Dayanıklılık:** Runtime yoksa Lambda 503, zaman aşımında/hatada kullanıcıya düzgün bir Türkçe mesaj döner (200).
-- **Alternatif kanal:** Amazon Q Business bu hesapta `AccessDenied`; sohbet bu nedenle kendi arayüzümüz + AgentCore üzerindendir.
-- **Knowledge Base:** Taşıyıcıya özel Bedrock Knowledge Base planlanan bir bileşendir; canlı kurulum durumu **doğrulanacak**. Kurulu değilse öncelik/gelmeme kuralı `carrier_rules` aracından gelir.
+- **Teyit:** `writes.py` aynı oturumda, aynı parametrelerle ve önceki turda yapılmış önizlemeyi arar. Yalnız sonraki turdaki açık kullanıcı teyidi iş işlemini başlatır. Bekleyen teyit Runtime belleğinde 30 dakika geçerlidir ve kullanılınca kaldırılır. AgentCore Memory sohbet bağlamı içindir, bekleyen teyit deposu değildir.
+- **Yazma kapsamı:** Müşteri rezervasyon talebi açar, iptal eder ve alıcıları günceller. Yetkili taşıyıcı onay/ret, depo olayı, sefer açma/yayınlama ve istisna kapatma işlemleri yapabilir. Müşteri teyidi taşıyıcı onayı yerine geçmez.
+- **İş kuralları ve iz:** BusinessApi çağıranın JWT’siyle rolü, firmayı ve ilgili iş kurallarını yeniden denetler. Ajan yazma isteklerine oturum ve işlemden türetilen `Idempotency-Key` ekler. `correlationId` sohbet ve araç çağrısını birbirine bağlar. Kart bilgisi istenmez, ödeme simüledir.
+- **Okumalar:** AgentCore Gateway’de sekiz GET aracı kayıtlıdır. Gateway çağrısı teknik hata verirse ilgili okumalar doğrudan iş API’sine dönebilir. Teklif önizlemesi de doğrudan API’ye gider ve teklif KPI kaydı oluşturabilir. Taşıyıcı kural sorgusunda Bedrock Knowledge Bases firma filtresi kullanır.
+- **Kanal:** Web asistanı çekmece olarak açılır. Web ve mobil aynı `/chat` ucunu kullanır. Amazon Q Business bu hesapta `AccessDenied` nedeniyle demo dışında kalır.
 
 ## Güvenlik ve kiracı sınırı (özet)
 
