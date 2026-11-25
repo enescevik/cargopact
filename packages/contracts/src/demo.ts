@@ -6,7 +6,7 @@ export const quoteInput = z.object({
   volumeM3: z.number().min(0).max(200).optional(),
   productClassCode: z.string().min(1).max(40),
   /** Karbon: müşterinin seçtiği alternatif senaryo (yoksa tasarruf iddiası yapılmaz). */
-  alternativeScenario: z.enum(["dedicated", "groupage"]).optional(),
+  alternativeScenario: z.enum(["dedicated", "groupage"]).nullable().optional(),
 });
 /** Sözleşme kabulü. Zorunluluk işleyicide denetlenir (CONTRACT_NOT_ACCEPTED). */
 export const contractAcceptInput = z.object({

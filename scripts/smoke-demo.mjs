@@ -14,6 +14,11 @@ async function token(email) {
   return (tokens[email] = r.AuthenticationResult.IdToken);
 }
 async function call(email, method, path, body, headers = {}) {
+  if (method === "POST" && path === "/customer/reservations" && body && !("contract" in body)) {
+    const pv = await call(email, "POST", `/customer/trips/${body.tripId}/contract-preview`, { pallets: body.pallets, grossKg: body.grossKg, volumeM3: body.volumeM3, productClassCode: body.productClassCode, paymentPlan: body.paymentPlan });
+    if (pv.status !== 200) return pv;
+    body = { ...body, contract: { version: pv.body.version, renderedHash: pv.body.renderedHash, signerName: "Test İmzacı", accepted: true } };
+  }
   const h = { "content-type": "application/json", ...headers };
   if (email) h.authorization = `Bearer ${await token(email)}`;
   if (method !== "GET" && !("idempotency-key" in headers)) h["idempotency-key"] = randomUUID();
@@ -287,6 +292,46 @@ expect("kapasite geri açılınca needsReview kalkar", r.status === 200 && r.bod
 r = await call(YONETICI, "POST", `/carrier/trips/${ed.id}/status`, { action: "cancel" });
 expect("taze sefer temizlendi (iptal)", r.body.status === "cancelled", r.body);
 
+// 8b) Karbon + sözleşme
+{
+  const qc = await call(MARMARA, "POST", `/customer/trips/${brs.id}/quote`, { pallets: 2, grossKg: 800, productClassCode: "GENEL", alternativeScenario: "dedicated" });
+  expect("quote karbon: senaryo ile tasarruf sayı", qc.status === 200 && qc.body.carbon?.isDemoFactors === true && qc.body.carbon.alternativeScenario === "dedicated" && typeof qc.body.carbon.savedKg === "number" && qc.body.carbon.distanceKm > 0, qc.body.carbon);
+  const qn = await call(MARMARA, "POST", `/customer/trips/${brs.id}/quote`, { pallets: 2, grossKg: 800, productClassCode: "GENEL" });
+  expect("quote karbon: senaryo yoksa tasarruf null", qn.body.carbon?.savedKg === null && qn.body.carbon.alternativeKg === null && qn.body.carbon.allocatedKg > 0, qn.body.carbon);
+  const ts = await call(MARMARA, "GET", "/customer/trips");
+  expect("TripCard.carbon var", ts.body.items.every((t) => t.carbon && t.carbon.distanceKm >= 0 && ["kamyonet", "kamyon", "tir"].includes(t.carbon.vehicleClass)), ts.body.items[0]?.carbon);
+  const cb = { tripId: brs.id, pallets: 1, grossKg: 300, productClassCode: "GENEL", paymentPlan: "deposit" };
+  const p1 = await call(MARMARA, "POST", `/customer/trips/${brs.id}/contract-preview`, cb);
+  const p2 = await call(MARMARA, "POST", `/customer/trips/${brs.id}/contract-preview`, cb);
+  expect("contract-preview: doldurulmuş, deterministik hash", p1.status === 200 && p1.body.version === "1.0-taslak" && p1.body.isDraft === true && !p1.body.renderedMarkdown.includes("{{") && p1.body.renderedMarkdown.includes("Marmara Ambar") && p1.body.renderedMarkdown.includes("Dinçer Lojistik") && /^[0-9a-f]{64}$/.test(p1.body.renderedHash) && p1.body.renderedHash === p2.body.renderedHash, p1.body.renderedHash);
+  const post = (contract) => call(MARMARA, "POST", "/customer/reservations", { ...cb, card: CARD, contract });
+  let x = await post(undefined);
+  expect("sözleşmesiz rezervasyon: 400 CONTRACT_NOT_ACCEPTED", x.status === 400 && x.body.details?.reason === "CONTRACT_NOT_ACCEPTED", x.body);
+  x = await post({ version: p1.body.version, renderedHash: p1.body.renderedHash, signerName: "Test İmzacı", accepted: false });
+  expect("accepted=false: 400 CONTRACT_NOT_ACCEPTED", x.status === 400 && x.body.details?.reason === "CONTRACT_NOT_ACCEPTED", x.body);
+  x = await post({ version: "0.9", renderedHash: p1.body.renderedHash, signerName: "Test İmzacı", accepted: true });
+  expect("sürüm uyuşmazlığı: 400 CONTRACT_NOT_ACCEPTED", x.status === 400 && x.body.details?.reason === "CONTRACT_NOT_ACCEPTED", x.body);
+  x = await post({ version: p1.body.version, renderedHash: "0".repeat(64), signerName: "Test İmzacı", accepted: true });
+  expect("hash uyuşmazlığı: 409 CONTRACT_STALE (kapasite değişmez)", x.status === 409 && x.body.details?.reason === "CONTRACT_STALE" && x.body.details.renderedHash === p1.body.renderedHash, x.body);
+  x = await call(MARMARA, "POST", "/customer/reservations", { ...cb, alternativeScenario: "groupage", card: CARD, contract: { version: p1.body.version, renderedHash: p1.body.renderedHash, signerName: "Ayşe İmzacı", accepted: true } });
+  expect("sözleşmeli rezervasyon 201 + contract + carbon(groupage)", x.status === 201 && x.body.contract?.signerName === "Ayşe İmzacı" && x.body.contract.renderedHash === p1.body.renderedHash && x.body.carbon?.alternativeScenario === "groupage" && typeof x.body.carbon.savedKg === "number", x.body);
+  const rid = x.body.id;
+  const gc = await call(MARMARA, "GET", `/customer/reservations/${rid}/contract`);
+  expect("GET müşteri sözleşmesi: imza dolu", gc.status === 200 && gc.body.renderedMarkdown.includes("Ayşe İmzacı") && gc.body.renderedMarkdown.includes(p1.body.renderedHash) && gc.body.acceptance.signerName === "Ayşe İmzacı", gc.body);
+  const gk = await call(YONETICI, "GET", `/carrier/reservations/${rid}/contract`);
+  expect("GET taşıyıcı sözleşmesi", gk.status === 200 && gk.body.renderedMarkdown === gc.body.renderedMarkdown, gk.status);
+  const gx = await call(EGE, "GET", `/customer/reservations/${rid}/contract`);
+  expect("başka müşteri sözleşmeyi göremez (404)", gx.status === 404, gx.status);
+  const cs = await call(MARMARA, "GET", "/customer/carbon/summary");
+  expect("müşteri karbon özeti", cs.status === 200 && cs.body.reservations >= 1 && cs.body.allocatedKg > 0 && cs.body.declaredSavedKg >= 0 && cs.body.isDemoFactors === true, cs.body);
+  const tk = await call(YONETICI, "GET", "/carrier/trips");
+  expect("CarrierTrip.carbon: TripCarbon", tk.body.items.every((t) => t.carbon && typeof t.carbon.tripKg === "number" && "allocatedExternalKg" in t.carbon && "reservationsTotal" in t.carbon), tk.body.items[0]?.carbon);
+  const dc = await dash();
+  expect("dashboard carbon bloğu", dc.carbon && typeof dc.carbon.allocatedKg === "number" && "perPalletAllocatedKg" in dc.carbon && dc.carbon.isDemoFactors === true, dc.carbon);
+  const kp = await call(YONETICI, "GET", "/carrier/kpis");
+  expect("kpis carbon bloğu", kp.body.carbon && typeof kp.body.carbon.allocatedKg === "number" && "reservationsTotal" in kp.body.carbon, kp.body.carbon);
+  await call(MARMARA, "POST", `/customer/reservations/${rid}/cancel`, {});
+}
 // 9) Demo seed'i yeniden çalıştır → 25/33
 try {
   execSync("npx tsx packages/db/src/cli.ts seed-demo", { stdio: "pipe", env: process.env, cwd: process.cwd() });

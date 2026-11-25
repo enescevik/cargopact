@@ -5,11 +5,7 @@
     "version": "0.1.0",
     "description": "Hatalar `Error` şemasıyla döner. Zamanlar ISO 8601 UTC, para kuruş tamsayı."
   },
-  "servers": [
-    {
-      "url": "https://765h182ijf.execute-api.us-east-1.amazonaws.com"
-    }
-  ],
+  "servers": [],
   "components": {
     "securitySchemes": {
       "cognitoJwt": {
@@ -8126,6 +8122,7 @@
                   },
                   "alternativeScenario": {
                     "type": "string",
+                    "nullable": true,
                     "enum": [
                       "dedicated",
                       "groupage"
@@ -8286,6 +8283,7 @@
                   },
                   "alternativeScenario": {
                     "type": "string",
+                    "nullable": true,
                     "enum": [
                       "dedicated",
                       "groupage"
@@ -8741,6 +8739,7 @@
                   },
                   "alternativeScenario": {
                     "type": "string",
+                    "nullable": true,
                     "enum": [
                       "dedicated",
                       "groupage"

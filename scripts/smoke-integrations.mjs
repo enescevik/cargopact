@@ -13,6 +13,11 @@ async function token(email) {
   return (tokens[email] = r.AuthenticationResult.IdToken);
 }
 async function call(email, method, path, body, headers = {}) {
+  if (method === "POST" && path === "/customer/reservations" && body && !("contract" in body)) {
+    const pv = await call(email, "POST", `/customer/trips/${body.tripId}/contract-preview`, { pallets: body.pallets, grossKg: body.grossKg, volumeM3: body.volumeM3, productClassCode: body.productClassCode, paymentPlan: body.paymentPlan });
+    if (pv.status !== 200) return pv;
+    body = { ...body, contract: { version: pv.body.version, renderedHash: pv.body.renderedHash, signerName: "Test İmzacı", accepted: true } };
+  }
   const h = { "content-type": "application/json", authorization: `Bearer ${await token(email)}`, ...headers };
   if (method !== "GET" && !("idempotency-key" in headers)) h["idempotency-key"] = randomUUID();
   const r = await fetch(API_URL + path, { method, headers: h, body: body ? JSON.stringify(body) : undefined });

@@ -37,6 +37,9 @@ async function newCtx(label) {
 }
 async function login(page, email) {
   await page.goto(M, { waitUntil: "networkidle" });
+  // Yeni tasarım: rol kartları; e-posta formu "E-posta ve parola ile giriş" bağlantısının arkasında.
+  const link = page.getByText("E-posta ve parola ile giriş").first();
+  if (await link.isVisible().catch(() => false)) await link.click();
   await page.getByLabel("E-posta").fill(email);
   await page.getByLabel("Parola").fill(PASS);
   await page.getByRole("button", { name: "Giriş yap" }).click();
