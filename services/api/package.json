@@ -1,0 +1,12 @@
+{
+  "name": "@cargopact/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agentcore": "^3.700.0",
+    "@cargopact/shared": "*"
+  },
+  "devDependencies": { "@types/aws-lambda": "^8.10.145", "@types/node": "^22.0.0" }
+}
