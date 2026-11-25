@@ -20,7 +20,7 @@ import { ManifestView } from "./carrier/Manifest";
 import { KpiView } from "./Kpis";
 import { ExceptionsView } from "./Exceptions";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
-import { ChipSelect, Countdown, Segmented } from "./components/controls";
+import { ChipSelect, Countdown, Segmented, Sheet } from "./components/controls";
 import { TruckMap, operatorCells } from "./components/TruckMap";
 
 type View = { name: "ops"; id?: string } | { name: "new" } | { name: "customers" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string } | { name: "dash" } | { name: "chat" } | { name: "traces" };
@@ -49,13 +49,13 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
       <main className="stage">
         {view.name === "ops" && <Cockpit initialId={view.id} onNew={() => setView({ name: "new" })} onManifest={(id) => setView({ name: "manifest", id })} who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} />}
         {view.name === "new" && <NewTripWizard onCreated={(id) => setView({ name: "ops", id })} />}
-        {view.name === "customers" && <div className="scroll"><CustomerManagement /></div>}
-        {view.name === "exceptions" && <div className="scroll"><ExceptionsView onOpenTrip={(id) => setView({ name: "ops", id })} /></div>}
-        {view.name === "kpis" && <div className="scroll"><KpiView /></div>}
-        {view.name === "manifest" && <div className="scroll"><ManifestView tripId={view.id} onBack={() => setView({ name: "ops", id: view.id })} /></div>}
-        {view.name === "dash" && <div className="scroll"><DashboardView /></div>}
-        {view.name === "chat" && <div className="pagepad scroll"><Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} /></div>}
-        {view.name === "traces" && <div className="scroll"><TracesView /></div>}
+        {view.name === "customers" && <Sheet><CustomerManagement /></Sheet>}
+        {view.name === "exceptions" && <Sheet><ExceptionsView onOpenTrip={(id) => setView({ name: "ops", id })} /></Sheet>}
+        {view.name === "kpis" && <Sheet><KpiView /></Sheet>}
+        {view.name === "manifest" && <Sheet><ManifestView tripId={view.id} onBack={() => setView({ name: "ops", id: view.id })} /></Sheet>}
+        {view.name === "dash" && <Sheet><DashboardView /></Sheet>}
+        {view.name === "chat" && <Sheet><Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} /></Sheet>}
+        {view.name === "traces" && <Sheet><TracesView /></Sheet>}
       </main>
     </div>
   );
@@ -327,3 +327,4 @@ function ReasonModal({ title, cta, required, presets, onClose, onSubmit }: { tit
     </Modal>
   );
 }
+

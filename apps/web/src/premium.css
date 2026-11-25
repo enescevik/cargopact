@@ -110,7 +110,12 @@ body { font-size: 14px; font-variant-numeric: tabular-nums; }
 .noir .cd { color: #b9c3ef; } .noir .cd.soon { color: #ffd27a; }
 
 /* ---------- müşteri: rezervasyon ekranı ---------- */
-.book { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 14px 20px 18px; max-width: 1680px; margin: 0 auto; }
+.book { height: 100%; display: grid; grid-template-columns: 300px minmax(0, 1fr) 380px; gap: 12px; padding: 14px 16px; }
+.book-pane .pane-head { display: grid; gap: 10px; padding-bottom: 12px; }
+.mini-l { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--i3); }
+.group-min { font-size: 10.5px; letter-spacing: .02em; text-transform: none; color: var(--c7); font-weight: 700; } .group-min.full { color: var(--i3); }
+.trow-best { position: absolute; top: 8px; right: 10px; font-size: 9.5px; font-weight: 800; letter-spacing: .04em; background: var(--m5); color: var(--c9); padding: 1px 7px; border-radius: 999px; }
+.trow:has(.trow-best) .trow-top { padding-right: 0; margin-top: 12px; }
 .composer { background: #fff; border: var(--hair); border-radius: 18px; padding: 12px 16px; box-shadow: var(--panel-shadow); display: grid; gap: 10px; }
 .comp-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .comp-field { display: grid; gap: 6px; min-width: 0; }
@@ -336,7 +341,7 @@ body { font-size: 14px; font-variant-numeric: tabular-nums; }
 
 /* ---------- duyarlılık: dar ekranlarda belge akışına dön ---------- */
 @media (max-width: 1280px) {
-  .book-grid { grid-template-columns: 260px minmax(0, 1fr) 330px; }
+  .book { grid-template-columns: 260px minmax(0, 1fr) 330px; }
   .cockpit { grid-template-columns: 250px minmax(0, 1fr) 330px; }
 }
 @media (max-width: 1100px), (max-height: 700px) {
@@ -371,6 +376,28 @@ body { font-size: 14px; font-variant-numeric: tabular-nums; }
   .wallet-actions { display: none; }
 }
 
-.who-line { font-size: 12px; color: var(--i5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.who-line { font-size: 12px; color: var(--i5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 /* Teslim kodu cüzdan kartında büyük gösterilir; alıcı kartında tekrar etmesin */
 .detail-2 [data-testid="pickup-card"] > div:has(> [data-testid="pickup-code"]) { display: none; }
+
+/* Plus Jakarta Sans başlık ayarı */
+.route-h, .q-route, .wallet-route, .title, .route, .serif { font-weight: 700; letter-spacing: -.025em; }
+.trow-route, .lrow-route { font-weight: 700; letter-spacing: -.01em; }
+
+/* Kokpit dışı sayfalar: aynı panel çerçevesi */
+.sheet { height: 100%; padding: 14px 16px; min-height: 0; }
+.sheet-in { height: 100%; }
+.sheet-in > .pane-scroll { padding: 0; }
+.sheet .page { max-width: 1320px !important; padding: 26px 32px 48px; }
+.sheet .page-head .title { font-size: 28px; }
+.sheet .page .card { box-shadow: none; border: var(--hair); border-radius: 16px; background: #fffdf9; }
+.sheet .page .card:hover { border-color: var(--c1); }
+.input.sm { height: 34px; padding: 0 10px; font-size: 13px; }
+@media (max-width: 1100px), (max-height: 700px) {
+  .sheet, .sheet-in { height: auto; }
+  .book { height: auto; grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .sheet { padding: 10px; }
+  .sheet .page { padding: 16px 14px 32px; }
+}
