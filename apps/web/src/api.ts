@@ -58,11 +58,21 @@ export async function api<T>(
       res.status === 404 ? "Kaynak bulunamadı (uç nokta henüz hazır olmayabilir)."
       : res.status === 503 || res.status === 504 ? "Asistan şu an yanıt veremiyor, lütfen tekrar deneyin."
       : `Beklenmeyen hata (HTTP ${res.status}).`;
+    const friendly = res.status === 503 || res.status === 504 ? fallback : undefined;
     throw new ApiError(
-      data?.message ?? data?.error ?? fallback, res.status, data?.code, data?.correlationId, data?.details,
+      friendly ?? data?.message ?? data?.error ?? fallback, res.status, data?.code, data?.correlationId, data?.details,
     );
   }
   return data as T;
 }
 
-export const sendChat = (req: ChatRequest) => api<ChatResponse>("POST", "/chat", req);
+export async function sendChat(req: ChatRequest): Promise<ChatResponse> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 27000);
+  try {
+    return await api<ChatResponse>("POST", "/chat", req, { signal: ac.signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw new ApiError("Asistan zamanında yanıt veremedi. Lütfen tekrar deneyin.", 504);
+    throw e;
+  } finally { clearTimeout(timer); }
+}
