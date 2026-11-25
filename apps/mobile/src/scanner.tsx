@@ -1,16 +1,62 @@
 import { useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Linking, Platform, StyleSheet, Text, View } from "react-native";
+import { CameraView, useCameraPermissions, type BarcodeType } from "expo-camera";
 import jsQR from "jsqr";
 import { c } from "./theme";
 import { Btn, Field } from "./ui";
 
-/** Tam ekran kamera tarayıcı (yalnız web çalışma zamanı). */
-export function Scanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
+/** Karekod + yaygın lojistik barkodları (palet etiketi Code128, GS1, EAN/UPC, DataMatrix, PDF417). */
+const NATIVE_TYPES: BarcodeType[] = ["qr", "code128", "code39", "code93", "ean13", "ean8", "upc_a", "upc_e", "itf14", "datamatrix", "pdf417", "codabar"];
+const WEB_FORMATS = ["qr_code", "code_128", "code_39", "code_93", "ean_13", "ean_8", "upc_a", "upc_e", "itf", "data_matrix", "pdf417", "codabar"];
+
+/** Tam ekran kamera tarayıcı: iOS/Android'de yerel kamera, web'de getUserMedia. */
+export function Scanner(props: { onCode: (code: string) => void; onClose: () => void }) {
+  return Platform.OS === "web" ? <WebScanner {...props} /> : <NativeScanner {...props} />;
+}
+
+function NativeScanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
+  const [perm, requestPerm] = useCameraPermissions();
+  const done = useRef(false);
+  const [manual, setManual] = useState("");
+  const [torch, setTorch] = useState(false);
+  useEffect(() => { if (perm && !perm.granted && perm.canAskAgain) void requestPerm(); }, [perm, requestPerm]);
+  const granted = !!perm?.granted;
+  const err = !perm ? undefined : granted ? undefined : perm.canAskAgain ? "Kamera izni bekleniyor…" : "Kamera izni kapalı. Ayarlar'dan CargoPact için kamerayı açın ya da kodu elle girin.";
+  return (
+    <View style={[StyleSheet.absoluteFill, { zIndex: 100, backgroundColor: "#000" }]}>
+      {granted && (
+        <CameraView style={StyleSheet.absoluteFill} facing="back" enableTorch={torch}
+          barcodeScannerSettings={{ barcodeTypes: NATIVE_TYPES }}
+          onBarcodeScanned={({ data }) => {
+            const v = (data ?? "").trim();
+            if (!v || done.current) return;
+            done.current = true;
+            onCode(v);
+          }} />
+      )}
+      <View pointerEvents="none" style={{ position: "absolute", top: "18%", left: "10%", right: "10%", height: "26%", borderWidth: 3, borderColor: c.mint500, borderRadius: 20 }} />
+      <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: c.porcelain, padding: 18, gap: 10, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+        {err ? <Text style={{ color: c.danger, fontWeight: "600" }}>{err}</Text> : <Text style={{ color: c.ink700 }}>Karekodu veya barkodu çerçeveye hizalayın.</Text>}
+        {!!perm && !granted && !perm.canAskAgain && <Btn kind="outline" small title="Ayarları aç" onPress={() => void Linking.openSettings()} />}
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-end" }}>
+          <Field label="Kodu elle gir" value={manual} onChangeText={setManual} placeholder="CP-2026-000123-P1" autoCapitalize="characters" onSubmitEditing={() => manual.trim() && onCode(manual.trim())} />
+          <Btn small title="Bul" disabled={!manual.trim()} onPress={() => onCode(manual.trim())} />
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {granted && <Btn kind="outline" title={torch ? "Feneri kapat" : "Fener"} onPress={() => setTorch((t) => !t)} style={{ flex: 1 }} />}
+          <Btn kind="outline" title="Kapat" onPress={onClose} style={{ flex: 1 }} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function WebScanner({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
   const host = useRef<View>(null);
   const [err, setErr] = useState<string>();
   const [manual, setManual] = useState("");
   useEffect(() => {
-    if (Platform.OS !== "web" || typeof document === "undefined") { setErr("Kamera yalnız web sürümünde desteklenir. Kodu elle girin."); return; }
+    if (typeof document === "undefined") { setErr("Kamera açılamadı. Kodu elle girin."); return; }
     if (!navigator.mediaDevices?.getUserMedia) { setErr("Kamera kullanılamıyor (HTTPS gerekir veya tarayıcı desteklemiyor). Kodu elle girin."); return; }
     let stop = false;
     let stream: MediaStream | undefined;
@@ -21,7 +67,8 @@ export function Scanner({ onCode, onClose }: { onCode: (code: string) => void; o
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     const BD = (window as unknown as { BarcodeDetector?: new (o: object) => { detect(s: CanvasImageSource): Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-    const det = BD ? new BD({ formats: ["qr_code"] }) : undefined;
+    let det: { detect(s: CanvasImageSource): Promise<{ rawValue: string }[]> } | undefined;
+    try { det = BD ? new BD({ formats: WEB_FORMATS }) : undefined; } catch { try { det = BD ? new BD({ formats: ["qr_code"] }) : undefined; } catch { det = undefined; } }
     let last = 0;
     const tick = async (t: number) => {
       if (stop) return;
