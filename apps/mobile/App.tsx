@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -91,7 +91,20 @@ function Shell() {
   );
 }
 
+function useWebFonts() {
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    if (document.getElementById("cp-fonts")) return;
+    const l = document.createElement("link");
+    l.id = "cp-fonts"; l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap";
+    document.head.appendChild(l);
+    document.body.style.fontFamily = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
+    document.body.style.backgroundColor = "#E9E4D6";
+  }, []);
+}
 export default function App() {
+  useWebFonts();
   const web = Platform.OS === "web";
   return (
     <SafeAreaProvider>
