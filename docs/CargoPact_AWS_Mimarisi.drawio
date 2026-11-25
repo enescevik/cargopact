@@ -1,0 +1,973 @@
+<mxfile host="65bd71144e" compressed="false">
+    <diagram id="cp-overview" name="01 · AWS Genel Mimari">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="CargoPact  /  AWS mimarisi" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="Palet kapasitesi, depo operasyonu ve yapay zekâ  •  AWS demo / us-east-1  •  25 Kasım 2026" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="01" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="cl" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="506" width="215" x="36" y="143" as="geometry"/>
+                </mxCell>
+                <mxCell id="clt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   İSTEMCİLER" vertex="1">
+                    <mxGeometry height="21" width="183" x="52" y="152" as="geometry"/>
+                </mxCell>
+                <mxCell id="aws" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FBFCFE;strokeColor=#ABBFD3;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="520" width="1092" x="271" y="129" as="geometry"/>
+                </mxCell>
+                <mxCell id="awst" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="AWS CLOUD   /   US-EAST-1" vertex="1">
+                    <mxGeometry height="21" width="1060" x="287" y="138" as="geometry"/>
+                </mxCell>
+                <mxCell id="ed" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="455" width="254" x="290" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="edt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   ERİŞİM VE DAĞITIM" vertex="1">
+                    <mxGeometry height="21" width="222" x="306" y="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="ap" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="455" width="283" x="568" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="apt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="03   İŞ API’Sİ" vertex="1">
+                    <mxGeometry height="21" width="251" x="584" y="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="st" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="455" width="468" x="875" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="stt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="04   VERİ VE AJAN" vertex="1">
+                    <mxGeometry height="21" width="436" x="891" y="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="web" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="177" x="52" y="236" as="geometry"/>
+                </mxCell>
+                <mxCell id="webl" parent="web" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Web&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;React + Vite&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="156" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mob" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="177" x="52" y="332" as="geometry"/>
+                </mxCell>
+                <mxCell id="mobl" parent="mob" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Mobil&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Expo / React Native&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="156" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="cf" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="217" x="308" y="236" as="geometry"/>
+                </mxCell>
+                <mxCell id="cfi" parent="cf" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudfront;fillColor=#8C4FFF;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="cfl" parent="cf" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon CloudFront&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Web ve /m/ dağıtımı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="site" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="217" x="308" y="337" as="geometry"/>
+                </mxCell>
+                <mxCell id="sitei" parent="site" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="sitel" parent="site" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon S3&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Özel site bucket · OAC&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="cog" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="217" x="308" y="464" as="geometry"/>
+                </mxCell>
+                <mxCell id="cogi" parent="cog" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cognito;fillColor=#DD344C;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="cogl" parent="cog" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Cognito&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;User Pool · ID token&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="gw" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="226" x="595" y="236" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwi" parent="gw" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwl" parent="gw" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;HTTP API · JWT doğrulama&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="157" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="biz" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="226" x="595" y="350" as="geometry"/>
+                </mxCell>
+                <mxCell id="bizi" parent="biz" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="bizl" parent="biz" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AWS Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;BusinessApi · Node.js / TS&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="157" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="chat" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="226" x="595" y="464" as="geometry"/>
+                </mxCell>
+                <mxCell id="chati" parent="chat" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="chatl" parent="chat" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AWS Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Chat · POST /chat&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="157" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="db" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="209" x="897" y="239" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbi" parent="db" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbl" parent="db" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Kapasite, sipariş, denetim kaydı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="140" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="pod" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="202" x="1121" y="239" as="geometry"/>
+                </mxCell>
+                <mxCell id="podi" parent="pod" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="podl" parent="pod" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon S3&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Özel e-POD · presigned URL&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="133" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="rt" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="209" x="897" y="464" as="geometry"/>
+                </mxCell>
+                <mxCell id="rti" parent="rt" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="rtl" parent="rt" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Bedrock AgentCore&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Runtime · okuma ve teyitli yazma&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="140" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="model" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="202" x="1121" y="356" as="geometry"/>
+                </mxCell>
+                <mxCell id="modeli" parent="model" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="modell" parent="model" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Bedrock&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Claude Haiku 4.5&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="133" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mem" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="202" x="1121" y="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="memi" parent="mem" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="meml" parent="mem" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AgentCore Memory&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Sohbet bağlamı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="133" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="wcf" edge="1" parent="1" source="web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="cf" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcf" edge="1" parent="1" source="mob" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.27;entryX=0;entryY=0.75;" target="cf" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="270" y="350"/>
+                            <mxPoint x="270" y="287"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="cfs" edge="1" parent="1" source="cf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="site" value="OAC">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mc" edge="1" parent="1" source="mob" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0;entryY=0.5;" target="cog" value="giriş">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="141" y="498"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ag" edge="1" parent="1" source="web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=0;entryX=0.5;entryY=0;" target="gw" value="HTTPS · ID token">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-3" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="140" y="215"/>
+                            <mxPoint x="707" y="215"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="auth" edge="1" parent="1" source="gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 5;exitX=0;exitY=0.7;entryX=1;entryY=0.7;" target="cog" value="JWT">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="12" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="555" y="283"/>
+                            <mxPoint x="555" y="513"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="gb" edge="1" parent="1" source="gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="biz" value="iş uçları">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="gc" edge="1" parent="1" source="gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.65;entryX=1;entryY=0.3;" target="chat" value="/chat">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="11" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="835" y="280"/>
+                            <mxPoint x="835" y="484"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="bdb" edge="1" parent="1" source="biz" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.36;entryX=0;entryY=0.6;" target="db" value="IAM token">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-5" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="870" y="375"/>
+                            <mxPoint x="870" y="280"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="bpod" edge="1" parent="1" source="biz" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.73;entryX=0.5;entryY=1;" target="pod" value="e-POD URL">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-8" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="862" y="400"/>
+                            <mxPoint x="862" y="329"/>
+                            <mxPoint x="1222" y="329"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="crt" edge="1" parent="1" source="chat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="rt" value="IAM">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rtb" edge="1" parent="1" source="rt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" target="model" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1114" y="481"/>
+                            <mxPoint x="1114" y="390"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="rtm" edge="1" parent="1" source="rt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" target="mem" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1114" y="515"/>
+                            <mxPoint x="1114" y="554"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;Rezervasyon ve taşıyıcı kararı aynı BusinessApi’de uygulanır.&lt;/b&gt; Web/mobil formları ve açık teyitli sohbet desteklenir. MCP okuma araçları ile yazma yolunun ayrıntısı sekme 02 ve 06’da." vertex="1">
+                    <mxGeometry height="56" width="1327" x="36" y="673" as="geometry"/>
+                </mxCell>
+                <mxCell id="source" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="Kaynak: infra/lib, services/api, agents ve docs/INTEGRATIONS.md  ·  Repo: 81ebd14  ·  Canlı ortam yeniden sınanmadı." vertex="1">
+                    <mxGeometry height="21" width="1290" x="40" y="739" as="geometry"/>
+                </mxCell>
+                <mxCell id="ecr" parent="1" style="rounded=1;arcSize=12;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;" value="" vertex="1">
+                    <mxGeometry height="57" width="209" x="897" y="552" as="geometry"/>
+                </mxCell>
+                <mxCell id="ecri" parent="ecr" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elastic_container_registry;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="10" as="geometry"/>
+                </mxCell>
+                <mxCell id="ecrl" parent="ecr" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon ECR&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Runtime imajı · arm64&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="51" width="140" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="ecrt" edge="1" parent="1" source="ecr" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#526680;dashed=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="rt" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="cp-agent" name="02 · Ajan ve Güvenlik">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="980" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="Ajan yönlendirmesi ve MCP okuma yolu" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="Rol, /me ile doğrulanır  •  Strands uzmanı seçilir  •  Yazma yolu sekme 06’da" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="02" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="call" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="187" width="1327" x="36" y="153" as="geometry"/>
+                </mxCell>
+                <mxCell id="callt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   SOHBET ÇAĞRI YOLU" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="162" as="geometry"/>
+                </mxCell>
+                <mxCell id="usr" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="207" x="53" y="219" as="geometry"/>
+                </mxCell>
+                <mxCell id="usrl" parent="usr" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Web / mobil&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Müşteri veya planlamacı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="186" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="gw" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="217" x="303" y="219" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwi" parent="gw" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwl" parent="gw" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;JWT doğrulama&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="chat" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="217" x="563" y="219" as="geometry"/>
+                </mxCell>
+                <mxCell id="chati" parent="chat" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="chatl" parent="chat" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AWS Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Chat · oturum ve correlationId&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="rt" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="232" x="823" y="219" as="geometry"/>
+                </mxCell>
+                <mxCell id="rti" parent="rt" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="rtl" parent="rt" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Bedrock AgentCore&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Runtime · Strands orkestratör&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="163" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="tools" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="241" x="1101" y="219" as="geometry"/>
+                </mxCell>
+                <mxCell id="toolsl" parent="tools" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Rol bazlı uzman&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Müşteri veya taşıyıcı · /me&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="220" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="a" edge="1" parent="1" source="usr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="gw" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="b" edge="1" parent="1" source="gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="chat" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c" edge="1" parent="1" source="chat" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="rt" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="d" edge="1" parent="1" source="rt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="tools" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="deps" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F4FAF8;strokeColor=#BCDCD4;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="251" width="1327" x="36" y="367" as="geometry"/>
+                </mxCell>
+                <mxCell id="depst" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   MODEL, OTURUM BELLEĞİ VE BİLGİ TABANI" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="376" as="geometry"/>
+                </mxCell>
+                <mxCell id="model" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="232" x="54" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="modeli" parent="model" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="18.5" as="geometry"/>
+                </mxCell>
+                <mxCell id="modell" parent="model" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Bedrock&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Claude Haiku 4.5&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="67" width="163" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="memory" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="232" x="319" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="memoryi" parent="memory" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="18.5" as="geometry"/>
+                </mxCell>
+                <mxCell id="memoryl" parent="memory" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AgentCore Memory&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Oturum bağlamı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="67" width="163" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="kb" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="244" x="584" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="kbi" parent="kb" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="18.5" as="geometry"/>
+                </mxCell>
+                <mxCell id="kbl" parent="kb" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Bedrock Knowledge Bases&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Taşıyıcıya özel · carrierId filtresi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="67" width="175" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="vec" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="219" x="861" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="veci" parent="vec" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;fillColor=#7AA116;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="18.5" as="geometry"/>
+                </mxCell>
+                <mxCell id="vecl" parent="vec" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon S3 Vectors&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Bilgi tabanı vektör dizini&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="67" width="150" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="bm" edge="1" parent="1" source="rt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.18;exitY=1;entryX=0.5;entryY=0;" target="model" value="model çağrısı">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-5" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="865" y="354"/>
+                            <mxPoint x="170" y="354"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="mm" edge="1" parent="1" source="rt" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.45;exitY=1;entryX=0.5;entryY=0;" target="memory" value="oturum">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-4" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="927" y="398"/>
+                            <mxPoint x="435" y="398"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tk" edge="1" parent="1" source="tools" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0.22;exitY=1;entryX=0.5;entryY=0;" target="kb" value="taşıyıcı kuralları">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-4" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="1154" y="429"/>
+                            <mxPoint x="706" y="429"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="kv" edge="1" parent="1" source="kb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#008478;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="vec" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="desc" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Bilgi tabanı sorgusu, /me üzerinden doğrulanmış taşıyıcı kimliğiyle filtrelenir. Güncel sefer ve rezervasyon verileri iş API’sinden gelir." vertex="1">
+                    <mxGeometry height="34" width="1270" x="55" y="558" as="geometry"/>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;Yetki sınırı:&lt;/b&gt; İlk turda iş işlemi uygulanmaz. Aynı oturumdaki sonraki açık teyitten sonra yetkili yazma doğrudan iş API’sine gider. correlationId araç çağrısını sohbetle eşler." vertex="1">
+                    <mxGeometry height="59" width="1327" x="36" y="850" as="geometry"/>
+                </mxCell>
+                <mxCell id="src" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="CDK imaj etiketi assist-1  ·  Repo: 81ebd14  ·  Commit notu: asistan smoke 12/12; canlı ortam burada yeniden sınanmadı." vertex="1">
+                    <mxGeometry height="21" width="1290" x="40" y="925" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_band" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="195" width="1327" x="36" y="636" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_band_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="03   SEÇİLİ OKUMA ARAÇLARININ MCP YOLU" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="647" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_runtime" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="236" x="55" y="692" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_runtimel" parent="mcp_runtime" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Strands uzman ajanı&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Runtime içindeki MCP istemcisi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_gateway" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="235" x="332" y="692" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_gatewayi" parent="mcp_gateway" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_gatewayl" parent="mcp_gateway" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AgentCore Gateway&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;MCP · Cognito JWT doğrulama&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="164" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_lambda" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="227" x="608" y="692" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_lambdai" parent="mcp_lambda" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_lambdal" parent="mcp_lambda" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;MCP Tools Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;8 kayıtlı GET aracı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="156" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_http" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="219" x="875" y="692" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_httpi" parent="mcp_http" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_httpl" parent="mcp_http" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;HTTP API · JWT doğrulama&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="148" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_biz" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="208" x="1134" y="692" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_bizi" parent="mcp_biz" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_bizl" parent="mcp_biz" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;BusinessApi Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Firma ve rol yetkisi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="137" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_edge_0" edge="1" parent="1" source="mcp_runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="mcp_gateway" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_edge_1" edge="1" parent="1" source="mcp_gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="mcp_lambda" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_edge_2" edge="1" parent="1" source="mcp_lambda" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="mcp_http" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_edge_3" edge="1" parent="1" source="mcp_http" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="mcp_biz" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="mcp_direct" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="MCP seçili GET araçları içindir. Teknik çağrı hatasında ilgili GET doğrudan API’ye dönebilir. Teklif önizlemesi ve teyitli yazma MCP’ye girmez." vertex="1">
+                    <mxGeometry height="33" width="1280" x="57" y="779" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="cp-integrations" name="03 · İşlem ve Entegrasyon">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="Rezervasyon ve entegrasyon" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="İş kaydı ile olay yayını ayrı  •  TMS/WMS adaptörleri ve asenkron olay dağıtımı" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="03" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="sync" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="235" width="1327" x="36" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="synct" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   İŞLEM YOLU" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="154" as="geometry"/>
+                </mxCell>
+                <mxCell id="tms" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="244" x="56" y="222" as="geometry"/>
+                </mxCell>
+                <mxCell id="tmsl" parent="tms" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;TMS ve WMS&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Sefer ve palet olayı adaptörleri&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="223" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="gw" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="223" x="341" y="222" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwi" parent="gw" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.api_gateway;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="gwl" parent="gw" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon API Gateway&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;HTTPS · Cognito JWT&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="154" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="biz" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="225" x="604" y="222" as="geometry"/>
+                </mxCell>
+                <mxCell id="bizi" parent="biz" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="bizl" parent="biz" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AWS Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;BusinessApi · iş kuralları&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="156" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="db" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="222" x="870" y="222" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbi" parent="db" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="dbl" parent="db" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Kapasite satırı · rezervasyon&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="153" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="out" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="68" width="210" x="1132" y="222" as="geometry"/>
+                </mxCell>
+                <mxCell id="outl" parent="out" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Denetim günlüğü&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;audit_log · işlemle aynı kayıt&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="189" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="tg" edge="1" parent="1" source="tms" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="gw" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="gb" edge="1" parent="1" source="gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="biz" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bd" edge="1" parent="1" source="biz" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="db" value="IAM">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="do" edge="1" parent="1" source="db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="out" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="txn" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="TMS taslak sefer açar. WMS kabul/yükleme/varış bildirir. WMS DELIVERED reddedilir. Form veya teyitli sohbetle teslimde alıcı ve kod doğrulanır." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="319" as="geometry"/>
+                </mxCell>
+                <mxCell id="async" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FDF8FB;strokeColor=#E6B9D5;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="238" width="1327" x="36" y="403" as="geometry"/>
+                </mxCell>
+                <mxCell id="asynct" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   OLAY YAYINI   /   KODDA VAR, CANLI DOĞRULAMA BEKLİYOR" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="412" as="geometry"/>
+                </mxCell>
+                <mxCell id="timer" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="244" x="56" y="478" as="geometry"/>
+                </mxCell>
+                <mxCell id="timeri" parent="timer" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="timerl" parent="timer" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon EventBridge&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Zaman kuralı · 1 dakika&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="64" width="175" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="worker" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="223" x="341" y="478" as="geometry"/>
+                </mxCell>
+                <mxCell id="workeri" parent="worker" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="workerl" parent="worker" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;AWS Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;IntegrationsWorker · olay yayını&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="64" width="154" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="bus" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="225" x="604" y="478" as="geometry"/>
+                </mxCell>
+                <mxCell id="busi" parent="bus" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="busl" parent="bus" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon EventBridge&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;cargopact-events · domain bus&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="64" width="156" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="queue" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="222" x="870" y="478" as="geometry"/>
+                </mxCell>
+                <mxCell id="queuei" parent="queue" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sqs;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="queuel" parent="queue" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon SQS&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;WMS / ERP abone kuyruğu&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="64" width="153" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="dlq" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="210" x="1132" y="478" as="geometry"/>
+                </mxCell>
+                <mxCell id="dlqi" parent="dlq" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.sqs;fillColor=#E7157B;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="dlql" parent="dlq" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon SQS&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;DLQ · teslim / işleme hatası&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="64" width="141" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="tw" edge="1" parent="1" source="timer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#E7157B;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="worker" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="wb" edge="1" parent="1" source="worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#E7157B;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="bus" value="PutEvents">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="bq" edge="1" parent="1" source="bus" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#E7157B;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="queue" value="kural">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="qd" edge="1" parent="1" source="queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#E7157B;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="dlq" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="wo" edge="1" parent="1" source="worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#E7157B;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 5;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="out" value="audit_log oku · imleci ilerlet">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint y="-5" as="offset"/>
+                        <Array as="points">
+                            <mxPoint x="452" y="444"/>
+                            <mxPoint x="1237" y="444"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;Olay yayını:&lt;/b&gt; Worker denetim günlüğünü okur. Gerçek bir WMS/ERP tüketicisi bu çizimde gösterilmez. Başarısız EventBridge teslimi veya SQS’de 5 başarısız alım DLQ’ya yönlenir." vertex="1">
+                    <mxGeometry height="58" width="1327" x="36" y="668" as="geometry"/>
+                </mxCell>
+                <mxCell id="src" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="Kaynak: infra/lib/api-stack.ts, docs/INTEGRATIONS.md ve services/api/src/routes/integrations.ts  ·  Repo: 81ebd14" vertex="1">
+                    <mxGeometry height="20" width="1290" x="40" y="741" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="cp-operations" name="04 · Tarife, Bildirim ve Ajan İzi">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="Tarife, uygulama içi bildirim ve ajan izi" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="Tarife, uygulama içi bildirim ve iz kayıtları  •  Kodda mevcut, canlı durum bu çizim için yeniden sınanmadı" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="04" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="work" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="workt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   TİCARİ KOŞULLAR VE BİLDİRİM" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="154" as="geometry"/>
+                </mxCell>
+                <mxCell id="workd" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Etkin sözleşme tarifesi taban fiyatı, sefer kademeleri doluluk ve zamana bağlı çarpanları belirler. Bildirim, durum değişikliğiyle aynı işlemde yazılır." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="388" as="geometry"/>
+                </mxCell>
+                <mxCell id="tracet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   SOHBET VE ARAÇ İZİ" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="397" as="geometry"/>
+                </mxCell>
+                <mxCell id="traced" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="correlationId sohbet turunu, araç çağrılarını ve ilişkili denetim kayıtlarını bağlar. Yetkili taşıyıcı yalnız kendi firmasına ait izleri görebilir." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="543" as="geometry"/>
+                </mxCell>
+                <mxCell id="client" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="62" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="clientl" parent="client" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Web ve mobil&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Sefer teklifi · bildirim zili&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="261" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="business" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="558" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="businessi" parent="business" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="businessl" parent="business" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;BusinessApi Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Fiyatlandırma · /notifications&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="dsql" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="1054" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="dsqli" parent="dsql" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="dsqll" parent="dsql" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Tarifeler · sefer kademeleri · bildirimler&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="chat_runtime" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="62" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="chat_runtimei" parent="chat_runtime" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock_agentcore;fillColor=#01A88D;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="chat_runtimel" parent="chat_runtime" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Chat Lambda ve Runtime&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Sohbet sonucu · araç çağrı izi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_api" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="558" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_apii" parent="trace_api" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_apil" parent="trace_api" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;BusinessApi Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;İz kaydı · GET /carrier/agent-traces&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_dsql" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="73" width="284" x="1054" y="458" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_dsqli" parent="trace_dsql" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace_dsqll" parent="trace_dsql" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;agent_turns · agent_tool_calls · audit_log&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="213" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="request" edge="1" parent="1" source="client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="business" value="API Gateway · JWT">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="terms" edge="1" parent="1" source="business" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="dsql" value="Ticari koşulları oku · bildirimi kaydet">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="correlation" edge="1" parent="1" source="chat_runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="trace_api" value="API Gateway · correlationId">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="persist" edge="1" parent="1" source="trace_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="trace_dsql" value="Firma kapsamıyla oku ve yaz">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;İz kapsamı:&lt;/b&gt; MCP okumaları ve teyitli doğrudan API yazıları iz başlıklarını taşır. Bildirimler uygulama içindedir ve ödeme simüledir." vertex="1">
+                    <mxGeometry height="58" width="1327" x="36" y="644" as="geometry"/>
+                </mxCell>
+                <mxCell id="src" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="Kaynak: pricing.ts, trips.ts, notify.ts, chat.ts, routes/traces.ts ve services/mcp-tools  ·  Repo: 81ebd14" vertex="1">
+                    <mxGeometry height="20" width="1290" x="40" y="717" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="cp-warehouse-kpis" name="05 · Depo, Teslim ve Performans">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="Depo operasyonu, teslim ve performans" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="Web ve mobil depo akışı  •  Web taşıyıcı ekranlarında operasyon ve performans takibi" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="05" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="work" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="workt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   DEPO KABULÜNDEN VARIŞ DEPOSUNDA TESLİME" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="154" as="geometry"/>
+                </mxCell>
+                <mxCell id="workd" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Ölçüm farkında uygunluk ve kapasite yeniden kontrol edilir. İnceleme gerekiyorsa taşıyıcı kısmi kabul veya ret kararı verir." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="388" as="geometry"/>
+                </mxCell>
+                <mxCell id="tracet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   OPERASYON KAYITLARINDAN TAŞIYICI EKRANLARINA" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="397" as="geometry"/>
+                </mxCell>
+                <mxCell id="traced" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Performans ekranı teklif dönüşümü, karar süresi, zamanında kabul/teslim ve doluluğu gösterir. Risk skoru doğrulanmış gelmeme kayıtlarını kullanır." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="543" as="geometry"/>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;Teslim kontrolü:&lt;/b&gt; Alıcı adı ile 6 haneli kod eşleşmelidir. Hatalı denemeler kaydedilir ve sınır aşılırsa teslim kilitlenir. e-POD ekleri özel S3 alanında tutulur." vertex="1">
+                    <mxGeometry height="58" width="1327" x="36" y="644" as="geometry"/>
+                </mxCell>
+                <mxCell id="src" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="Kaynak: services/api/src/routes/demo.ts, exceptions.ts, customers.ts ve kpis.ts  ·  Repo: 81ebd14  ·  Canlı sonuçlar yeniden sınanmadı." vertex="1">
+                    <mxGeometry height="20" width="1290" x="40" y="717" as="geometry"/>
+                </mxCell>
+                <mxCell id="measure" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="293" x="62" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="measurel" parent="measure" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Depo kabulü (T−1)&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Beyan karşılaştırması · palet, kg, m³&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="270" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="transport" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="315" x="540" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="transportl" parent="transport" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Yükleme ve varış&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Palet olayları · durum takibi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="292" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="pickup" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="299" x="1039" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="pickupl" parent="pickup" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Varış deposunda teslim&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Yetkili alıcı · 6 haneli kod · e-POD&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="276" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="accepted" edge="1" parent="1" source="measure" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="transport" value="Kabul edilen yük">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrived" edge="1" parent="1" source="transport" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="pickup" value="Varış kaydı">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="records" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="315" x="62" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="recordsi" parent="records" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="recordsl" parent="records" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Teklif, rezervasyon ve olay kayıtları&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="244" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="ops_api" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="315" x="540" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="ops_apii" parent="ops_api" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="ops_apil" parent="ops_api" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;BusinessApi Lambda&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;KPI · manifest · istisna · müşteri riski&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="244" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="carrier_views" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="319" x="1019" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="carrier_viewsl" parent="carrier_views" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Taşıyıcı ekranları&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Performans · iş kuyruğu · müşteri geçmişi&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="296" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="query" edge="1" parent="1" source="ops_api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="records" value="Sorgular">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="view" edge="1" parent="1" source="carrier_views" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ops_api" value="API Gateway · JWT">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="cp-chat-writes" name="06 · Sohbetten Teyitli İşlem">
+        <mxGraphModel dx="1384" dy="1251" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="800" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="accent" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#008478;strokeColor=#008478;fontColor=#10233A;fontFamily=Arial;fontSize=14;arcSize=30;" value="" vertex="1">
+                    <mxGeometry height="57" width="8" x="36" y="32" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=34;fontColor=#10233A;fontStyle=1;" value="Sohbetten teyitli iş işlemi" vertex="1">
+                    <mxGeometry height="47" width="1160" x="56" y="24" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;fontColor=#526680;" value="Web / mobil sohbet  •  İşlemi önce göster, sonraki turda açık teyit al" vertex="1">
+                    <mxGeometry height="31" width="1220" x="57" y="72" as="geometry"/>
+                </mxCell>
+                <mxCell id="counter" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;fontColor=#008478;fontStyle=1;fontSize=12;" value="06" vertex="1">
+                    <mxGeometry height="30" width="103" x="1260" y="38" as="geometry"/>
+                </mxCell>
+                <mxCell id="work" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="145" as="geometry"/>
+                </mxCell>
+                <mxCell id="workt" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="01   ÖNİZLEME TURU  /  İŞ İŞLEMİ UYGULANMAZ" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="154" as="geometry"/>
+                </mxCell>
+                <mxCell id="workd" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Müşteri rezervasyon talebi, iptal ve alıcı güncelleyebilir. Yetkili taşıyıcı onay/ret, depo olayı, sefer veya istisna işlemi yapabilir." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="trace" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#F7F9FC;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="219" width="1327" x="36" y="388" as="geometry"/>
+                </mxCell>
+                <mxCell id="tracet" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=13;fontColor=#526680;fontStyle=1;" value="02   AYRI TEYİT TURU  /  MCP’YE UĞRAMADAN İŞ API’SİNE" vertex="1">
+                    <mxGeometry height="21" width="1295" x="52" y="397" as="geometry"/>
+                </mxCell>
+                <mxCell id="traced" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=14;fontColor=#526680;" value="Çağıranın JWT’si ve işlem anahtarı iletilir. BusinessApi firma, rol, zaman ve iş kurallarını tekrar kontrol eder. Sonuç sohbete döner." vertex="1">
+                    <mxGeometry height="37" width="1280" x="57" y="543" as="geometry"/>
+                </mxCell>
+                <mxCell id="foot" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#E9F8F4;strokeColor=#AFD9CD;fontColor=#10233A;fontFamily=Arial;fontSize=14;align=left;spacingLeft=14;spacingRight=14;fontSize=13;" value="&lt;b&gt;Onay ayrımı:&lt;/b&gt; Müşteri teyidi yalnız rezervasyon talebini oluşturur. Taşıyıcı ayrıca teyit verip onayladığında sipariş numarası üretilir. Ödeme simüledir." vertex="1">
+                    <mxGeometry height="58" width="1327" x="36" y="644" as="geometry"/>
+                </mxCell>
+                <mxCell id="src" parent="1" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=11;fontColor=#526680;" value="Kaynak: agents/src/cargopact_agents/writes.py, orchestrator.py, chat.ts ve DEMO_SCRIPT.md  ·  Repo: 81ebd14" vertex="1">
+                    <mxGeometry height="20" width="1290" x="40" y="717" as="geometry"/>
+                </mxCell>
+                <mxCell id="request" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="56" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="requestl" parent="request" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Web / mobil sohbet&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;İşlem isteği ve zorunlu bilgiler&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="272" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="preview" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="386" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="previewi" parent="preview" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="previewl" parent="preview" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Runtime ve Strands&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Rol /me’den · özet ve uygunluk&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="224" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="pending" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="716" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="pendingl" parent="pending" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Bekleyen işlem&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Runtime belleği · 30 dakika&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="272" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="shown" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="1046" y="215" as="geometry"/>
+                </mxCell>
+                <mxCell id="shownl" parent="shown" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Kullanıcıya önizleme&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Açık teyit istenir&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="272" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="request-preview" edge="1" parent="1" source="request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="preview" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="preview-pending" edge="1" parent="1" source="preview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="pending" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pending-shown" edge="1" parent="1" source="pending" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="shown" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="confirm" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="56" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="confirml" parent="confirm" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Sonraki kullanıcı mesajı&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Açık teyit · aynı oturum&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="272" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="gate" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="386" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="gatel" parent="gate" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Kodla teyit kontrolü&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Aynı işlem · önceki tur&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="272" x="13" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="write" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="716" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="writei" parent="write" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;fillColor=#ED7100;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="writel" parent="write" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;HTTP API ve BusinessApi&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;Doğrudan yetkili yazma&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="224" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="stored" parent="1" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;fontColor=#10233A;fontFamily=Arial;fontSize=14;shadow=0;" value="" vertex="1">
+                    <mxGeometry height="70" width="295" x="1046" y="457" as="geometry"/>
+                </mxCell>
+                <mxCell id="storedi" parent="stored" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;fillColor=#C925D1;strokeColor=#FFFFFF;aspect=fixed;outlineConnect=0;html=1;connectable=0;" value="" vertex="1">
+                    <mxGeometry height="36" width="36" x="12" y="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="storedl" parent="stored" style="text;html=1;strokeColor=none;fillColor=none;fontFamily=Arial;whiteSpace=wrap;verticalAlign=middle;align=left;fontSize=15;connectable=0;" value="&lt;b&gt;Amazon Aurora DSQL&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#526680;font-size:12px&quot;&gt;İşlem sonucu ve denetim kaydı&lt;/span&gt;" vertex="1">
+                    <mxGeometry height="62" width="224" x="61" y="3" as="geometry"/>
+                </mxCell>
+                <mxCell id="confirm-gate" edge="1" parent="1" source="confirm" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="gate" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="gate-write" edge="1" parent="1" source="gate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="write" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="write-stored" edge="1" parent="1" source="write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#35628D;fontColor=#10233A;fontSize=11;fontFamily=Arial;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="stored" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
