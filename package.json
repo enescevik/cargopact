@@ -21,7 +21,8 @@
     "seed": "npm run seed -w @cargopact/db",
     "smoke": "NODE_PATH=packages/db/node_modules:node_modules tsx scripts/smoke-master-data.mjs; s=$?; npm run cleanup:smoke -w @cargopact/db; exit $s",
     "openapi": "npm run openapi -w @cargopact/contracts",
-    "test:integration": "npm run test:integration -w @cargopact/db"
+    "test:integration": "npm run test:integration -w @cargopact/db",
+    "demo:reset": "npm run seed -w @cargopact/db && npm run seed:verify -w @cargopact/db"
   },
   "engines": {
     "node": ">=22"

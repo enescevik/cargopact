@@ -35,18 +35,6 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
   const now = new Date();
   const year = Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul", year: "numeric" }).format(now));
 
-  // 1) API ile oluşturulmuş (smoke) seferleri sil.
-  const apiTrips = (await pool.query("select id from trips where is_demo = false and reference like 'TR-%' and carrier_id = any($1::uuid[])", [[tenantId("dincer"), tenantId("siva")]])).rows.map((r) => r.id);
-  if (apiTrips.length) {
-    await deleteReservationsOf(pool, "trip_id = any($1::uuid[])", [apiTrips]);
-    await withTx(pool, (c) => c.query("delete from trip_capacity where trip_id = any($1::uuid[])", [apiTrips]));
-    await withTx(pool, (c) => c.query("delete from trips where id = any($1::uuid[])", [apiTrips]));
-    log(`  smoke seferleri silindi: ${apiTrips.length}`);
-  }
-  // 2) Demo seferini sıfırla (rezervasyon yok).
-  const demoTripId = demoId("trips", DEMO_TRIP_REF);
-  await deleteReservationsOf(pool, "trip_id = $1", [demoTripId]);
-
   const trips: TripSeed[] = [
     { ref: DEMO_TRIP_REF, carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-ANK-DM", plate: "41DNC101", dep: istanbulAt(now, 1, 18), hours: 8, status: "published", base: 110000, tir: true },
     { ref: "DNC-GEB-BRS", carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-BRS-DM", plate: "41DNC201", dep: istanbulAt(now, 1, 20), hours: 3, status: "published", base: 70000 },
@@ -56,6 +44,24 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     { ref: "SVA-CRK-IZM", carrier: "siva", origin: "SVA-CRK-TM", dest: "SVA-IZM-DM", plate: "59SVA101", dep: istanbulAt(now, 1, 19), hours: 7, status: "published", base: 90000, tir: true },
     { ref: "SVA-MRS-GZT", carrier: "siva", origin: "SVA-MRS-TM", dest: "SVA-GZT-DM", plate: "59SVA301", dep: istanbulAt(now, 1, 16), hours: 5, status: "published", base: 130000 },
   ];
+  // 1) TAM SIFIRLAMA: seed listesinde olmayan her rezervasyon ve seferi sil (smoke, TMS, elle oluşturulanlar dahil),
+  //    seed seferlerinin tüm rezervasyonlarını da sil; aşağıda yalnız seed rezervasyonları yeniden yazılır.
+  const seedTripIds = trips.map((t) => demoId("trips", t.ref));
+  const carriers = [tenantId("dincer"), tenantId("siva")];
+  const allRes = "trip_id in (select id from trips where carrier_id = any($1::uuid[]))";
+  await withTx(pool, (c) => c.query(`delete from wms_pallet_events where reservation_id in (select id from reservations where ${allRes})`, [carriers]));
+  await deleteReservationsOf(pool, allRes, [carriers]);
+  const extraTrips = (await pool.query("select id, reference from trips where carrier_id = any($1::uuid[]) and not (id = any($2::uuid[]))", [carriers, seedTripIds])).rows;
+  if (extraTrips.length) {
+    const ids = extraTrips.map((r) => r.id);
+    await withTx(pool, (c) => c.query("delete from trip_capacity where trip_id = any($1::uuid[])", [ids]));
+    await withTx(pool, (c) => c.query("delete from trips where id = any($1::uuid[])", [ids]));
+  }
+  log(`  sıfırlandı: tüm rezervasyonlar, seed dışı ${extraTrips.length} sefer`);
+  // Seed dışı (elle/smoke eklenmiş) tesis ve araçlar artık referanssız; sil.
+  await withTx(pool, (c) => c.query("delete from vehicles where is_demo = false and carrier_id = any($1::uuid[])", [carriers]));
+  await withTx(pool, (c) => c.query("delete from facilities where is_demo = false and carrier_id = any($1::uuid[])", [carriers]));
+
   const veh = new Map<string, Row>((await pool.query(
     "select v.id, v.plate, vt.pallet_positions pos, vt.max_payload_kg payload from vehicles v join vehicle_types vt on vt.id = v.vehicle_type_id where v.plate = any($1::text[])", [trips.map((t) => t.plate)])).rows.map((r) => [r.plate, r]));
   const tripRows = trips.map((t) => {
@@ -73,7 +79,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       departure_at: t.dep, arrival_eta: new Date(t.dep.getTime() + t.hours * HOUR), booking_cutoff_at: new Date(t.dep.getTime() - 3 * HOUR), intake_cutoff_at: new Date(t.dep.getTime() - HOUR),
       status: t.status, total_positions: v.pos, internal_pallets: internalPallets, internal_kg: internalKg, max_gross_kg: maxGross,
       sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
-      base_price_minor: t.base, floor_ratio: 0.8, ceiling_ratio: 1.5, is_demo: true, updated_at: now,
+      base_price_minor: t.base, floor_ratio: 0.8, ceiling_ratio: 1.5, capacity_version: 1, is_demo: true, updated_at: now,
     };
   });
   await upsert(pool, "trips", tripRows, ["id"], log);
@@ -106,21 +112,19 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       unit_price_minor: t.base_price_minor, total_price_minor: total,
       price_breakdown: { basePriceMinor: t.base_price_minor, utilization: 0, demandMultiplier: 1, hoursToCutoff: 0, timeMultiplier: 1, timeDecayApplied: false, clampedTo: null, explanation: ["Standart fiyat: talep ve zaman etkisi yok"] },
       payment_plan: "full", deposit_percent: 30, hold_expires_at: pending ? t.booking_cutoff_at : null,
-      pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
+      needs_review: false, pod_recipient_name: null, pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
     });
     for (const [type, h] of s.events) eventRows.push({ reservation_id: id, type, note: null, is_demo: true, created_at: at(h) });
     ledgerRows.push({ reservation_id: id, type: "AUTHORIZED", amount_minor: total, reason: "Tam tutar provizyonu (simüle)", idempotency_key: `${id}:AUTHORIZED`, is_demo: true, created_at: at(s.createdHoursBeforeDep) });
     if (!pending) ledgerRows.push({ reservation_id: id, type: "CAPTURED", amount_minor: total, reason: "Onayda tam tahsilat", idempotency_key: `${id}:CAPTURED:approve`, is_demo: true, created_at: at(s.createdHoursBeforeDep - 1) });
     if (s.status === "GELMEDI") ledgerRows.push({ reservation_id: id, type: "RETAINED", amount_minor: total, reason: "Yük getirilmedi: iptal ücreti tutuldu", idempotency_key: `${id}:RETAINED`, is_demo: true, created_at: at(0) });
   }
-  const seedResIds = resRows.map((r) => r.id);
-  for (const t of ["ledger_entries", "reservation_events", "reservation_attachments"]) await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id = any($1::uuid[])`, [seedResIds]));
-  await upsert(pool, "reservations", resRows, ["id"], log);
+    await upsert(pool, "reservations", resRows, ["id"], log);
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
-  // Canlı onaylar çakışmasın: sayaç en az seed numaralarına kadar ilerler.
+  // Tüm canlı siparişler silindiği için sayaç seed numaralarına (3) döner.
   await withTx(pool, async (c) => {
-    await c.query("insert into order_counters (year, last_value) values ($1, 3) on conflict (year) do update set last_value = greatest(order_counters.last_value, 3)", [year]);
+    await c.query("insert into order_counters (year, last_value) values ($1, 3) on conflict (year) do update set last_value = 3", [year]);
   });
 
   // 4) Kapasite satırlarını rezervasyon toplamlarından yeniden kur (tüm seed seferleri).
