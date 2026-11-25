@@ -10,6 +10,10 @@ import { dt, num } from "../format";
 import { RouteHead } from "../common";
 import { BackBar, Badge, Bar, Btn, Card, Chip, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Title, useLoad, useToast } from "../ui";
 import type { CarrierReservation, CarrierTrip } from "../types";
+import { ChipSelect, Eyebrow, Noir, operatorCells, RouteTitle, TruckMap } from "../premium";
+import { place } from "../format";
+
+const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı uygun değil", "Ağırlık sınırı aşılıyor", "Rota/zaman uyumsuz", "Müşteri geçmişi riskli"];
 
 type TripFull = CarrierTrip & { reservations: CarrierReservation[] };
 
@@ -98,8 +102,13 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
     <View style={{ flex: 1 }}>
       <BackBar title="Seferler" onBack={onBack} />
       <Screen>
-        <RouteHead trip={t} size={30} />
-        <Text style={{ color: c.ink500 }}>{dt(t.departureAt)} · {t.vehicle.plate}</Text>
+        <Noir>
+          <Eyebrow light>Operasyon kokpiti · {t.vehicle.plate}</Eyebrow>
+          <RouteTitle from={place(t.origin)} to={place(t.destination)} size={26} light />
+          <Text style={{ color: "#B9C3EF", fontSize: 13 }}>{dt(t.departureAt)} · {t.vehicleType.name}</Text>
+          <TruckMap dark operator positions={k.totalPositions}
+            cells={operatorCells(k.internalPallets, t.reservations.map((r) => ({ name: r.customer.name, pallets: r.pallets, status: r.status })))} />
+        </Noir>
         <Card>
           <Text style={{ fontSize: 22, fontWeight: "800", color: c.ink900 }}>{k.plannedPallets} / {k.totalPositions} <Text style={{ fontSize: 14, fontWeight: "500", color: c.ink500 }}>planlanan · fiili {k.actualPallets}/{k.totalPositions}</Text></Text>
           {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 13, fontWeight: "600" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
@@ -161,7 +170,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <Sheet onClose={() => setRejecting(undefined)}>
           <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>Talebi reddet</Text>
           <Text style={{ color: c.ink500 }}>{rejecting.customer.name} · {rejecting.pallets} palet</Text>
-          <Field label="Gerekçe (zorunlu)" value={reason} onChangeText={setReason} placeholder="Örn. kapasite yetersiz" />
+          <ChipSelect small value={REJECT_REASONS.includes(reason) ? reason : null} onChange={setReason} options={REJECT_REASONS.map((x) => ({ value: x, label: x }))} />
+          <Field label="Gerekçe (seçin veya yazın)" value={reason} onChangeText={setReason} placeholder="Örn. kapasite yetersiz" />
           <Btn kind="danger" title="Reddet" disabled={!reason.trim()} loading={busy === rejecting.id} onPress={() => decide(rejecting, "reject", reason.trim())} />
           <Btn kind="ghost" title="Vazgeç" onPress={() => setRejecting(undefined)} />
         </Sheet>

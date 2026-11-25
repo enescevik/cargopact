@@ -7,20 +7,25 @@ import { RouteHead, WarehouseGuide } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Recipient, Reservation, Tracking } from "../types";
 import { QrTile } from "../qr";
+import { CarbonBadge, customerCells, Eyebrow, Segmented, TruckMap, WalletCard } from "../premium";
 
 export function Reservations() {
   const [sel, setSel] = useState<string>();
+  const [seg, setSeg] = useState<keyof typeof GROUPS>("active");
   const list = useLoad(() => api<{ items: Reservation[] }>("GET", "/customer/reservations"), [], 8000);
   if (sel) {
     const r = list.data?.items.find((x) => x.id === sel);
     return <Detail id={sel} initial={r} onBack={() => { setSel(undefined); void list.reload(true); }} />;
   }
+  const items = (list.data?.items ?? []).filter((r) => GROUPS[seg].includes(r.status));
+  const count = (k: keyof typeof GROUPS) => (list.data?.items ?? []).filter((r) => GROUPS[k].includes(r.status)).length;
   return (
     <Screen>
-      <Title sub="Tüm tekliflerin ve siparişlerin.">Rezervasyonlarım</Title>
+      <Title sub="Teklifleriniz, siparişleriniz ve teslim kartlarınız.">Yüklerim</Title>
+      <Segmented value={seg} onChange={setSeg} options={[{ value: "active", label: `Aktif ${count("active")}` }, { value: "pending", label: `Onay bekliyor ${count("pending")}` }, { value: "past", label: `Geçmiş ${count("past")}` }]} />
       {list.loading && !list.data ? <Skeletons n={3} h={110} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
-        !list.data?.items.length ? <Empty title="Henüz rezervasyonunuz yok" text="“Gönder” sekmesinden bir sefer seçin." /> :
-          list.data.items.map((r) => (
+        !items.length ? <Empty title="Bu grupta yük yok" text="“Gönder” sekmesinden bir sefer seçin." /> :
+          items.map((r) => (
             <Card key={r.id} onPress={() => setSel(r.id)}>
               <Row style={{ justifyContent: "space-between" }}>
                 <Text style={{ fontFamily: mono, fontSize: 13, color: c.ink500 }}>{r.orderNumber ?? r.reference}</Text>
@@ -37,6 +42,11 @@ export function Reservations() {
   );
 }
 
+const GROUPS = {
+  active: ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "EKSIK_HASAR"],
+  pending: ["TASIYICI_ONAYI_BEKLIYOR"],
+  past: ["TESLIM", "RET", "IPTAL", "SURESI_DOLDU", "GELMEDI", "RET_DEPO"],
+};
 const FLOW = ["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM"];
 const FLOW_LABEL: Record<string, string> = {
   TASIYICI_ONAYI_BEKLIYOR: "Taşıyıcı onayı bekliyor", ONAYLI: "Onaylandı", DEPO_KABUL: "Çıkış deposunda kabul edildi",
@@ -128,6 +138,15 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
           <StatusBadge status={r.status} label={r.statusLabel} />
         </Row>
         <RouteHead trip={r.trip} size={30} />
+        {r.orderNumber && !["RET", "IPTAL", "SURESI_DOLDU", "GELMEDI"].includes(r.status) && (
+          <WalletCard orderNumber={r.orderNumber} trip={r.trip} pallets={r.pallets} code={r.pickup?.code}
+            recipients={(r.pickup?.recipients ?? []).map((x) => x.name).filter(Boolean)} />
+        )}
+        <Card style={{ gap: 12 }}>
+          <Eyebrow>Araçtaki yeriniz</Eyebrow>
+          <TruckMap positions={r.trip.vehicleType.palletPositions} cells={customerCells(r.trip.vehicleType.palletPositions, r.trip.sellable.pallets, Math.min(r.trip.sellable.pallets, r.trip.remaining.pallets + r.pallets), r.pallets)} />
+          <CarbonBadge from={r.trip.origin} to={r.trip.destination} pallets={r.pallets} positions={r.trip.vehicleType.palletPositions} />
+        </Card>
         <Card>
           <KV k="Kalkış" v={dt(r.trip.departureAt)} />
           <KV k="Yük" v={`${r.pallets} palet · ${r.grossKg} kg · ${r.productClass.name}`} />

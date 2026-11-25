@@ -44,7 +44,7 @@ export function Screen({ children, pad = true, refreshKey }: { children: ReactNo
 export function Title({ children, sub }: { children: ReactNode; sub?: string }) {
   return (
     <View style={{ gap: 4 }}>
-      <Text style={{ fontFamily: serif, fontSize: 30, color: c.ink900, letterSpacing: -0.5 }}>{children}</Text>
+      <Text style={{ fontFamily: serif, fontSize: 30, color: c.cobalt900, letterSpacing: -0.5 }}>{children}</Text>
       {!!sub && <Text style={{ fontSize: 14, color: c.ink500 }}>{sub}</Text>}
     </View>
   );

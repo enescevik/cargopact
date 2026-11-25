@@ -4,7 +4,7 @@ export const c = {
   cobalt900: "#0B1A4A", cobalt800: "#13277A", cobalt700: "#1D3AB8", cobalt600: "#2547E0", cobalt500: "#3B5BFF",
   cobalt100: "#E7ECFF", cobalt50: "#F3F5FF",
   mint600: "#12A675", mint500: "#2FD39A", mint200: "#BDF3DD", mint100: "#E3FAF1",
-  porcelain: "#F7F5F0", surface: "#FFFFFF", line: "#E6DDCB", champagne: "#C9B78F",
+  porcelain: "#F7F5F0", surface: "#FFFFFF", line: "#E6DDCB", champagne: "#C9B78F", champagneInk: "#9A8352",
   ink900: "#0E1222", ink700: "#2B3145", ink500: "#5B6275", ink300: "#9AA0AE",
   success: "#12A675", warning: "#C98A06", danger: "#C8372D", info: "#2547E0", pending: "#7A5AF8",
 };

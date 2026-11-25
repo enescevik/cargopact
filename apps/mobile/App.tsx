@@ -16,7 +16,7 @@ import type { Me } from "./src/types";
 
 type Tab = { key: string; label: string; icon: string };
 const CUSTOMER_TABS: Tab[] = [
-  { key: "send", label: "Gönder", icon: "➤" }, { key: "res", label: "Rezervasyonlarım", icon: "▤" },
+  { key: "send", label: "Gönder", icon: "➤" }, { key: "res", label: "Yüklerim", icon: "▤" },
   { key: "track", label: "Takip", icon: "◎" }, { key: "chat", label: "Asistan", icon: "✦" },
 ];
 const CARRIER_TABS: Tab[] = [
@@ -52,21 +52,21 @@ function Shell() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.porcelain }}>
-      <View style={{ paddingTop: insets.top + 8, paddingBottom: 10, paddingHorizontal: 20, backgroundColor: c.porcelain, borderBottomWidth: 1, borderBottomColor: c.line }}>
+      <View style={{ paddingTop: insets.top + 8, paddingBottom: 12, paddingHorizontal: 18, backgroundColor: c.cobalt900, borderBottomWidth: 1, borderBottomColor: "rgba(201,183,143,0.3)" }}>
         <Row style={{ justifyContent: "space-between" }}>
-          <Row gap={8}>
-            <View style={{ width: 26, height: 26, borderRadius: 8, backgroundColor: c.cobalt900, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: c.mint500, fontWeight: "900" }}>C</Text>
+          <Row gap={10} style={{ flex: 1 }}>
+            <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: c.mint500, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: c.cobalt900, fontWeight: "900" }}>C</Text>
             </View>
-            <View>
-              <Text style={{ fontWeight: "800", color: c.ink900, fontSize: 14 }}>{isCustomer ? "CargoPact" : "Transfer Merkezi"}</Text>
-              <Text style={{ fontSize: 11, color: c.ink500 }}>{me.displayName || me.email}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: "800", color: "#fff", fontSize: 15, letterSpacing: 0.3 }}>{isCustomer ? "CargoPact" : "Transfer Merkezi"}</Text>
+              <Text style={{ fontSize: 11, color: c.champagne }} numberOfLines={1}>{isCustomer ? "Müşteri" : "Operasyon"} · {me.displayName || me.email}</Text>
             </View>
           </Row>
           {!isCustomer && <QueuePill />}
-          <NotificationBell onGo={() => setTab(isCustomer ? "res" : "trips")} />
-          <Pressable onPress={logout} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 4 }}>
-            <Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 13 }}>Çıkış</Text>
+          <View style={{ backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 22 }}><NotificationBell onGo={() => setTab(isCustomer ? "res" : "trips")} /></View>
+          <Pressable onPress={logout} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 6 }}>
+            <Text style={{ color: "#B9C3EF", fontWeight: "700", fontSize: 13 }}>Çıkış</Text>
           </Pressable>
         </Row>
       </View>
@@ -85,9 +85,11 @@ function Shell() {
         {tabs.map((t) => {
           const on = tab === t.key;
           return (
-            <Pressable key={t.key} onPress={() => setTab(t.key)} style={{ flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 2 }}>
-              <Text style={{ fontSize: 18, color: on ? c.cobalt600 : c.ink300 }}>{t.icon}</Text>
-              <Text style={{ fontSize: 11, fontWeight: on ? "800" : "600", color: on ? c.cobalt600 : c.ink500 }} numberOfLines={1}>{t.label}</Text>
+            <Pressable key={t.key} onPress={() => setTab(t.key)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", gap: 3 }}>
+              <View style={{ paddingHorizontal: 16, paddingVertical: 3, borderRadius: 999, backgroundColor: on ? c.cobalt900 : "transparent" }}>
+                <Text style={{ fontSize: 16, color: on ? c.mint500 : c.ink300 }}>{t.icon}</Text>
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: on ? "800" : "600", color: on ? c.cobalt900 : c.ink500 }} numberOfLines={1}>{t.label}</Text>
             </Pressable>
           );
         })}
@@ -113,7 +115,7 @@ export default function App() {
   const web = Platform.OS === "web";
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <View style={[{ flex: 1, backgroundColor: web ? "#E9E4D6" : c.porcelain, alignItems: "center" }, web ? ({ height: "100vh" } as object) : null]}>
         <View style={[{ flex: 1, width: "100%", maxWidth: 440, backgroundColor: c.porcelain, overflow: "hidden" }, web ? ({ boxShadow: "0 0 60px rgba(11,26,74,.15)" } as object) : null]}>
           <ToastProvider><Shell /></ToastProvider>
