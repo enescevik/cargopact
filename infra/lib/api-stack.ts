@@ -24,6 +24,7 @@ export interface ApiStackProps extends cdk.StackProps {
 }
 
 export class ApiStack extends cdk.Stack {
+  readonly apiEndpoint: string;
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
@@ -40,6 +41,7 @@ export class ApiStack extends cdk.Stack {
 
     const health = fn("Health", "health.ts");
     const chat = fn("Chat", "chat.ts", { AGENT_RUNTIME_ARN: props.agentRuntimeArn ?? "" });
+    (chat.node.defaultChild as lambda.CfnFunction).memorySize = 1024;
     chat.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ["bedrock-agentcore:InvokeAgentRuntime", "bedrock-agentcore:InvokeAgentRuntimeForUser"],
@@ -60,7 +62,8 @@ export class ApiStack extends cdk.Stack {
       entry: path.join(__dirname, "../../services/api/src/handler.ts"),
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
-      memorySize: 512,
+      // 2048 MB: Lambda'da CPU bellekle orantılı; soğuk başlangıç ve JSON/SQL işleme hızlanır.
+      memorySize: 2048,
       timeout: cdk.Duration.seconds(29),
       role: apiRole,
       environment: {
@@ -72,6 +75,9 @@ export class ApiStack extends cdk.Stack {
       },
       bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },
     });
+
+    // Hazır kopyalar: 2 ortam önceden başlatılır (kod + DSQL bağlantısı), kullanıcı soğuk başlangıç beklemez.
+    const businessLive = business.addAlias("live", { provisionedConcurrentExecutions: 2 });
 
     // --- Olay ve evrak: EventBridge veri yolu + WMS/ERP abone yedeği (SQS) ---
     const bus = new events.EventBus(this, "EventBus", { eventBusName: "cargopact-events" });
@@ -108,6 +114,8 @@ export class ApiStack extends cdk.Stack {
         allowOrigins: ["*"], // Web domain belli olunca daraltın.
         allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST, apigw.CorsHttpMethod.PUT, apigw.CorsHttpMethod.PATCH],
         allowHeaders: ["authorization", "content-type", "idempotency-key", "if-match", "x-tenant-id", "x-correlation-id"],
+        // Ön kontrol (OPTIONS) yanıtı tarayıcıda 2 saat önbelleklenir; her çağrıda ek gidiş-dönüş olmaz.
+        maxAge: cdk.Duration.hours(2),
       },
     });
     const authorizer = new HttpJwtAuthorizer(
@@ -131,16 +139,17 @@ export class ApiStack extends cdk.Stack {
       path: "/{proxy+}",
       // ANY kullanılmaz: OPTIONS (CORS ön kontrolü) JWT yetkilendiricisine düşer ve 401 alır.
       methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST, apigw.HttpMethod.PUT, apigw.HttpMethod.PATCH, apigw.HttpMethod.DELETE],
-      integration: new HttpLambdaIntegration("BusinessInt", business),
+      integration: new HttpLambdaIntegration("BusinessInt", businessLive),
       authorizer,
     });
     api.addRoutes({
       path: "/me",
       methods: [apigw.HttpMethod.GET],
-      integration: new HttpLambdaIntegration("MeInt", business),
+      integration: new HttpLambdaIntegration("MeInt", businessLive),
       authorizer,
     });
 
+    this.apiEndpoint = api.apiEndpoint;
     new cdk.CfnOutput(this, "ApiUrl", { value: api.apiEndpoint });
   }
 }

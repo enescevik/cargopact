@@ -25,7 +25,7 @@ const agents = new AgentsStack(app, `${p}-Agents`, {
   gatewayUrl: gateway.gatewayUrl,
   agentImageTag: app.node.tryGetContext("agentImageTag"),
 });
-new ApiStack(app, `${p}-Api`, {
+const api = new ApiStack(app, `${p}-Api`, {
   env,
   userPool: auth.userPool,
   userPoolClient: auth.webClient,
@@ -35,4 +35,4 @@ new ApiStack(app, `${p}-Api`, {
   dsqlClusterArn: data.cluster.attrResourceArn,
   dsqlIdentifier: data.cluster.attrIdentifier,
 });
-new WebStack(app, `${p}-Web`, { env });
+new WebStack(app, `${p}-Web`, { env, apiEndpoint: api.apiEndpoint });

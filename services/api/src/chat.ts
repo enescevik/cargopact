@@ -22,25 +22,43 @@ export const handler = async (
   } catch {
     return json(400, { error: "Geçersiz JSON." });
   }
+  const userId = event.requestContext.authorizer.jwt.claims.sub as string;
+  const authHeader = event.headers?.authorization ?? event.headers?.Authorization ?? "";
+  const idToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const sessionId =
+    typeof req.sessionId === "string" && req.sessionId.length >= 33 && req.sessionId.length <= 128
+      ? req.sessionId
+      : `sess-${randomUUID()}`;
+
+  // Isınma: istemci asistanı açınca/girişte çağırır; AgentCore mikro-VM'i, Bedrock istemcisi ve MCP oturumu
+  // kullanıcı ilk mesajı yazmadan hazırlanır. Aynı sessionId sonraki mesajlarda kullanılmalıdır.
+  if ((req as { warmup?: unknown }).warmup === true) {
+    const t0 = Date.now();
+    try {
+      await client.send(new InvokeAgentRuntimeCommand({
+        agentRuntimeArn: arn, runtimeSessionId: sessionId, runtimeUserId: userId,
+        contentType: "application/json", accept: "application/json",
+        payload: new TextEncoder().encode(JSON.stringify({ warmup: true, idToken, sessionId, userId })),
+      }), { abortSignal: AbortSignal.timeout(25_000) });
+      console.log(JSON.stringify({ level: "info", chat: "warmup", sessionId, ms: Date.now() - t0 }));
+      return json(200, { sessionId, warmed: true });
+    } catch (e) {
+      console.warn("warmup failed", (e as Error)?.name);
+      return json(200, { sessionId, warmed: false });
+    }
+  }
+
   const message = typeof req.message === "string" ? req.message.trim() : "";
   if (!message || message.length > MAX_MESSAGE_LENGTH) {
     return json(400, { error: `message 1-${MAX_MESSAGE_LENGTH} karakter olmalı.` });
   }
-  const userId = event.requestContext.authorizer.jwt.claims.sub as string;
   // İzleme kimliği: geçerli x-correlation-id başlığı, yoksa API Gateway requestId (her tur için benzersiz).
   const hdr = event.headers?.["x-correlation-id"] ?? event.headers?.["X-Correlation-Id"] ?? "";
   // API Gateway requestId '=' içerebilir; URL/başlık güvenli karakterlere indirgenir.
   const rid = (event.requestContext.requestId ?? "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 64);
   const correlationId = /^[A-Za-z0-9._-]{8,64}$/.test(hdr) ? hdr : rid.length >= 8 ? rid : `corr-${randomUUID()}`;
   const started = Date.now();
-  const sessionId =
-    typeof req.sessionId === "string" && req.sessionId.length >= 33 && req.sessionId.length <= 128
-      ? req.sessionId
-      : `sess-${randomUUID()}`;
-
-  // Çağıranın ham ID token'ı; ajan araçları backend'i bu kimlikle çağırır (kiracı/rol backend'de zorlanır). Loglanmaz.
-  const authHeader = event.headers?.authorization ?? event.headers?.Authorization ?? "";
-  const idToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+  // idToken: çağıranın ham ID token'ı; ajan araçları backend'i bu kimlikle çağırır (kiracı/rol backend'de zorlanır). Loglanmaz.
 
   // Tur sonucunu iş API'sine bildirir (kiracı/kullanıcı token'dan türetilir). Hata sohbeti bozmaz.
   const complete = async (ok: boolean, replyChars: number) => {

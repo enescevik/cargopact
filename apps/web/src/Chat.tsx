@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_MESSAGE_LENGTH, newSessionId } from "@cargopact/contracts";
 import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";
-import { sendChat } from "./api";
+import { api, sendChat } from "./api";
 import { ErrorBox } from "./ui";
 import { Markdown } from "./Markdown";
 
@@ -19,6 +19,16 @@ export function AssistantDrawer({ open, onClose, prompts }: { open: boolean; onC
   const session = useRef(newSessionId());
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+
+  // Isınma: asistan mikro-VM'i, model istemcisi ve MCP oturumu kullanıcı yazmadan hazırlanır (ilk yanıt 10-17 sn yerine birkaç sn).
+  const warmedAt = useRef(0);
+  const warm = () => {
+    if (Date.now() - warmedAt.current < 10 * 60_000) return;
+    warmedAt.current = Date.now();
+    void api("POST", "/chat", { warmup: true, sessionId: session.current }).catch(() => { warmedAt.current = 0; });
+  };
+  useEffect(() => { const t = setTimeout(warm, 1500); return () => clearTimeout(t); }, []);
+  useEffect(() => { if (open) warm(); }, [open]);
 
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, busy]);
   useEffect(() => {
@@ -42,7 +52,7 @@ export function AssistantDrawer({ open, onClose, prompts }: { open: boolean; onC
       setErr(e as Error);
     } finally { setBusy(false); }
   }
-  const reset = () => { setMsgs([]); setErr(null); session.current = newSessionId(); };
+  const reset = () => { setMsgs([]); setErr(null); session.current = newSessionId(); warmedAt.current = 0; warm(); };
 
   return (
     <>
@@ -53,7 +63,7 @@ export function AssistantDrawer({ open, onClose, prompts }: { open: boolean; onC
           <div className="drawer-av"><Sparkles size={16} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <b>CargoPact Asistanı</b>
-            <div className="tiny light">{busy ? "yanıt hazırlanıyor…" : "Yanıtlar 20 saniyeyi bulabilir"}</div>
+            <div className="tiny light">{busy ? "yanıt hazırlanıyor…" : "Genelde birkaç saniyede yanıtlar"}</div>
           </div>
           {msgs.length > 0 && <button className="drawer-x" onClick={reset} title="Yeni sohbet" aria-label="Yeni sohbet"><RotateCcw size={16} /></button>}
           <button className="drawer-x" onClick={onClose} title="Kapat (Esc)" aria-label="Kapat"><X size={18} /></button>

@@ -7,6 +7,13 @@ import { recordToolCall } from "./routes/traces";
 
 let router: ReturnType<typeof buildRouter> | undefined;
 
+// Açılışta (provisioned concurrency ile kullanıcı isteğinden önce) yönlendiriciyi kur ve DSQL bağlantısını aç:
+// IAM token üretimi + TLS + kimlik doğrulama ilk kullanıcı isteğine yansımaz. Hata olursa ilk istek yeniden dener.
+if (process.env.DSQL_ENDPOINT) {
+  router = buildRouter(getPool());
+  void getPool().query("select 1").catch(() => undefined);
+}
+
 export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> => {
   const headers = Object.fromEntries(Object.entries(event.headers ?? {}).map(([k, v]) => [k.toLowerCase(), String(v)]));
   const correlationId = headers["x-correlation-id"] ?? event.requestContext?.requestId ?? randomUUID();

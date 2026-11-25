@@ -39,7 +39,8 @@ export function createPool(opts: ConnectOptions = {}): pg.Pool {
     password: getToken as unknown as () => Promise<string>,
     ssl: { rejectUnauthorized: true },
     max: opts.max ?? 4,
-    idleTimeoutMillis: 60_000,
+    // Hazır (provisioned) kopyalarda bağlantı uzun süre boşta kalır; her istekte yeniden IAM token + TLS kurmamak için 15 dk.
+    idleTimeoutMillis: 15 * 60_000,
     // DSQL bağlantı ömrü sınırlı; havuz bağlantıyı yeniler.
     maxLifetimeSeconds: 55 * 60,
   });

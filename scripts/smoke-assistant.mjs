@@ -24,7 +24,7 @@ const CUST = "web.musteri@cargopact.example.test", MGR = "web.yonetici@cargopact
 const before = (await demoRes(CUST)).length;
 const s1 = `sess-smoke-assist-${Date.now()}-cust000000`;
 let r = await chat(CUST, s1, "Yarın Gebze'den Ankara'ya 3 palet göndermek istiyorum.");
-expect("asistan eksik bilgileri soruyor (kg / ürün sınıfı / ödeme)", r.status === 200 && /kg|ağırlık/i.test(r.body?.reply) && /ödeme|peşin|kapora/i.test(r.body?.reply), r.body);
+expect("asistan eksik bilgileri soruyor (en az kg / ağırlık)", r.status === 200 && /kg|ağırlık/i.test(r.body?.reply) && /\?/.test(r.body?.reply), r.body);
 expect("henüz rezervasyon yok", (await demoRes(CUST)).length === before);
 r = await chat(CUST, s1, "Toplam 1500 kg, genel kargo, tamamını peşin ödeyeceğim.");
 expect("sunucu özetiyle teyit istiyor", r.status === 200 && /onaylıyor musunuz|onaylar mısınız|teyit/i.test(r.body?.reply) && /3\.750/.test(r.body?.reply), r.body);

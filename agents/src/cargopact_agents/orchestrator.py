@@ -76,7 +76,7 @@ def build_orchestrator(token, role: str, name: str | None, session_manager=None,
     else:
         tools, prompt = carrier_tools(token, tenant_id), carrier_system_prompt(name)
     return Agent(
-        model=model(ORCHESTRATOR_MODEL_ID, 1500),
+        model=model(ORCHESTRATOR_MODEL_ID, 900),
         system_prompt=prompt,
         tools=tools,
         messages=messages or None,

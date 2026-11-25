@@ -82,8 +82,10 @@ export function Chat({ suggestions }: { suggestions: string[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const sid = useRef<string | undefined>(undefined);
+  const sid = useRef<string | undefined>(`sess-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`.padEnd(40, "0"));
   const scroll = useRef<ScrollView>(null);
+  // Isınma: sekme açılınca asistan arka planda hazırlanır (ilk yanıt soğuk başlangıç beklemez).
+  useEffect(() => { void api("POST", "/chat", { warmup: true, sessionId: sid.current }).catch(() => undefined); }, []);
 
   const send = async (raw: string) => {
     const text = raw.trim();

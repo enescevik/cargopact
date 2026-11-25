@@ -4,7 +4,8 @@ import os
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
-from .tools import TracedToken
+from .specialists import ORCHESTRATOR_MODEL_ID, model
+from .tools import TracedToken, warm_gateway
 from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_identity, save_history
 
 log = logging.getLogger("cargopact")
@@ -32,11 +33,18 @@ def _session_manager(session_id: str, actor_id: str):
 def invoke(payload: dict, context) -> dict:
     prompt = str(payload.get("prompt", "")).strip()
     token = str(payload.get("idToken") or "")
-    if not prompt:
-        return {"result": "Mesaj boş."}
     if not token:
         return {"result": "Oturum bilgisi eksik; lütfen yeniden giriş yapın."}
     session_id = str(getattr(context, "session_id", None) or payload.get("sessionId") or "default-session-0000000000000000000")
+    if payload.get("warmup"):
+        # Isınma: mikro-VM, Python modülleri, Bedrock istemcisi ve MCP oturumu kullanıcı yazmadan hazırlanır.
+        t = TracedToken(token, "", session_id, "")
+        get_identity(t)
+        warm_gateway(t)
+        model(ORCHESTRATOR_MODEL_ID, 900)
+        return {"result": "", "warm": True}
+    if not prompt:
+        return {"result": "Mesaj boş."}
     # user_message: yazma teyidi bu turdaki kullanıcı mesajından KODDA kontrol edilir (writes._gate).
     token = TracedToken(token, str(payload.get("correlationId") or ""), session_id, prompt)
     log.info("turn correlationId=%s session=%s", token.correlation_id, session_id)

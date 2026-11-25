@@ -76,13 +76,37 @@ _GW_PREFIX = "cargopact-mcp-tools___"
 _GW_TIMEOUT = 12
 
 
-def _gateway_call(token: str, tool_name: str, args: dict) -> dict:
-    """AgentCore Gateway (MCP, streamable HTTP) üzerinden salt okunur araç çağır. Hata olursa istisna fırlatır."""
+import threading as _threading
+import time as _time
+
+# Oturum başına açık tutulan MCP istemcisi: her araç çağrısında yeni MCP oturumu açmak ~0,5 sn ekliyordu.
+# Anahtar (session, token): token değişirse (yenilenirse) yeni istemci açılır. Başlıklar istemci kurulurken sabitlenir;
+# bu yüzden tur bazlı izleme başlıkları (x-correlation-id) Gateway çağrılarında oturumun ilk turuna aittir.
+_MCP_CLIENTS: dict[tuple[str, str], tuple] = {}
+_MCP_LOCK = _threading.Lock()
+_MCP_TTL = 20 * 60
+
+
+def _mcp_client(token: str):
     from datetime import timedelta
     from strands.tools.mcp import MCPClient
+    sess = getattr(token, "session_id", "") or "nosession"
+    key = (sess, str(token))
+    now = _time.time()
+    with _MCP_LOCK:
+        for k, (c, at) in list(_MCP_CLIENTS.items()):
+            if now - at > _MCP_TTL:
+                _MCP_CLIENTS.pop(k, None)
+                try:
+                    c.stop(None, None, None)
+                except Exception:
+                    pass
+        hit = _MCP_CLIENTS.get(key)
+        if hit:
+            _MCP_CLIENTS[key] = (hit[0], now)
+            return hit[0]
     headers = {"Authorization": f"Bearer {token}", "X-User-Token": str(token)}  # token yalnızca başlıkta; model görmez
     corr = getattr(token, "correlation_id", "")
-    sess = getattr(token, "session_id", "")
     if corr and sess:
         headers["x-correlation-id"] = corr
         headers["x-agent-session"] = sess
@@ -96,9 +120,41 @@ def _gateway_call(token: str, tool_name: str, args: dict) -> dict:
             return streamable_http_client(GATEWAY_URL, http_client=create_mcp_http_client(headers=headers))
 
     client = MCPClient(transport)
-    with client:
-        res = client.call_tool_sync(str(uuid.uuid4()), _GW_PREFIX + tool_name, args,
-                                    read_timeout_seconds=timedelta(seconds=_GW_TIMEOUT))
+    client.start()
+    with _MCP_LOCK:
+        _MCP_CLIENTS[key] = (client, now)
+    return client
+
+
+def _drop_mcp_client(token: str) -> None:
+    key = (getattr(token, "session_id", "") or "nosession", str(token))
+    with _MCP_LOCK:
+        hit = _MCP_CLIENTS.pop(key, None)
+    if hit:
+        try:
+            hit[0].stop(None, None, None)
+        except Exception:
+            pass
+
+
+def warm_gateway(token: str) -> None:
+    """Isınma: MCP oturumunu önceden aç (ilk araç çağrısı beklemesin)."""
+    if USE_GATEWAY:
+        try:
+            _mcp_client(token)
+        except Exception as e:
+            log.warning("gateway warmup failed (%s)", type(e).__name__)
+
+
+def _gateway_call(token: str, tool_name: str, args: dict) -> dict:
+    """AgentCore Gateway (MCP, streamable HTTP) üzerinden salt okunur araç çağır. Hata olursa istisna fırlatır."""
+    from datetime import timedelta
+    try:
+        res = _mcp_client(token).call_tool_sync(str(uuid.uuid4()), _GW_PREFIX + tool_name, args,
+                                                read_timeout_seconds=timedelta(seconds=_GW_TIMEOUT))
+    except Exception:
+        _drop_mcp_client(token)  # bozuk/kapanmış oturum: bir sonraki çağrı yeniden açar
+        raise
     if res.get("status") != "success":
         raise RuntimeError("gateway tool error")
     text = "".join(c.get("text", "") for c in res.get("content", []) if isinstance(c, dict))

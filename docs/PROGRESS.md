@@ -65,3 +65,16 @@ Stack'ler: CargoPact-Auth, -Data, -Api, -Agents, -Web. Demo hesapları ve sözle
 
 ## Açık kararlar
 `.kiro/steering/decisions.md` dosyasına bakın.
+
+
+## Performans iyileştirmesi (25.11.2026)
+Ölçüm (`scripts/perf-probe.mjs`, `scripts/perf-chat.mjs`, Lambda REPORT logları):
+| Alan | Önce | Sonra | Ne yapıldı |
+|---|---|---|---|
+| İş API'si ilk (soğuk) çağrı | 343 ms – 1,5 sn, son 3 saatte 40 soğuk başlangıç | 35–75 ms | Lambda 512→2048 MB, `live` alias + 2 hazır kopya (provisioned concurrency), DSQL bağlantısı açılışta, boşta bağlantı 15 dk |
+| Sıcak API (KPI, pano) | 102–122 ms | 57–64 ms | 2048 MB (CPU bellekle orantılı) |
+| Tarayıcı → API | her çağrı öncesi CORS ön kontrolü (OPTIONS) | ön kontrol 0 | API aynı alan adından: CloudFront `/api/*` → API Gateway (TLS kullanıcıya yakın edge'de); ön kontrol önbelleği 2 sa |
+| Gateway (MCP) araç çağrısı | 500–870 ms | ~200 ms | MCP oturumu oturum boyunca açık tutuluyor |
+| Asistan ilk mesajı | 13–17 sn (yeni oturum soğuk başlangıcı) | ~4 sn | Asistan açılınca/girişte arka planda ısınma (`POST /chat {warmup:true}`) |
+| Asistan sonraki mesajlar | medyan 5,8 sn, p90 10,5 sn | ~4,0–4,2 sn | Bedrock prompt cache, model nesnesi yeniden kullanımı, kısa cevap (≤~120 kelime, max_tokens 900) |
+Sınır: Haiku 4.5 ~140 token/sn üretiyor; "priority" servis katmanı bu modelde desteklenmiyor. Daha fazla algılanan hız için cevap akışı (streaming) gerekir.
