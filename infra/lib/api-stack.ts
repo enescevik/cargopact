@@ -92,7 +92,8 @@ export class ApiStack extends cdk.Stack {
 
     api.addRoutes({
       path: "/{proxy+}",
-      methods: [apigw.HttpMethod.ANY],
+      // ANY kullanılmaz: OPTIONS (CORS ön kontrolü) JWT yetkilendiricisine düşer ve 401 alır.
+      methods: [apigw.HttpMethod.GET, apigw.HttpMethod.POST, apigw.HttpMethod.PUT, apigw.HttpMethod.PATCH, apigw.HttpMethod.DELETE],
       integration: new HttpLambdaIntegration("BusinessInt", business),
       authorizer,
     });
