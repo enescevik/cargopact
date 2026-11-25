@@ -111,3 +111,9 @@ TASIYICI_ONAYI_BEKLIYOR "Taşıyıcı onayı bekliyor" · ONAYLI "Onaylandı" ·
 - Kural: palet eşit ve kg farkı ≤ %3 → `ok` (kapasite değişmez). Beyandan az → `ok`, fark kapasiteden iade edilir. Beyandan fazla → uygunluk ölçülen değerle yeniden çalışır: uygunsa `ok` ve onaylı kapasite güncellenir; değilse durum `INCELEME` ("İncelemede – ölçüm farkı").
 - Fiyat: kilitli birim fiyat korunur; toplam = birim × palet, yalnız palet adedi değişirse değişir (fazla ödeme tahsil, eksik palet iade edilir). Kg farkı fiyatı değiştirmez.
 - `POST /carrier/reservations/{id}/review` `{decision:"accept_partial", acceptedPallets}` → `DEPO_KABUL` (kabul edilmeyen paletler için iade iptal politikasına göre, defter nedeni "Kısmi kabul…", palletCodes kırpılır, kapasite bir kez düşer) veya `{decision:"reject"}` → `RET_DEPO` ("Depoda reddedildi"; kapasite bir kez iade, iade politikaya göre).
+
+## İstisnalar ve manifest (taşıyıcı)
+- `GET /carrier/exceptions?status=open|resolved&tripId=` — mevcut verilerden hesaplanan iş kuyruğu (GELMEDI, EKSIK_HASAR, LATE_DROPOFF, NOT_PICKED_UP, NEEDS_REVIEW, MEASUREMENT_DIFF, EXPIRED_HOLD). `id = TÜR:rezervasyonId`.
+- `POST /carrier/exceptions/{id}/resolve` `{note}` — idempotent; ilk not korunur, denetim kaydı yazılır.
+- `GET /carrier/trips/{id}/manifest` — onaylı+ rezervasyonlar, palet kodları, alıcılar. Web: sefer detayında "Manifest" (yazdır).
+- Smoke: `node scripts/smoke-exceptions.mjs`
