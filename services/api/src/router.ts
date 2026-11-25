@@ -10,8 +10,12 @@ const compile = (pattern: string) => {
   return { re, names };
 };
 
+export const allRoutes = (pool: pg.Pool): Route[] => [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool)];
+/** /me yönlendiricide özel ele alınır; sözleşme testi için listeye eklenir. */
+export const ROUTE_TABLE = (pool: pg.Pool) => [{ method: "GET", pattern: "/me" }, ...allRoutes(pool).map((r) => ({ method: r.method, pattern: r.pattern }))];
+
 export function buildRouter(pool: pg.Pool) {
-  const routes: Route[] = [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool)];
+  const routes: Route[] = allRoutes(pool);
   const compiled = routes.map((r) => ({ ...r, ...compile(r.pattern) }));
 
   return async function route(req: Req): Promise<Res> {

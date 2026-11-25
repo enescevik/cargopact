@@ -1,7 +1,7 @@
 import { createPool } from "./connection";
 import { grantAppRole, migrate } from "./migrate";
 import { ensureCognitoUsers } from "./seed/cognito";
-import { resetDemo, seedL1, seedUserRows, verifySeed } from "./seed/seed";
+import { cleanupSmoke, resetDemo, seedL1, seedUserRows, verifySeed } from "./seed/seed";
 
 const cmd = process.argv[2];
 const pool = createPool({ user: "admin", max: 2 });
@@ -31,6 +31,9 @@ try {
       if (!r.ok) process.exitCode = 1;
       break;
     }
+    case "cleanup-smoke":
+      await cleanupSmoke(pool);
+      break;
     case "seed-reset":
       await resetDemo(pool);
       break;

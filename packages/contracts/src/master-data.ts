@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { status } from "./common";
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "HH:MM biçiminde olmalı");

@@ -108,3 +108,11 @@ export async function verifySeed(pool: pg.Pool): Promise<VerifyResult> {
   await check("her demo kiracıda en az bir kullanıcı var", "select count(*) n from tenants t where t.is_demo and not exists (select 1 from memberships m where m.tenant_id = t.id)");
   return { ok: checks.every((c) => c.ok), checks };
 }
+
+/** Smoke testinin oluşturduğu kayıtları siler (DNC-TST-* tesisler, 41TST* araçlar). Yalnız dev; denetim kayıtları korunur. */
+export async function cleanupSmoke(pool: pg.Pool, log: (m: string) => void = console.log): Promise<void> {
+  assertSeedAllowed();
+  const v = await withTx(pool, (c) => c.query("delete from vehicles where plate like '41TST%' and is_demo = false"));
+  const f = await withTx(pool, (c) => c.query("delete from facilities where code like 'DNC-TST-%' and is_demo = false"));
+  log(`  smoke temizliği: ${v.rowCount} araç, ${f.rowCount} tesis`);
+}

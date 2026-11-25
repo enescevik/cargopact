@@ -17,7 +17,7 @@
 ## Spec durumu
 | Spec | Requirements | Design | Tasks | Uygulama |
 |---|---|---|---|---|
-| platform-foundation | onaylı | onaylı | onaylı | **büyük kısmı tamam** (açık: OpenAPI belgesi, otomatik DSQL entegrasyon testi) |
+| platform-foundation | onaylı | onaylı | onaylı | **tamam** |
 | capacity-and-pricing | onaylı | – | – | – |
 | reservation-and-approval | onaylı | – | – | – |
 | payments-and-cancellation | onaylı | – | – | – |
@@ -42,11 +42,16 @@ Deploy edilen stack'ler: CargoPact-Auth, -Data, -Api, -Agents (ECR + Memory, Run
 - Birim testleri: 21 (domain 8, db 5, api 8).
 - Bulunan ve düzeltilen hata: sayfalama imleci zamanı milisaniyeye kırpıyordu, aynı işlemdeki kayıtlar ikinci sayfada tekrarlanıyordu.
 
+## Açık kalanların kapatılması
+- OpenAPI 3 belgesi zod şemalarından üretiliyor (`packages/contracts/openapi.json`, 33 yol). Birim testi: belge güncel mi, tüm yazma uçları `Idempotency-Key` istiyor mu, yönlendirici ile belge birebir mi.
+- Canlı sözleşme kontrolü `npm run smoke` içinde: 32/32 yanıt şemaya uydu. Bulunan uyumsuzluk: token yokken 401'i API Gateway `{message}` gövdesiyle dönüyor (özelleştirilemez); belge buna göre güncellendi.
+- DSQL entegrasyon testi (`npm run test:integration`, DSQL_TEST_ENDPOINT): FK, eşzamanlı 6 istekten 1 kazanan, 3000 satır sınırı, DDL+DML yasağı. 4/4 geçti, geçici tablolar silindi.
+- Smoke kayıtları `npm run smoke` sonunda otomatik temizlenir (`cleanup:smoke`); önceki 5 tesis + 5 araç silindi.
+- CI artık birim testlerini de çalıştırıyor.
+
 ## Bilinen eksikler
-- OpenAPI belgesi ve sözleşme testi yazılmadı (platform-foundation 4.1/4.2).
-- Gerçek DSQL'e karşı otomatik entegrasyon testi yok (davranış elle doğrulandı).
-- Smoke testin oluşturduğu kayıtlar (`DNC-TST-*` tesisler, `41TST*` araçlar) `is_demo=false`; `seed:reset` bunları silmez.
 - Web ve mobil istemciler henüz ana veri ekranlarına bağlı değil.
+- Cognito istemcisinde `USER_PASSWORD_AUTH` açık (smoke/seed için); üretimde kapatılmalı.
 
 ## Açık kararlar
 `.kiro/steering/decisions.md` dosyasına bakın.

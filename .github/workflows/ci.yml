@@ -12,6 +12,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run test
       - run: npm run build:web
       - run: npm run synth
         env: { CDK_DEFAULT_ACCOUNT: "000000000000" }
