@@ -255,9 +255,9 @@ export function PriceCalendar({ trips, pallets, value, start, onStart, onSelect,
             <Text style={{ fontSize: 10, fontWeight: "700", color: on ? c.champagne : c.ink500 }}>{weekday(x.d)}</Text>
             <Text style={{ fontSize: 12, fontWeight: "800", color: on ? "#fff" : c.ink900 }} numberOfLines={1}>{dayNum(x.d).split(" ")[0]}</Text>
             <Text style={{ fontSize: 9.5, fontWeight: "800", color: on ? c.mint500 : x.min != null ? c.cobalt700 : full ? c.warning : c.ink300 }} numberOfLines={1} adjustsFontSizeToFit>
-              {x.min != null ? money(x.min).replace(/\s?₺|₺\s?/, "₺") : full ? "🔔 Dolu" : "—"}
+              {x.min != null ? money(x.min).replace(/\s?₺|₺\s?/, "") : full ? "🔔" : "—"}
             </Text>
-            {x.min != null && x.min === best && <Text style={{ fontSize: 8, fontWeight: "900", color: on ? c.mint500 : c.mint600 }}>EN UYGUN</Text>}
+            {x.min != null && x.min === best && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.mint500, marginTop: 1 }} />}
           </Pressable>
         );
       })}
@@ -303,11 +303,20 @@ export function QrMatrix({ value, size = 96, color = c.cobalt900 }: { value: str
   const quiet = 2, n = mods.n + quiet * 2, px = size / n;
   return (
     <View style={{ width: size, height: size, backgroundColor: "#fff", borderRadius: 6, padding: px * quiet }}>
-      {Array.from({ length: mods.n }, (_, y) => (
-        <View key={y} style={{ flexDirection: "row", height: px }}>
-          {Array.from({ length: mods.n }, (_, x) => <View key={x} style={{ width: px, height: px, backgroundColor: mods.data[y * mods.n + x] ? color : "transparent" }} />)}
-        </View>
-      ))}
+      {Array.from({ length: mods.n }, (_, y) => {
+        // Yatay koşuları tek View'da birleştir: native'de görünüm sayısını ciddi azaltır.
+        const runs: [number, number][] = [];
+        for (let x = 0; x < mods.n; x++) {
+          if (!mods.data[y * mods.n + x]) continue;
+          const last = runs[runs.length - 1];
+          if (last && last[0] + last[1] === x) last[1]++; else runs.push([x, 1]);
+        }
+        return (
+          <View key={y} style={{ height: px }}>
+            {runs.map(([x, w]) => <View key={x} style={{ position: "absolute", left: x * px, width: w * px + 0.5, height: px + 0.5, backgroundColor: color }} />)}
+          </View>
+        );
+      })}
     </View>
   );
 }

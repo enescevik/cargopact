@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Image, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans";
 import { api, signIn, signOut } from "./src/api";
-import { c } from "./src/theme";
+import { c, sansBold } from "./src/theme";
 import { ToastProvider, Row } from "./src/ui";
 import { NotificationBell } from "./src/Notifications";
 import { Login } from "./src/Login";
@@ -46,7 +46,7 @@ function Shell() {
   };
   const logout = () => { signOut(); setMe(undefined); setTab(""); };
 
-  if (!me) return <View style={{ flex: 1, paddingTop: Platform.OS === "web" ? 0 : insets.top }}><Login onLogin={login} busy={busy} error={error} /></View>;
+  if (!me) return <Login onLogin={login} busy={busy} error={error} />;
 
   const isCustomer = me.active.role === "customer_user";
   const tabs = isCustomer ? CUSTOMER_TABS : CARRIER_TABS;
@@ -56,16 +56,16 @@ function Shell() {
       <View style={{ paddingTop: insets.top + 8, paddingBottom: 12, paddingHorizontal: 18, backgroundColor: c.cobalt900, borderBottomWidth: 1, borderBottomColor: "rgba(201,183,143,0.3)" }}>
         <Row style={{ justifyContent: "space-between" }}>
           <Row gap={10} style={{ flex: 1 }}>
-            <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: c.mint500, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: c.cobalt900, fontWeight: "900" }}>C</Text>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+              <Image source={require("./assets/logo-mark.png")} style={{ width: 24, height: 15 }} resizeMode="contain" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: "800", color: "#fff", fontSize: 15, letterSpacing: 0.3 }}>{isCustomer ? "CargoPact" : "Transfer Merkezi"}</Text>
+              <Text style={{ fontFamily: sansBold, color: "#fff", fontSize: 15, letterSpacing: 0.3 }}>{isCustomer ? "CargoPact" : "Transfer Merkezi"}</Text>
               <Text style={{ fontSize: 11, color: c.champagne }} numberOfLines={1}>{isCustomer ? "Müşteri" : "Operasyon"} · {me.displayName || me.email}</Text>
             </View>
           </Row>
           {!isCustomer && <QueuePill />}
-          <View style={{ backgroundColor: "rgba(255,255,255,0.92)", borderRadius: 22 }}><NotificationBell onGo={() => setTab(isCustomer ? "res" : "trips")} /></View>
+          <View style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 22 }}><NotificationBell onGo={() => setTab(isCustomer ? "res" : "trips")} /></View>
           <Pressable onPress={logout} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 6 }}>
             <Text style={{ color: "#B9C3EF", fontWeight: "700", fontSize: 13 }}>Çıkış</Text>
           </Pressable>
@@ -88,9 +88,9 @@ function Shell() {
           return (
             <Pressable key={t.key} onPress={() => setTab(t.key)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, minHeight: 58, alignItems: "center", justifyContent: "center", gap: 3 }}>
               <View style={{ paddingHorizontal: 16, paddingVertical: 3, borderRadius: 999, backgroundColor: on ? c.cobalt900 : "transparent" }}>
-                <Text style={{ fontSize: 16, color: on ? c.mint500 : c.ink300 }}>{t.icon}</Text>
+                <Text style={{ fontSize: 16, color: on ? c.mint500 : c.ink500 }}>{t.icon}</Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: on ? "800" : "600", color: on ? c.cobalt900 : c.ink500 }} numberOfLines={1}>{t.label}</Text>
+              <Text style={{ fontSize: 11, fontFamily: on ? sansBold : undefined, fontWeight: on ? undefined : "600", color: on ? c.cobalt900 : c.ink500 }} numberOfLines={1}>{t.label}</Text>
             </Pressable>
           );
         })}

@@ -18,7 +18,7 @@ type Est = { totalVolumeM3: number; totalWeightKg: number; estimatedPallets: num
 
 const CARDS = [
   { id: "ok", label: "Kurumsal", last4: "5556", holder: "ANADOLU PARSIYEL", number: "4000056655665556", expiry: "09/28", cvc: "314", note: "Varsayılan" },
-  { id: "decline", label: "Yedek", last4: "0002", holder: "ANADOLU PARSIYEL", number: "4000000000000002", expiry: "09/28", cvc: "314", note: "Demo: reddedilir" },
+  { id: "decline", label: "İkincil", last4: "0002", holder: "ANADOLU PARSIYEL", number: "4000000000000002", expiry: "09/28", cvc: "314", note: "Yedek kart" },
 ] as const;
 const KG_PRESETS = [250, 500, 750, 1000];
 const HEIGHTS = [{ v: 1.2, l: "≤120 cm" }, { v: 1.6, l: "≤160 cm" }, { v: 1.8, l: "≤180 cm" }];
@@ -92,9 +92,10 @@ export function Send({ onDone }: { onDone: () => void }) {
   const dayTrips = onRoute.filter((t) => isoDay(t.departureAt) === day).sort((a, b) => a.departureAt.localeCompare(b.departureAt));
   useEffect(() => {
     if (!dayTrips.length) { setTripId(null); return; }
-    if (!dayTrips.some((t) => t.id === tripId)) setTripId((dayTrips.find((t) => t.remaining.pallets >= pallets) ?? dayTrips[0]!).id);
+    const cur = dayTrips.find((t) => t.id === tripId);
+    if (!cur || cur.remaining.pallets < pallets) setTripId((dayTrips.find((t) => t.remaining.pallets >= pallets) ?? cur ?? dayTrips[0]!).id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, route, trips.length]);
+  }, [day, route, trips.length, pallets]);
   const trip = dayTrips.find((t) => t.id === tripId);
   const r = routes.find((x) => x.key === route);
 
@@ -104,7 +105,7 @@ export function Send({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (!trip) { setQuote(undefined); return; }
     let alive = true;
-    setQuote(undefined);
+    setQuote(undefined); setQErr(undefined);
     const h = setTimeout(async () => {
       try {
         const q = await api<Quote>("POST", `/customer/trips/${trip.id}/quote`, { pallets, grossKg, volumeM3, productClassCode: pc });
@@ -136,7 +137,7 @@ export function Send({ onDone }: { onDone: () => void }) {
         card: { holder: card.holder, number: card.number, expiry: card.expiry, cvc: card.cvc },
       }, key);
       if (recipient) void rememberRecipient(recipient);
-      success(); setDone(res);
+      success(); setKey(uuid()); setDone(res);
     } catch (e) {
       const er = e as ApiError;
       setKey(uuid());
@@ -168,7 +169,7 @@ export function Send({ onDone }: { onDone: () => void }) {
         {STEPS.map((l, i) => (
           <Pressable key={l} disabled={i > step} onPress={() => go(i)} style={{ flex: 1, gap: 5 }} accessibilityRole="tab" accessibilityState={{ selected: i === step }}>
             <View style={{ height: 4, borderRadius: 2, backgroundColor: i < step ? c.mint500 : i === step ? c.cobalt900 : c.line }} />
-            <Text style={{ fontSize: 11, fontFamily: sansBold, color: i === step ? c.cobalt900 : i < step ? c.mint600 : c.ink300 }}>{i < step ? "✓ " : `${i + 1}. `}{l}</Text>
+            <Text style={{ fontSize: 11, fontFamily: sansBold, color: i === step ? c.cobalt900 : i < step ? c.mint600 : c.ink500 }}>{i < step ? "✓ " : `${i + 1}. `}{l}</Text>
           </Pressable>
         ))}
         {alarms.length > 0 && (
@@ -194,14 +195,14 @@ export function Send({ onDone }: { onDone: () => void }) {
                 {routes.slice(0, 6).map((x) => {
                   const on = x.key === route;
                   return (
-                    <Pressable key={x.key} onPress={() => { tap(); setRoute(x.key); setDay(""); }} accessibilityRole="radio" accessibilityState={{ checked: on }}
-                      style={({ pressed }) => ({ width: "48.4%", minHeight: 92, borderRadius: 18, padding: 12, justifyContent: "space-between", backgroundColor: on ? c.cobalt900 : c.surface, borderWidth: 1, borderColor: on ? c.cobalt900 : c.line, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+                    <Pressable key={x.key} disabled={x.space < 1} onPress={() => { tap(); if (x.key !== route) { setRoute(x.key); setDay(""); } }} accessibilityRole="radio" accessibilityState={{ checked: on }}
+                      style={({ pressed }) => ({ opacity: x.space < 1 ? 0.45 : 1, width: "48.4%", minHeight: 92, borderRadius: 18, padding: 12, justifyContent: "space-between", backgroundColor: on ? c.cobalt900 : c.surface, borderWidth: 1, borderColor: on ? c.cobalt900 : c.line, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
                       <View>
                         <Text style={{ fontFamily: sansBold, fontSize: 15, color: on ? "#fff" : c.ink900 }} numberOfLines={1}>{x.from}</Text>
                         <Text style={{ fontFamily: sansBold, fontSize: 15, color: on ? c.champagne : c.cobalt700 }} numberOfLines={1}>→ {x.to}</Text>
                       </View>
                       <Row style={{ justifyContent: "space-between" }}>
-                        <Text style={{ fontSize: 11, color: on ? "#B9C3EF" : c.ink500 }}>{x.space} palet boş</Text>
+                        <Text style={{ fontSize: 11, color: on ? "#B9C3EF" : c.ink500 }}>{x.space < 1 ? "Dolu" : `${x.space} palet boş`}</Text>
                         <Text style={{ fontSize: 12, fontWeight: "800", color: on ? c.mint500 : c.mint600 }}>{money(x.min)}</Text>
                       </Row>
                     </Pressable>
@@ -211,7 +212,7 @@ export function Send({ onDone }: { onDone: () => void }) {
               <Noir style={{ padding: 14, gap: 8 }}>
                 <Row style={{ justifyContent: "space-between" }}>
                   <View><Eyebrow light>Kaç palet?</Eyebrow><Text style={{ color: "#B9C3EF", fontSize: 12, marginTop: 2 }}>{r ? `${r.from} → ${r.to}` : ""}</Text></View>
-                  <Stepper value={pallets} onChange={(v) => { tap(); setPallets(v); }} min={1} max={33} unit=" palet" dark />
+                  <Stepper value={pallets} onChange={(v) => { tap(); setPallets(v); setKgOverride(null); setM3Override(null); }} min={1} max={33} unit=" palet" dark />
                 </Row>
               </Noir>
             </>
@@ -316,9 +317,9 @@ export function Send({ onDone }: { onDone: () => void }) {
             <Text style={{ color: "#fff", fontFamily: sansBold, fontSize: 20 }} numberOfLines={1}>
               {qErr ? "—" : quote ? money(step === 3 ? (pp?.dueNowMinor ?? quote.price.totalPriceMinor) : quote.price.totalPriceMinor) : trip ? "…" : "—"}
             </Text>
-            <Text style={{ color: quote && !quote.eligible ? "#FFB4AC" : "#B9C3EF", fontSize: 11 }} numberOfLines={1}>
-              {pallets} palet{step >= 2 ? ` · ${num(grossKg)} kg · ${volumeM3.toLocaleString("tr-TR")} m³` : trip ? ` · ${weekday(day)} ${dayNum(day)} ${hm(trip.departureAt)}` : ""}{quote ? (quote.eligible ? " · uygun ✓" : " · uygun değil") : ""}
-            </Text>
+            {qErr ? <Text style={{ color: "#FFB4AC", fontSize: 11 }} numberOfLines={1}>Fiyat alınamadı: {qErr}</Text> : <Text style={{ color: quote && !quote.eligible ? "#FFB4AC" : "#B9C3EF", fontSize: 11 }} numberOfLines={1}>
+              {pallets} palet{step >= 2 ? ` · ${num(grossKg)} kg · ${volumeM3.toLocaleString("tr-TR")} m³` : trip ? ` · ${weekday(day)} ${dayNum(day)} ${hm(trip.departureAt)}` : ""}{quote ? (quote.eligible ? " ✓" : " · uygun değil") : ""}
+            </Text>}
           </View>
           <Pressable disabled={!canNext || busy} onPress={() => (step < 3 ? go(step + 1) : submit())} accessibilityRole="button"
             style={({ pressed }) => ({ minHeight: 50, paddingHorizontal: 20, borderRadius: 15, backgroundColor: c.mint500, alignItems: "center", justifyContent: "center", opacity: !canNext || busy ? 0.4 : pressed ? 0.85 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>

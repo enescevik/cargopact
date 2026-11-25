@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { c, serif } from "./theme";
 import { Btn, Field } from "./ui";
@@ -15,6 +15,8 @@ const DEMOS = [
 /** Web girişinin mobil karşılığı: noir sahne + dolan tır + alttan yükselen rol kartları. */
 export function Login({ onLogin, busy, error }: { onLogin: (email: string, pw: string) => void; busy: boolean; error?: string }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const compact = height < 760; // iPhone SE / mini: tır ve açıklama gizlenir
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [manual, setManual] = useState(false);
@@ -45,8 +47,8 @@ export function Login({ onLogin, busy, error }: { onLogin: (email: string, pw: s
         <Text style={{ fontFamily: serif, color: "#fff", fontSize: 36, lineHeight: 40, letterSpacing: -1 }}>
           İşiniz hep{"\n"}<Text style={{ color: c.mint500 }}>yolunda</Text>.
         </Text>
-        <Text style={{ color: "#B9C3EF", fontSize: 14, lineHeight: 20 }}>Boş palet yerini görün, seçin, ayırın. Araç dolarken siz izleyin.</Text>
-        <View style={{ gap: 6, marginTop: 4 }}>
+        {!compact && <Text style={{ color: "#B9C3EF", fontSize: 14, lineHeight: 20 }}>Boş palet yerini görün, seçin, ayırın. Araç dolarken siz izleyin.</Text>}
+        <View style={{ gap: 6, marginTop: 4, display: height < 680 ? "none" : "flex" }}>
           <TruckMap dark operator legend={false} positions={33} cells={cells} />
           <Text style={{ color: "#8F9BCF", fontSize: 12 }}><Text style={{ color: "#fff", fontWeight: "800" }}>{filled}</Text>/33 planlanan · canlı doluluk</Text>
         </View>
@@ -88,7 +90,7 @@ export function Login({ onLogin, busy, error }: { onLogin: (email: string, pw: s
             ) : (
               <View style={{ gap: 10 }}>
                 <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="ad@firma.com" />
-                <Field label="Parola" value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" onSubmitEditing={() => go(email.trim(), pw, "form")} />
+                <Field label="Parola" value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" onSubmitEditing={() => { if (!busy && email && pw) go(email.trim(), pw, "form"); }} />
                 <Btn title="Giriş yap" loading={busy && which === "form"} disabled={!email || !pw} onPress={() => go(email.trim(), pw, "form")} />
               </View>
             )}
