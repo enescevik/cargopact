@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, ArrowRight, CalendarClock, Check, CreditCard, LogOut, MessageSquare, PackageSearch, Search, Ship, Truck, Warehouse, Ban,
+  ArrowLeft, ArrowRight, CalendarClock, Check, CreditCard, LogOut, MessageSquare, PackageSearch, Search, Truck, Warehouse, Ban,
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { Quote, Reservation, TripCard } from "./types";
@@ -25,7 +25,7 @@ export function CustomerPortal({ displayName, tenant, onLogout }: { displayName:
     <>
       <header className="topnav">
         <div className="topnav-in">
-          <div className="logo"><div className="logo-mark"><Ship size={17} /></div>CargoPact</div>
+          <div className="logo"><div className="logo-mark"><img src="/logo-mark.svg" alt="" /></div>CargoPact</div>
           <nav className="navlinks">
             {nav.map(([k, l, ic]) => (
               <button key={k} className={`navlink ${tab === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)}>{ic}{l}</button>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, LogOut, MessageSquare, PackagePlus, Ship, Truck, X,
+  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, LogOut, MessageSquare, PackagePlus, Truck, X,
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
@@ -21,7 +21,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
   return (
     <div className="shell">
       <aside className="side">
-        <div className="logo"><div className="logo-mark"><Ship size={17} /></div>CargoPact</div>
+        <div className="logo"><div className="logo-mark"><img src="/logo-mark.svg" alt="" /></div>CargoPact</div>
         <div className="tiny" style={{ margin: "0 12px 8px", color: "#7f8cc2", letterSpacing: ".08em" }}>TRANSFER MERKEZİ</div>
         {nav.map(([k, l, ic]) => (
           <button key={k} className={`navlink ${tab === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)}>{ic}{l}</button>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="CargoPact">
+  <title>CargoPact</title>
+  <rect width="1024" height="1024" fill="#ffffff"/>
+  <!-- right navy block with white slot -->
+  <polygon points="562,392 922,392 922,711 542,711 672,545 672,527" fill="#032a50"/>
+  <rect x="672" y="527" width="184" height="26" fill="#ffffff"/>
+  <!-- top green band -->
+  <polygon points="102,279 446,279 672,527 532,496 450,438 102,438" fill="#02b176"/>
+  <!-- middle dark-green band -->
+  <polygon points="102,463 444,463 528,520 672,540 532,563 444,622 102,622" fill="#038567"/>
+  <!-- bottom navy band -->
+  <polygon points="102,648 448,648 530,592 668,545 450,782 102,782" fill="#032a50"/>
+</svg>

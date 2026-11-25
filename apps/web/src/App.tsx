@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ArrowRight, Boxes, Clock, ShieldCheck, Ship } from "lucide-react";
+import { ArrowRight, Boxes, Clock, ShieldCheck } from "lucide-react";
 import { signIn } from "./auth";
 import { api, getToken, setToken, setUnauthorizedHandler } from "./api";
 import type { Me } from "./types";
@@ -39,7 +39,7 @@ function Login({ onDone }: { onDone: () => void }) {
   return (
     <div className="login">
       <section className="hero">
-        <div className="logo" style={{ color: "#fff" }}><div className="logo-mark"><Ship size={17} /></div>CargoPact</div>
+        <div className="logo" style={{ color: "#fff" }}><div className="logo-mark"><img src="/logo-mark.svg" alt="" /></div>CargoPact</div>
         <div>
           <div className="kicker" style={{ color: "var(--m5)", marginBottom: 14 }}>Planlı transferlerde boş palet pazarı</div>
           <h1>Boş kalan her palet, <em>doğru yüke</em> gitsin.</h1>
