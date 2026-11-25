@@ -32,3 +32,17 @@ export const pct = (n: number) => `%${Math.round(n * 100)}`;
 export const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toLocaleUpperCase("tr-TR")).join("");
 export const place = (f: { city: string; district?: string | null }) => f.district ?? f.city;
+
+/** ISO -> "YYYY-MM-DD" (İstanbul takvim günü) */
+export const isoDay = (iso: string) => isoToLocal(iso).slice(0, 10);
+/** "YYYY-MM-DD" + n gün */
+export function addDays(d: string, n: number): string {
+  const x = new Date(`${d}T12:00:00+03:00`);
+  x.setUTCDate(x.getUTCDate() + n);
+  return isoDay(x.toISOString());
+}
+const fDay = fmt({ weekday: "short" });
+const fDayNum = fmt({ day: "numeric", month: "short" });
+export const weekday = (d: string) => fDay.format(new Date(`${d}T12:00:00+03:00`));
+export const dayNum = (d: string) => fDayNum.format(new Date(`${d}T12:00:00+03:00`));
+export const today = () => isoDay(new Date().toISOString());
