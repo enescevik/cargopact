@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { api } from "./api";
 import { c, serif } from "./theme";
 import { dt, hm, money, place } from "./format";
 import { Card, Chip, Row } from "./ui";
-import type { TripCard } from "./types";
+import type { Facility, TripCard } from "./types";
 
 export function RouteHead({ trip, size = 26 }: { trip: TripCard; size?: number }) {
   return (
@@ -23,6 +23,23 @@ export function CutoffChips({ trip }: { trip: TripCard }) {
       <Chip tone="cobalt" label={`Son rezervasyon (T−3) ${hm(trip.bookingCutoffAt)}`} />
       <Chip tone="mint" label={`Çıkış deposu son kabul (T−1) ${hm(trip.intakeCutoffAt)}`} />
     </View>
+  );
+}
+
+export function WarehouseGuide({ title, facility, intakeCutoffAt }: { title: string; facility: Facility; intakeCutoffAt?: string }) {
+  const destination = facility.latitude != null && facility.longitude != null ? `${facility.latitude},${facility.longitude}` : facility.address;
+  const mapUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  return (
+    <Card style={{ gap: 10 }}>
+      <Text style={{ fontFamily: serif, fontSize: 21, color: c.ink900 }}>{title}</Text>
+      <Text style={{ fontWeight: "700", color: c.ink900 }}>{facility.name}</Text>
+      <Text style={{ color: c.ink500, lineHeight: 19 }}>{facility.address} · {facility.district ? `${facility.district}, ` : ""}{facility.city}</Text>
+      {intakeCutoffAt && <Text style={{ color: c.pending, fontWeight: "600" }}>Son depo kabulü: {dt(intakeCutoffAt)}</Text>}
+      {facility.contactPhone && <Pressable onPress={() => Linking.openURL(`tel:${facility.contactPhone}`)}><Text style={{ color: c.cobalt700, fontWeight: "600" }}>{facility.contactPhone}</Text></Pressable>}
+      <Pressable onPress={() => Linking.openURL(mapUrl)} style={{ minHeight: 44, borderRadius: 12, backgroundColor: c.cobalt600, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#fff", fontWeight: "700" }}>Yol tarifi al</Text>
+      </Pressable>
+    </Card>
   );
 }
 
