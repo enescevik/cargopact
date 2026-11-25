@@ -1,17 +1,21 @@
 ---
 inclusion: always
 ---
-# CargoPact – Ürün Bağlamı
+# CargoPact – Ürün Bağlamı (Plan v1.3, 25 Kasım 2026)
 
-> Proje planı henüz eklenmedi. Plan geldiğinde bu dosyayı güncelleyin: hedef kullanıcılar, ana akışlar, alan terimleri (domain glossary), kapsam dışı konular.
+**Amaç:** Taşıyıcıların (yükleniciler: Dinçer Lojistik, Siva vb.) planlı depo-depo transferlerinde boş kalan palet alanını yayınlaması; müşterilerin kendi rotasına uygun araçta yer için teklif vermesi; onaylanan yükün çıkış transfer merkezine müşteri tarafından getirilmesi, aracın varış dağıtım merkezine taşıması ve müşterinin/yetkili alıcısının varış deposundan teslim almasıdır.
 
-## Bilinen bilgiler
-- Ürün: web + mobil uygulama, sohbet tabanlı çoklu ajan arayüzü.
-- Repo: https://github.com/enescevik/cargopact
-- AWS bölgesi: us-east-1.
+**Kapsam dışı (MVP):** kapıdan alım/teslim (mikro toplama ve toplama müşteride; ileride entegrasyon), açık taşıyıcı pazarı, ara durak, istiflenebilir palet, ürünün tetiklediği yeni sefer.
 
-## Planlanacak bölümler
-- [ ] Kullanıcı rolleri
-- [ ] Ana kullanıcı akışları
-- [ ] Veri modeli (Aurora DSQL tabloları)
-- [ ] Uzman ajanların görev tanımları (`agents/`)
+## Roller
+- **Müşteri / yük sahibi:** sefer arar, yük beyan eder, teklif verir/kabul eder, ödeme yapar, takip eder, yetkili alıcı tanımlar. Yalnız kendi firmasının verisini görür.
+- **Taşıyıcı planlamacı:** "Aracım var, yük ekle" ile sefer kapasitesini yayınlar, talepleri onaylar/reddeder.
+- **Taşıyıcı depo personeli:** kabul, ölçüm, barkod/QR, yükleme, varış, teslim olaylarını işler (mobil, kamera, çevrimdışı kuyruk).
+- **Yönetim/jüri:** salt okunur özet panosu.
+
+## İlkeler
+- Sistem kayıt sahibi olduğu alanlar: teklif, blokaj, onay, ödeme, müşteri deneyimi. TMS = sefer, WMS = depo hareketi (sahip sistemler).
+- Palet/kg/m³ doluluğu ayrı gösterilir. Planlanan, bloke ve fiili doluluk karıştırılmaz.
+- Aynı isteğin tekrarı tek mutasyon üretir (idempotency key). Mobil eşitleme de idempotent.
+- Müşteriler birbirinin teklifini, geçmişini, önceliğini göremez.
+- Demo/simülasyon verisi işaretlenir.
