@@ -42,6 +42,7 @@ export type Reservation = {
 export type Reason = { code: string; message: string };
 export type CarrierReservation = Reservation & {
   priorityRank: number; verifiedNoShows: number;
+  customerHistory: { historicalReservationCount: number; verifiedNoShows: number };
   eligibility: { eligible: boolean; reasons: Reason[] };
 };
 export type Quote = {

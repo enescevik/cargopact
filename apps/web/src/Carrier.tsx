@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, Truck, X,
 } from "lucide-react";
-import { api, ApiError } from "./api";
+import { api, ApiError, sendChat } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
 import { dt, full, isoToLocal, localToIso, num, place, time, tl, day } from "./format";
 import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge, TripBarCompact, errText, useFetch, useToast } from "./ui";
@@ -92,6 +92,10 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [teslim, setTeslim] = useState<CarrierRes | null>(null);
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<{ r: CarrierRes; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
+  const [historyFor, setHistoryFor] = useState<CarrierRes | null>(null);
+  const [historyReply, setHistoryReply] = useState("");
+  const [historyError, setHistoryError] = useState<Error | null>(null);
+  const [historyBusy, setHistoryBusy] = useState(false);
 
   const { pending, active } = useMemo(() => {
     const rs = t?.reservations ?? [];
@@ -106,6 +110,21 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
     try { await api("POST", path, body); toast(ok, "ok"); reload(); }
     catch (e) { toast(errText(e), "err"); }
     finally { setBusy(null); }
+  }
+
+  async function showHistoryInsight(r: CarrierRes) {
+    setHistoryFor(r); setHistoryReply(""); setHistoryError(null); setHistoryBusy(true);
+    const h = r.customerHistory;
+    try {
+      const response = await sendChat({
+        sessionId: `risk-${crypto.randomUUID()}`,
+        message: `${t?.reference ?? id} seferindeki ${r.reference} numaralı ${r.customer.name} talebi için karar desteği hazırla. ` +
+          `Önce trip_detail aracından customerHistory değerlerini doğrula: geçmiş sonuçlanmış talep ${h.historicalReservationCount}, doğrulanmış gelmeme ${h.verifiedNoShows}. ` +
+          "Ardından carrier_knowledge aracını çağırarak bu geçmişin öncelik kuralına etkisini kısa ve tarafsız biçimde açıkla; kaynak dosya adını belirt. Onay veya ret kararı verme.",
+      });
+      setHistoryReply(response.reply);
+    } catch (e) { setHistoryError(e as Error); }
+    finally { setHistoryBusy(false); }
   }
 
   return (
@@ -143,7 +162,12 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                     <tr key={r.id}>
                       <td><b className="serif" style={{ fontSize: 20 }}>{r.priorityRank}</b></td>
                       <td><b>{r.customer.name}</b>
-                        {r.verifiedNoShows > 0 && <div style={{ marginTop: 4 }}><span className="badge warn"><AlertTriangle size={11} />Doğrulanmış gelmeme: {r.verifiedNoShows}</span></div>}
+                        {r.customerHistory.historicalReservationCount > 0 && (
+                          <div className="alert warn" style={{ marginTop: 6, padding: "8px 10px" }}>
+                            <div className="small"><AlertTriangle size={13} style={{ verticalAlign: -2 }} /> <b>Müşteri geçmişi:</b> {r.customerHistory.historicalReservationCount} sonuçlanmış talep, {r.customerHistory.verifiedNoShows} doğrulanmış gelmeme.</div>
+                            <button className="link small" style={{ marginTop: 5 }} onClick={() => showHistoryInsight(r)}>Knowledge Base yorumunu göster</button>
+                          </div>
+                        )}
                         <div className="tiny mono">{r.reference}</div>
                         {r.needsReview && <div style={{ marginTop: 4 }}><span className="badge warn"><AlertTriangle size={11} />Yeniden değerlendirme gerekli</span></div>}</td>
                       <td className="small">{num(r.pallets)} palet<br />{num(r.grossKg)} kg<br />{r.volumeM3 ? `${r.volumeM3} m³` : "—"}</td>
@@ -200,6 +224,11 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           toast(r.reevaluated.length === 0 ? "Sefer güncellendi." : `Sefer güncellendi. ${r.reevaluated.length} bekleyen talep yeniden değerlendirildi; ${r.needsReviewCount} tanesi inceleme gerektiriyor.`, r.needsReviewCount > 0 ? "err" : "ok");
           reload();
         }} />}
+      {historyFor && <Modal title={`${historyFor.customer.name} · geçmiş değerlendirmesi`} onClose={() => setHistoryFor(null)}>
+        <div className="alert warn" style={{ marginBottom: 14 }}><AlertTriangle size={18} /><span><b>{historyFor.customerHistory.historicalReservationCount}</b> sonuçlanmış talebin <b>{historyFor.customerHistory.verifiedNoShows}</b> tanesinde onaylı yük zamanında getirilmedi.</span></div>
+        <div className="tiny" style={{ marginBottom: 10 }}>Sayılar işlem API’sinden, kural yorumu taşıyıcıya özel Bedrock Knowledge Base’den gelir. Bu panel karar desteğidir; otomatik onay veya ret vermez.</div>
+        {historyBusy ? <SkeletonCards n={1} h={120} /> : historyError ? <ErrorBox error={historyError} /> : <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{historyReply}</div>}
+      </Modal>}
       {reject && <ReasonModal title={`${reject.customer.name} talebini reddet`} cta="Reddet" required
         onClose={() => setReject(null)}
         onSubmit={async (reason) => { await api("POST", `/carrier/reservations/${reject.id}/decision`, { decision: "reject", reason }); toast("Talep reddedildi.", "ok"); setReject(null); reload(); }} />}

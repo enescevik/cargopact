@@ -91,8 +91,19 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
   const resSeeds: ResSeed[] = [
     { key: "past-baskent-gelmedi", customer: "baskent", trip: "DNC-PAST-GEB-ANK", status: "GELMEDI", pallets: 2, kg: 1200, order: 3, createdHoursBeforeDep: 60,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 60], ["ONAYLI", 58], ["GELMEDI", 0]] },
-    { key: "past-marmara-teslim", customer: "marmara", trip: "DNC-PAST-GEB-ANK", status: "TESLIM", pallets: 3, kg: 1500, order: 1, createdHoursBeforeDep: 70,
+    { key: "past-marmara-teslim", customer: "marmara", trip: "DNC-PAST-GEB-ANK", status: "TESLIM", pallets: 1, kg: 500, order: 1, createdHoursBeforeDep: 70,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 70], ["ONAYLI", 68], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -6], ["TESLIM", -8]] },
+    // Marmara Ambar karar desteği senaryosu: 10 sonuçlanmış talep, 2 doğrulanmış gelmeme.
+    ...Array.from({ length: 7 }, (_, i): ResSeed => ({
+      key: `past-marmara-teslim-${i + 2}`, customer: "marmara", trip: "DNC-PAST-GEB-ANK", status: "TESLIM", pallets: 1, kg: 450 + i * 10,
+      order: 4 + i, createdHoursBeforeDep: 66 - i,
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 66 - i], ["ONAYLI", 64 - i], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -6], ["TESLIM", -8]],
+    })),
+    ...Array.from({ length: 2 }, (_, i): ResSeed => ({
+      key: `past-marmara-gelmedi-${i + 1}`, customer: "marmara", trip: "DNC-PAST-GEB-ANK", status: "GELMEDI", pallets: 1, kg: 500,
+      order: 11 + i, createdHoursBeforeDep: 56 - i,
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 56 - i], ["ONAYLI", 54 - i], ["GELMEDI", 0]],
+    })),
     { key: "hist-marmara-brs", customer: "marmara", trip: "DNC-GEB-BRS", status: "ONAYLI", pallets: 2, kg: 800, order: 2, createdHoursBeforeDep: 20,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 20], ["ONAYLI", 19]] },
     { key: "hist-anadolu-kny", customer: "anadolu", trip: "DNC-KMP-KNY", status: "TASIYICI_ONAYI_BEKLIYOR", pallets: 1, kg: 500, order: null, createdHoursBeforeDep: 30,
@@ -122,9 +133,9 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     await upsert(pool, "reservations", resRows, ["id"], log);
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
-  // Tüm canlı siparişler silindiği için sayaç seed numaralarına (3) döner.
+  // Tüm canlı siparişler silindiği için sayaç en yüksek seed numarasına (12) döner.
   await withTx(pool, async (c) => {
-    await c.query("insert into order_counters (year, last_value) values ($1, 3) on conflict (year) do update set last_value = 3", [year]);
+    await c.query("insert into order_counters (year, last_value) values ($1, 12) on conflict (year) do update set last_value = 12", [year]);
   });
 
   // 4) Kapasite satırlarını rezervasyon toplamlarından yeniden kur (tüm seed seferleri).

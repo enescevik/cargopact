@@ -54,7 +54,11 @@ type Reservation = {
 };
 type CarrierReservation = Reservation & {
   priorityRank: number;                     // 1 = en öncelikli (gelmemesi olan firmalar sona)
-  verifiedNoShows: number;                  // yalnız taşıyıcıya görünür
+  verifiedNoShows: number;                  // geriye uyumluluk; yalnız taşıyıcıya görünür
+  customerHistory: {                        // yalnız taşıyıcıya görünür; mevcut/açık talep sayılmaz
+    historicalReservationCount: number;     // sonuçlanmış geçmiş talepler
+    verifiedNoShows: number;                // ONAYLI olup T−1'e kadar getirilmeyen yükler
+  };
   eligibility: { eligible: boolean; reasons: { code: string; message: string }[] } };
 ```
 

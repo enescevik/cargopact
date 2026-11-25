@@ -74,13 +74,14 @@ Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyo
 **Beklenen ekran:** başvuru referansı `BV-…`, durum "Taşıyıcı onayı bekliyor", blokaj bitiş saati. Müşteri başka firmanın kaydını görmez.
 
 **Tıkla (sekme A, Dinçer)**
-5. Seferi yenile → **Bekleyen talepler**: Marmara Ambar, 3 palet / 1.500 kg, "Uygun", öncelik sırası 1.
-6. **Onayla**.
+5. Seferi yenile → **Bekleyen talepler**: Marmara Ambar, 3 palet / 1.500 kg, "Uygun". Kartta **Müşteri geçmişi: 10 sonuçlanmış talep, 2 doğrulanmış gelmeme** uyarısı görünür.
+6. **Knowledge Base yorumunu göster** → panelde taşıyıcıya özel kural açıklaması ve `ozet-olaylar.md` kaynak adı görünür. Sayılar işlem API'sinden gelir; KB yalnız kuralı yorumlar.
+7. **Onayla**.
 
 **Ne söyle**
-> "Onayda sistem uygunluğu yeniden kontrol ediyor: palet, brüt kg, m³, ürün, zaman ve iç yük rezervi. Onay, tekil sipariş numarasını aynı işlemde üretir."
+> "Onay ekranı müşterinin geçmiş sonuçlarını işlem verisinden getiriyor: Marmara Ambar'ın 10 sonuçlanmış talebinin 2'sinde onaylı yük zamanında depoya getirilmemiş. Knowledge Base bu sayıları üretmiyor; taşıyıcıya özel öncelik kuralını ve istisnaları açıklıyor. Bu bir karar desteğidir, otomatik ret değildir. Onayda sistem uygunluğu ayrıca yeniden kontrol ediyor: palet, brüt kg, m³, ürün, zaman ve iç yük rezervi."
 
-**Beklenen ekran:** `CP-2026-00xxxx` sipariş numarası (aynı onay tekrarında aynı numara), pano **28/33**, onaylı 3 palet, brüt tutar artar.
+**Beklenen ekran:** Geçmiş uyarısı, Knowledge Base kaynaklı kısa kural yorumu, ardından `CP-2026-00xxxx` sipariş numarası (aynı onay tekrarında aynı numara), pano **28/33**, onaylı 3 palet, brüt tutar artar.
 
 **Fallback:** Müşteri formu hata verirse mobil ekrandan aynı isteği yap. Onay butonu hata verirse sekmeyi yenile; onay idempotent olduğu için yeniden basmak çift sipariş üretmez, aynı numara döner. Hiçbiri çalışmazsa önceden çekilmiş ekran görüntüsü / video (§Genel yedek planı).
 

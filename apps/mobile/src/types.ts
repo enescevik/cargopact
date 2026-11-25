@@ -31,6 +31,7 @@ export type Reservation = {
 };
 export type CarrierReservation = Reservation & {
   priorityRank: number; verifiedNoShows: number;
+  customerHistory: { historicalReservationCount: number; verifiedNoShows: number };
   eligibility: { eligible: boolean; reasons: { code: string; message: string }[] };
 };
 export type CarrierTrip = TripCard & {

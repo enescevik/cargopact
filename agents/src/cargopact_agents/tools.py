@@ -95,7 +95,7 @@ def _slim_res(r: dict) -> dict:
         "totalPriceMinor": r.get("totalPriceMinor"), "paymentStatus": (r.get("payment") or {}).get("status"),
         "holdExpiresIstanbul": _tr(r.get("holdExpiresAt")), "createdIstanbul": _tr(r.get("createdAt")),
     }
-    for k in ("priorityRank", "verifiedNoShows", "eligibility"):
+    for k in ("priorityRank", "verifiedNoShows", "customerHistory", "eligibility"):
         if k in r:
             out[k] = r[k]
     return out

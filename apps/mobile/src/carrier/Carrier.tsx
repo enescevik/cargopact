@@ -58,6 +58,10 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [busy, setBusy] = useState<string>();
   const [rejecting, setRejecting] = useState<CarrierReservation>();
   const [reason, setReason] = useState("");
+  const [historyFor, setHistoryFor] = useState<CarrierReservation>();
+  const [historyReply, setHistoryReply] = useState("");
+  const [historyError, setHistoryError] = useState("");
+  const [historyBusy, setHistoryBusy] = useState(false);
 
   const decide = async (r: CarrierReservation, decision: "approve" | "reject", why?: string) => {
     setBusy(r.id);
@@ -67,6 +71,21 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
       setRejecting(undefined); setReason("");
       await reload(true);
     } catch (e) { toast((e as Error).message, "err"); } finally { setBusy(undefined); }
+  };
+
+  const showHistoryInsight = async (r: CarrierReservation) => {
+    setHistoryFor(r); setHistoryReply(""); setHistoryError(""); setHistoryBusy(true);
+    const h = r.customerHistory;
+    try {
+      const response = await api<{ reply: string }>("POST", "/chat", {
+        sessionId: `risk-${uuid()}`,
+        message: `${t?.reference ?? id} seferindeki ${r.reference} numaralı ${r.customer.name} talebi için karar desteği hazırla. ` +
+          `Önce trip_detail aracından customerHistory değerlerini doğrula: geçmiş sonuçlanmış talep ${h.historicalReservationCount}, doğrulanmış gelmeme ${h.verifiedNoShows}. ` +
+          "Ardından carrier_knowledge aracını çağırarak öncelik kuralına etkisini kısa ve tarafsız açıkla; kaynak dosyayı belirt. Onay veya ret kararı verme.",
+      });
+      setHistoryReply(response.reply);
+    } catch (e) { setHistoryError((e as Error).message); }
+    finally { setHistoryBusy(false); }
   };
 
   if (!t) return <View style={{ flex: 1 }}><BackBar title="Seferler" onBack={onBack} /><Screen>{error ? <ErrorBox message={error} onRetry={() => reload()} /> : <Skeletons n={3} h={140} />}</Screen></View>;
@@ -97,8 +116,14 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                 </View>
                 <Text style={{ fontSize: 17, fontWeight: "800", color: c.ink900 }}>{r.customer.name}</Text>
               </Row>
-              {r.verifiedNoShows > 0 && <Badge tone="danger" label={`${r.verifiedNoShows} gelmeme`} />}
+              {r.customerHistory.verifiedNoShows > 0 && <Badge tone="danger" label={`${r.customerHistory.verifiedNoShows} gelmeme`} />}
             </Row>
+            {r.customerHistory.historicalReservationCount > 0 && (
+              <View style={{ backgroundColor: "#FFF4D6", borderRadius: 12, padding: 10, gap: 6 }}>
+                <Text style={{ color: "#765400", fontSize: 13 }}><Text style={{ fontWeight: "800" }}>Müşteri geçmişi:</Text> {r.customerHistory.historicalReservationCount} sonuçlanmış talep, {r.customerHistory.verifiedNoShows} doğrulanmış gelmeme.</Text>
+                <Btn kind="ghost" title="Knowledge Base yorumunu göster" onPress={() => showHistoryInsight(r)} />
+              </View>
+            )}
             <Text style={{ color: c.ink700 }}>{r.pallets} palet · {num(r.grossKg)} kg · {r.productClass.name}</Text>
             <Badge tone={r.eligibility.eligible ? "success" : "danger"} label={r.eligibility.eligible ? "Uygun" : "Uygun değil"} />
             {r.eligibility.reasons.map((x, i) => <Text key={i} style={{ fontSize: 13, color: r.eligibility.eligible ? c.ink500 : c.danger }}>• {x.message}</Text>)}
@@ -119,6 +144,18 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           </Card>
         ))}
       </Screen>
+      {historyFor && (
+        <Sheet onClose={() => setHistoryFor(undefined)}>
+          <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>Müşteri geçmişi</Text>
+          <Text style={{ color: c.ink700, fontWeight: "700" }}>{historyFor.customer.name}</Text>
+          <View style={{ backgroundColor: "#FFF4D6", borderRadius: 12, padding: 12 }}>
+            <Text style={{ color: "#765400" }}>{historyFor.customerHistory.historicalReservationCount} sonuçlanmış talebin {historyFor.customerHistory.verifiedNoShows} tanesinde onaylı yük zamanında getirilmedi.</Text>
+          </View>
+          <Text style={{ color: c.ink500, fontSize: 12 }}>Sayılar işlem API’sinden, yorum taşıyıcıya özel Bedrock Knowledge Base’den gelir. Otomatik karar verilmez.</Text>
+          {historyBusy ? <Skeletons n={1} h={120} /> : historyError ? <ErrorBox message={historyError} /> : <Text style={{ color: c.ink700, lineHeight: 21 }}>{historyReply}</Text>}
+          <Btn kind="ghost" title="Kapat" onPress={() => setHistoryFor(undefined)} />
+        </Sheet>
+      )}
       {rejecting && (
         <Sheet onClose={() => setRejecting(undefined)}>
           <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>Talebi reddet</Text>

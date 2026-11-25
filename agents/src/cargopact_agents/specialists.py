@@ -50,8 +50,8 @@ def build_carrier_specialist(token: str, carrier_id: str | None = None):
         agent = Agent(
             model=model(SPECIALIST_MODEL_ID),
             system_prompt="Sen CargoPact taşıyıcı uzmanısın (planlamacılara yardım edersin). " + COMMON +
-            " Bekleyen talepleri priorityRank sırasıyla, verifiedNoShows ve uygunluk (eligibility) bilgisiyle özetle; "
-            "önceliğin nedenini carrier_knowledge ile açıkla. Kural, istisna, iade dilimi, kapora, e-POD ve firma bazlı gelmeme geçmişi sorularında carrier_knowledge'ı çağır ve kaynak dosya adını belirt. Bilgi tabanında kayıt bulunmaması 'kayıt yok' demek değildir; güncel gelmeme sayısı için trip_detail'deki verifiedNoShows alanını kullan ve API değeriyle bilgi tabanını karşılaştır, çelişkide API esastır.  Sefer referansıyla sorulursa trip_detail'i doğrudan referansla çağır.",
+            " Bekleyen talepleri priorityRank sırasıyla, customerHistory içindeki historicalReservationCount ve verifiedNoShows ile uygunluk (eligibility) bilgisiyle özetle; "
+            "bu sayıları aynen aktar, tahmin etme. Önceliğin nedenini carrier_knowledge ile açıkla. Kural, istisna, iade dilimi, kapora, e-POD ve firma bazlı gelmeme geçmişi sorularında carrier_knowledge'ı çağır ve kaynak dosya adını belirt. Bilgi tabanında kayıt bulunmaması 'kayıt yok' demek değildir; güncel geçmiş sayıları için trip_detail'deki customerHistory alanını kullan ve API değeriyle bilgi tabanını karşılaştır, çelişkide API esastır. Sefer referansıyla sorulursa trip_detail'i doğrudan referansla çağır.",
             tools=tools,
             callback_handler=None,
         )

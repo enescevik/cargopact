@@ -200,12 +200,25 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
   }
   const tripMap = new Map(trips.map((t) => [t.id, t]));
   let noShows = new Map<string, number>();
+  let history = new Map<string, { historicalReservationCount: number; verifiedNoShows: number }>();
   let accepted = new Map<string, boolean>();
   const rank = new Map<string, number>();
   if (opts.carrierView) {
     const carrierIds = [...new Set(rows.map((r) => r.carrier_id))];
-    const ns = await q.query("select customer_id, carrier_id, count(*) n from reservations where status = 'GELMEDI' and carrier_id = any($1::uuid[]) group by customer_id, carrier_id", [carrierIds]);
-    noShows = new Map(ns.rows.map((x) => [`${x.carrier_id}:${x.customer_id}`, Number(x.n)]));
+    // Geçmiş yalnız sonuçlanmış taleplerdir; açık talepler ve mevcut bekleyen talep sayılmaz.
+    const historyStates = ["TESLIM", "GELMEDI", "RET", "IPTAL", "EKSIK_HASAR", "SURESI_DOLDU"];
+    const hs = await q.query(
+      `select customer_id, carrier_id, count(*) historical_count,
+              count(*) filter (where status = 'GELMEDI') no_show_count
+         from reservations
+        where carrier_id = any($1::uuid[]) and status = any($2::text[])
+        group by customer_id, carrier_id`,
+      [carrierIds, historyStates],
+    );
+    history = new Map(hs.rows.map((x) => [`${x.carrier_id}:${x.customer_id}`, {
+      historicalReservationCount: Number(x.historical_count), verifiedNoShows: Number(x.no_show_count),
+    }]));
+    noShows = new Map([...history].map(([key, value]) => [key, value.verifiedNoShows]));
     const cp = await q.query("select carrier_id, product_class_id, accepted from carrier_product_classes where carrier_id = any($1::uuid[])", [carrierIds]);
     accepted = new Map(cp.rows.map((x) => [`${x.carrier_id}:${x.product_class_id}`, Boolean(x.accepted)]));
     const pend = rows.filter((r) => r.status === "TASIYICI_ONAYI_BEKLIYOR")
@@ -246,7 +259,9 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       );
     }
     const needsReview = pending && Boolean(r.needs_review) && !elig.eligible;
-    return { ...base, needsReview, priorityRank: rank.get(r.id) ?? 0, verifiedNoShows: noShows.get(`${r.carrier_id}:${r.customer_id}`) ?? 0, eligibility: elig };
+    const historyKey = `${r.carrier_id}:${r.customer_id}`;
+    const customerHistory = history.get(historyKey) ?? { historicalReservationCount: 0, verifiedNoShows: 0 };
+    return { ...base, needsReview, priorityRank: rank.get(r.id) ?? 0, verifiedNoShows: customerHistory.verifiedNoShows, customerHistory, eligibility: elig };
   });
 }
 
