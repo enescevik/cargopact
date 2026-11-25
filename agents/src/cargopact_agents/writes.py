@@ -164,19 +164,16 @@ def build_customer_write_tools(token) -> list:
             "ödemeYöntemi": f"Simüle kayıtlı kart •••• {SIMULATED_CARD_LAST4} (demo)",
             "sonRezervasyon_T-3": _tr(q.get("bookingCutoffAt")), "çıkışDeposuSonKabul_T-1": _tr(q.get("intakeCutoffAt")),
             "iptalKoşulları": q.get("cancellationPolicy"), "teslimAlacakKişi": args["recipientName"] or "(belirtilmedi)",
-            "karbon": carbon_txt,
-            "sözleşme": {
-                "başlık": cp.get("title"), "sürüm": cp.get("version") or "1.0-taslak",
-                "durum": "TASLAK – hukuki inceleme yapılmamıştır",
-                "önemliMaddeler": [
-                    "Yük en geç çıkış deposu son kabul (T−1) saatine kadar getirilir: " + str(_tr(q.get("intakeCutoffAt"))),
-                    "İptal: 24 saatten fazla %100, 24 saat–T−3 arası %50, sonrası %0 iade",
-                    "Depo ölçümü beyandan %3 farka kadar tolerans; fazlası incelemeye alınır",
-                    "Varışta yalnız yetkili alıcıya ve teslim koduyla teslim: " + (args["recipientName"] or "(alıcı belirtilmedi)"),
-                ],
-                "özetHash": rhash[:12],
-            },
-            "sözleşmeKabulü": f"Onaylamanız, bu taslak sözleşmeyi {signer} adına elektronik olarak kabul etmeniz anlamına gelir.",
+            "karbon_AYNEN_GÖSTER": carbon_txt,
+            "sözleşme_AYNEN_GÖSTER": "\n".join([
+                f"Sözleşme: {cp.get('title')} · sürüm {cp.get('version') or '1.0-taslak'} · TASLAK – hukuki inceleme yapılmamıştır",
+                "- Yük en geç çıkış deposu son kabul (T−1) saatine kadar getirilir: " + str(_tr(q.get("intakeCutoffAt"))),
+                "- İptal: 24 saatten fazla %100, 24 saat–T−3 arası %50, sonrası %0 iade",
+                "- Depo ölçümü beyandan %3 farka kadar tolerans; fazlası incelemeye alınır",
+                "- Varışta yalnız yetkili alıcıya ve teslim koduyla teslim: " + (args["recipientName"] or "(alıcı belirtilmedi)"),
+                f"- Sözleşme özeti (SHA-256): {rhash[:12]}",
+                f"Onaylamanız, bu taslak sözleşmeyi {signer} adına elektronik olarak kabul etmeniz anlamına gelir.",
+            ]),
         }
         gate = _gate(token, "create_reservation", args, summary)
         if gate:
