@@ -52,6 +52,16 @@ const readOnly = (base: string, tag: string, item: z.ZodTypeAny, q = catalogQuer
   { method: "GET", path: `${base}/{id}`, summary: `${tag} katalog kaydı`, tag, roles: READ_ALL, response: item },
 ];
 
+const customerManagementItem = z.object({
+  id: z.string().uuid(), name: z.string(), tenantStatus: z.string(),
+  totalReservations: z.number().int().min(0), delivered: z.number().int().min(0), verifiedNoShows: z.number().int().min(0),
+  cancelled: z.number().int().min(0), rejected: z.number().int().min(0), damaged: z.number().int().min(0), pending: z.number().int().min(0), active: z.number().int().min(0),
+  score: z.number().int().min(0).max(100), category: z.enum(["UYGUN", "IZLENMELI", "RISKLI"]), evidenceCount: z.number().int().min(0), scoreExplanation: z.string(),
+  lastReservationAt: z.string().datetime(),
+  recentEvents: z.array(z.object({ type: z.string(), label: z.string(), at: z.string().datetime(), reservationReference: z.string() })).max(5),
+});
+const customerManagementResponse = z.object({ items: z.array(customerManagementItem) });
+
 /** Tek kaynak: API yönlendiricisi bu listeyle karşılaştırılarak test edilir. */
 export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/health", summary: "Sağlık kontrolü", tag: "Sistem", roles: "public", response: health },
@@ -62,6 +72,7 @@ export const API_OPERATIONS: Operation[] = [
   ...crud("/carrier/vehicle-types", "Araç tipi", vehicleType, vehicleTypeInput, READ_CARRIER, ["carrier_admin"]),
   ...crud("/carrier/vehicles", "Araç", vehicle, vehicleInput, READ_CARRIER, ["carrier_admin"]),
   ...crud("/carrier/packaging-types", "Ambalaj tipi", packagingType, packagingTypeInput, READ_CARRIER, ["carrier_admin"]),
+  { method: "GET", path: "/carrier/customers", summary: "Taşıyıcının müşteri yönetimi ve operasyonel güven skorları", tag: "Müşteri yönetimi", roles: ["carrier_admin", "carrier_planner"], response: customerManagementResponse },
   { method: "GET", path: "/carrier/product-classes", summary: "Kabul edilen ürün sınıfları", tag: "Ürün sınıfı", roles: READ_ALL, response: z.object({ items: z.array(carrierProductClass) }) },
   { method: "PUT", path: "/carrier/product-classes", summary: "Ürün sınıfı kabul listesini güncelle", tag: "Ürün sınıfı", roles: ["carrier_admin"], body: carrierProductClassesInput, response: updatedCount, idempotent: true },
   ...readOnly("/catalog/vehicle-types", "Araç tipi", vehicleType),

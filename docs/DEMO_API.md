@@ -60,6 +60,12 @@ type CarrierReservation = Reservation & {
     verifiedNoShows: number;                // ONAYLI olup T−1'e kadar getirilmeyen yükler
   };
   eligibility: { eligible: boolean; reasons: { code: string; message: string }[] } };
+type CustomerManagementItem = {
+  id: string; name: string; tenantStatus: string;
+  totalReservations: number; delivered: number; verifiedNoShows: number; cancelled: number; rejected: number; damaged: number; pending: number; active: number;
+  score: number; category: "UYGUN"|"IZLENMELI"|"RISKLI"; evidenceCount: number; scoreExplanation: string;
+  lastReservationAt: string; recentEvents: { type: string; label: string; at: string; reservationReference: string }[];
+};
 ```
 
 ## Müşteri uçları (rol: customer_user, firma aktif)
@@ -80,6 +86,7 @@ type CarrierReservation = Reservation & {
 ## Transfer merkezi uçları (rol: carrier_admin, carrier_planner; olaylar için carrier_warehouse da)
 | Yöntem | Yol | Gövde | Yanıt |
 |---|---|---|---|
+| GET | `/carrier/customers` | | `{ items: CustomerManagementItem[] }`. Yalnız taşıyıcı admin/planlamacı; metrikler aynı taşıyıcıyla rezervasyon geçmişinden, skor deterministik hesaplanır. KB skoru üretmez. |
 | GET | `/carrier/trips` | `?status=` | `{ items: CarrierTrip[] }` (kalkışa göre) |
 | POST | `/carrier/trips` | `{ originFacilityId, destinationFacilityId, vehicleId, departureAt, arrivalEta, internalPallets, internalKg, maxGrossKg, sellablePallets, sellableKg, sellableM3, basePriceMinor, publish: boolean }` | 201 `CarrierTrip` ("Aracım var, yük ekle") |
 | GET | `/carrier/trips/{id}` | | `CarrierTrip & { reservations: CarrierReservation[] }` (bekleyenler öncelik sırasıyla) |

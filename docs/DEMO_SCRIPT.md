@@ -56,6 +56,20 @@ Beklenen: seed idempotent; ana veri geri gelir. ⚠️ Demo seferi ve rezervasyo
 
 **Fallback:** Pano açılmazsa `Seferler` listesinden seferi aç; kapasite çubukları aynı veriyi gösterir. API çökmüşse `https://765h182ijf.execute-api.us-east-1.amazonaws.com/health` 200 dönüyor mu bak; dönmüyorsa §Genel yedek planına geç.
 
+### 1A. Müşteri Yönetimi ve KB analizi (isteğe bağlı 45 sn) · Web yönetici
+
+**Tıkla**
+1. Sol menü → **Müşteri Yönetimi**. Dinçer ile rezervasyon geçmişi bulunan yaklaşık 20 kurgusal müşteri listelenir.
+2. **Riskli profil** filtresini seç → Trakya Dağıtım veya Güney Lojistik satırını aç.
+3. Analiz panelinde skor, kategori, teslim/gelmeme metrikleri ve son olayları göster.
+4. **KB yorumunu getir** → Dinçer'e özel skor ve öncelik kurallarının kaynaklı açıklamasını göster.
+5. Marmara Ambar'ı aç → 8 teslim / 2 doğrulanmış gelmeme ve **İzlenmeli** kategorisini göster.
+
+**Ne söyle**
+> "Bu skor kişiye, ödemeye veya firma adına bakmıyor; yalnız doğrulanmış teslim ve gelmeme sonuçlarından aynı formülle hesaplanıyor. Knowledge Base skoru üretmiyor, Dinçer'in kuralını açıklıyor. Kategori otomatik ret değildir; planlamacı kapasite ve uygunlukla birlikte değerlendirir."
+
+**Beklenen ekran:** Uygun, İzlenmeli ve Riskli profil kategorileri; 0–100 skor; kanıt sayısı; son beş güvenli olay; kişi, ödeme, adres veya serbest metin notu yok.
+
 ---
 
 ## 2. Marmara Ambar: 3 palet, 1.500 kg (0:45–2:00) · Web müşteri → Web yönetici

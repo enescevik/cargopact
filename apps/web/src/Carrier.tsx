@@ -1,7 +1,7 @@
 import { Notifications } from "./Notifications";
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, BarChart3, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, X,
+  AlertTriangle, BarChart3, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, Users, X,
 } from "lucide-react";
 import { api, ApiError, sendChat } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
@@ -10,6 +10,7 @@ import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge
 import { Chat } from "./Chat";
 import { TracesView } from "./Traces";
 import { DashboardView } from "./Dashboard";
+import { CustomerManagement } from "./carrier/Customers";
 import { EditTripModal } from "./carrier/EditTrip";
 import { PodThumbs, TeslimModal } from "./carrier/Pod";
 import { KpiView } from "./Kpis";
@@ -18,7 +19,7 @@ import { ManifestView } from "./carrier/Manifest";
 import { MeasureModal } from "./carrier/Measure";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 
-type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string };
+type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "customers" } | { name: "dash" } | { name: "chat" } | { name: "traces" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
   const [view, setView] = useState<View>({ name: "trips" });
@@ -27,6 +28,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
     ["trips", "Seferler", <Truck size={18} />], ["new", "Aracım var, yük ekle", <PackagePlus size={18} />],
     ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />], ["traces", "Asistan işlem izi", <ScrollText size={18} />], ["exceptions", "İstisnalar", <AlertTriangle size={18} />], ["kpis", "Performans (KPI)", <BarChart3 size={18} />],
   ];
+  if (role === "carrier_admin" || role === "carrier_planner") nav.splice(2, 0, ["customers", "Müşteri Yönetimi", <Users size={18} />]);
   return (
     <div className="shell">
       <aside className="side">
@@ -47,6 +49,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
         {view.name === "manifest" && <ManifestView tripId={view.id} onBack={() => setView({ name: "trip", id: view.id })} />}
         {view.name === "exceptions" && <ExceptionsView onOpenTrip={(id) => setView({ name: "trip", id })} />}
         {view.name === "new" && <NewTrip onCreated={(id) => setView({ name: "trip", id })} />}
+        {view.name === "customers" && <CustomerManagement />}
         {view.name === "dash" && <DashboardView />}
         {view.name === "traces" && <TracesView />}
         {view.name === "kpis" && <KpiView />}
