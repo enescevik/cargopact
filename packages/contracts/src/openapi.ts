@@ -2,6 +2,7 @@ import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-open
 import { z } from "./zod";
 import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
 import type { Role } from "./common";
+import { integrationStatusResponse, tmsTripInput, wmsPalletEventInput } from "./integrations";
 import {
   carrierProductClassesInput, estimatePalletsInput, facilityInput, packagingTypeInput, productClassInput,
   statusPatch, vehicleInput, vehicleTypeInput,
@@ -88,6 +89,10 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/carrier/reservations/{id}/pod-upload-url", summary: "e-POD fotoğraf/imza için S3 yükleme URL'si", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: podUploadInput, response: podUploadResponse, idempotent: true },
   { method: "PUT", path: "/carrier/trips/{id}", summary: "Seferi düzenle (araç/kapasite) ve bekleyen talepleri yeniden değerlendir; If-Match: sürüm", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripUpdateInput, response: looseResponse, idempotent: true, ifMatch: true },
   { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
+  { method: "POST", path: "/carrier/integrations/tms/trips", summary: "TMS sefer yayını (taslak sefer oluşturur; externalTripNo ile idempotent)", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], body: tmsTripInput, response: looseResponse, status: 201, idempotent: true },
+  { method: "POST", path: "/warehouse/integrations/wms/pallet-events", summary: "WMS palet olayı (tüm paletler bildirilince rezervasyon olayı uygulanır)", tag: "Entegrasyon", roles: CARRIER_ALL, body: wmsPalletEventInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/carrier/integrations/status", summary: "Olay yayın durumu", tag: "Entegrasyon", roles: CARRIER_ALL, response: integrationStatusResponse },
+  { method: "POST", path: "/carrier/integrations/events/flush", summary: "Bekleyen olayları şimdi yayınla", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], response: looseResponse , idempotent: true },
 ];
 
 export function buildOpenApiDocument(serverUrl?: string) {

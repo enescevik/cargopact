@@ -3,10 +3,13 @@ import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
 import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as nodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as path from "node:path";
 import { Construct } from "constructs";
 
@@ -68,6 +71,36 @@ export class ApiStack extends cdk.Stack {
       },
       bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },
     });
+
+    // --- Olay ve evrak: EventBridge veri yolu + WMS/ERP abone yedeği (SQS) ---
+    const bus = new events.EventBus(this, "EventBus", { eventBusName: "cargopact-events" });
+    const subscriberDlq = new sqs.Queue(this, "SubscriberDlq", { queueName: "cargopact-wms-erp-subscriber-dlq", retentionPeriod: cdk.Duration.days(4) });
+    const subscriber = new sqs.Queue(this, "SubscriberQueue", {
+      queueName: "cargopact-wms-erp-subscriber", retentionPeriod: cdk.Duration.days(1), visibilityTimeout: cdk.Duration.seconds(30),
+      deadLetterQueue: { queue: subscriberDlq, maxReceiveCount: 5 },
+    });
+    new events.Rule(this, "DomainEventsToSubscriber", {
+      eventBus: bus, ruleName: "cargopact-domain-events-to-subscriber",
+      eventPattern: { source: ["cargopact.api"] },
+      targets: [new targets.SqsQueue(subscriber, { deadLetterQueue: subscriberDlq })],
+    });
+    apiRole.addToPolicy(new iam.PolicyStatement({ actions: ["events:PutEvents"], resources: [bus.eventBusArn] }));
+    const worker = new nodejs.NodejsFunction(this, "IntegrationsWorker", {
+      entry: path.join(__dirname, "../../services/api/src/integrations-worker.ts"),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(55),
+      role: apiRole,
+      environment: { DSQL_ENDPOINT: `${props.dsqlIdentifier}.dsql.${this.region}.on.aws`, DSQL_USER: "cargopact_app", EVENT_BUS_NAME: bus.eventBusName },
+      bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },
+    });
+    new events.Rule(this, "IntegrationsSchedule", {
+      ruleName: "cargopact-integrations-flush", schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
+      targets: [new targets.LambdaFunction(worker)],
+    });
+    new cdk.CfnOutput(this, "EventBusName", { value: bus.eventBusName });
+    new cdk.CfnOutput(this, "SubscriberQueueUrl", { value: subscriber.queueUrl });
 
     const api = new apigw.HttpApi(this, "Api", {
       corsPreflight: {

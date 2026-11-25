@@ -3,6 +3,7 @@ import { authenticate } from "./lib/auth";
 import { HttpError, notFound, type Req, type Res } from "./lib/http";
 import { coreRoutes, meHandler, platformRoutes } from "./routes/core";
 import { demoRoutes } from "./routes/demo";
+import { integrationRoutes } from "./routes/integrations";
 import { masterDataRoutes, type Route } from "./routes/master-data";
 
 const compile = (pattern: string) => {
@@ -11,7 +12,7 @@ const compile = (pattern: string) => {
   return { re, names };
 };
 
-export const allRoutes = (pool: pg.Pool): Route[] => [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool), ...demoRoutes(pool)];
+export const allRoutes = (pool: pg.Pool): Route[] => [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool), ...demoRoutes(pool), ...integrationRoutes(pool)];
 /** /me yönlendiricide özel ele alınır; sözleşme testi için listeye eklenir. */
 export const ROUTE_TABLE = (pool: pg.Pool) => [{ method: "GET", pattern: "/me" }, ...allRoutes(pool).map((r) => ({ method: r.method, pattern: r.pattern }))];
 
