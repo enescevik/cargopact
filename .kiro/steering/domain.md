@@ -26,7 +26,14 @@ Her palet tekil kimlik/QR (pilotta SSCC eşlemesi). Olaylar: kabul, yükleme, va
 ## Taşıyıcıya özel bilgi tabanı
 Her taşıyıcının kendi Knowledge Base'i (gelmeme kuralları, istisnalar, özet olaylar). Firma kimliğiyle filtreli arama; güncel adet/tarih işlem API'sinden doğrulanır. Ham evrak ve gereksiz kişisel veri indekslenmez.
 
-## Ödeme ve iptal (ÖNERİ – iş sahibi onayı bekliyor, bkz. decisions.md)
+## Dinamik fiyat (karar verildi; katsayılar parametre)
+- Fiyat sunucuda hesaplanır, istemci fiyat gönderemez. `fiyat = taban(palet) × talepKatsayısı × zamanKatsayısı`, `[taban×alt, taban×üst]` aralığına kırpılır (taşıyıcı bazlı alt/üst sınır).
+- **Talep:** satışa açık kapasitedeki doluluk (onaylı + geçerli blokaj) ve son dönemdeki teklif/önizleme yoğunluğu arttıkça katsayı artar (basamaklı).
+- **Zaman:** kalkışa (T−3 sınırı) yaklaştıkça satılmamış kapasite oranı yüksekse katsayı kademeli düşer; doluluk yüksekse düşüş uygulanmaz.
+- Teklif fiyatı blokaj süresince sabit; onaylı rezervasyon fiyatı sonradan değişmez. Teklif yanıtı hesaplama dökümünü (taban, talep, zaman, sınır) döner. Aynı girdi aynı fiyatı üretir (deterministik, saat girdi olarak verilir).
+- Fiyat önizleme kapasite değiştirmez.
+
+## Ödeme ve iptal (KARAR: öneri kabul edildi; dilim değerleri taşıyıcı parametresi, simüle sağlayıcı)
 - Ödeme planı taşıyıcı bazlı parametre: (a) onayda tamamı, (b) onayda %X kapora + kalan T−1 öncesi, (c) kalan teslimde.
 - Defter (ledger) append-only: `AUTHORIZED, CAPTURED, REFUNDED, RETAINED`; her kayıt idempotency key ve sipariş referansı taşır.
 - İptal ücreti taşıyıcı bazlı politika tablosu (kalkışa kalan süreye göre dilimler); onay anındaki politika siparişe sabitlenir.

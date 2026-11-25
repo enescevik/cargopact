@@ -80,7 +80,7 @@ export class AgentsStack extends cdk.Stack {
           AWS_REGION: this.region,
           MEMORY_ID: memory.attrMemoryId,
           DSQL_CLUSTER_ARN: props.dsqlClusterArn,
-          MODEL_ID: "us.anthropic.claude-sonnet-4-20250514-v1:0",
+          MODEL_ID: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         },
       });
       this.runtimeArn = runtime.attrAgentRuntimeArn;
