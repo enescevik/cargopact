@@ -18,7 +18,7 @@
 | Spec | Requirements | Design | Tasks | Uygulama |
 |---|---|---|---|---|
 | platform-foundation | onaylı | onaylı | onaylı | **tamam** |
-| capacity-and-pricing | onaylı | – | – | – |
+| capacity-and-pricing | onaylı | taslak | taslak | – |
 | reservation-and-approval | onaylı | – | – | – |
 | payments-and-cancellation | onaylı | – | – | – |
 | warehouse-and-tracking | onaylı | – | – | – |
