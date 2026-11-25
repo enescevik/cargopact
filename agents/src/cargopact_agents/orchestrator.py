@@ -1,17 +1,43 @@
 from strands import Agent
 
-from .specialists import SPECIALISTS, _model
+from .specialists import (
+    COMMON,
+    ORCHESTRATOR_MODEL_ID,
+    build_carrier_specialist,
+    build_customer_specialist,
+    model,
+)
+from .tools import api_call
 
-SYSTEM_PROMPT = """Sen CargoPact orkestratör ajanısın. Kullanıcının dilinde yanıt ver.
-Soruyu analiz et; gerekirse uygun uzman ajana yönlendir, basit sorulara doğrudan cevap ver.
-Uzman yanıtlarını kullanıcıya tek, tutarlı bir cevap olarak sun."""
+CUSTOMER_ROLES = {"customer_user"}
+CARRIER_ROLES = {"carrier_admin", "carrier_planner", "carrier_warehouse"}
 
 
-def build_orchestrator(session_manager=None) -> Agent:
+def get_role(token: str) -> tuple[str | None, str | None]:
+    """GET /me -> (rol, görünen ad). Rol yalnızca backend'den gelir."""
+    me = api_call(token, "GET", "/me")
+    if me.get("error"):
+        return None, None
+    active = me.get("active") or {}
+    return active.get("role"), me.get("displayName")
+
+
+def build_orchestrator(token: str, role: str, name: str | None, session_manager=None) -> Agent:
+    if role in CUSTOMER_ROLES:
+        tools = [build_customer_specialist(token)]
+        routing = "Kullanıcı bir MÜŞTERİ. Sefer, fiyat, rezervasyon ve takip sorularını customer_specialist'e ilet."
+    else:
+        tools = [build_carrier_specialist(token)]
+        routing = "Kullanıcı bir TAŞIYICI. Sefer, kapasite, talep, öncelik ve kural sorularını carrier_specialist'e ilet."
+    prompt = (
+        f"Sen CargoPact orkestratör ajanısın. Kullanıcı: {name or 'bilinmiyor'}, rol: {role}. {routing} "
+        "Kullanıcının isteğini aynen ve eksiksiz uzmana aktar, uzmanın yanıtını kısaltmadan, tutarlı tek cevap olarak sun. "
+        "Selamlaşma gibi basit sorulara doğrudan cevap ver. " + COMMON
+    )
     return Agent(
-        model=_model(),
-        system_prompt=SYSTEM_PROMPT,
-        tools=SPECIALISTS,
+        model=model(ORCHESTRATOR_MODEL_ID, 1500),
+        system_prompt=prompt,
+        tools=tools,
         session_manager=session_manager,
         callback_handler=None,
     )

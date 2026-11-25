@@ -32,17 +32,39 @@ export const handler = async (
       ? req.sessionId
       : `sess-${randomUUID()}`;
 
-  const res = await client.send(
-    new InvokeAgentRuntimeCommand({
-      agentRuntimeArn: arn,
-      runtimeSessionId: sessionId,
-      runtimeUserId: userId,
-      contentType: "application/json",
-      accept: "application/json",
-      payload: new TextEncoder().encode(JSON.stringify({ prompt: message, userId })),
-    }),
-  );
-  const text = (await res.response?.transformToString()) ?? "";
+  // Çağıranın ham ID token'ı; ajan araçları backend'i bu kimlikle çağırır (kiracı/rol backend'de zorlanır). Loglanmaz.
+  const authHeader = event.headers?.authorization ?? event.headers?.Authorization ?? "";
+  const idToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 26_000);
+  let text: string;
+  try {
+    const res = await client.send(
+      new InvokeAgentRuntimeCommand({
+        agentRuntimeArn: arn,
+        runtimeSessionId: sessionId,
+        runtimeUserId: userId,
+        contentType: "application/json",
+        accept: "application/json",
+        payload: new TextEncoder().encode(JSON.stringify({ prompt: message, userId, idToken })),
+      }),
+      { abortSignal: ac.signal },
+    );
+    text = (await res.response?.transformToString()) ?? "";
+  } catch (e) {
+    const aborted = (e as Error)?.name === "AbortError";
+    console.error("agent invoke failed", (e as Error)?.name);
+    const body: ChatResponse = {
+      sessionId,
+      reply: aborted
+        ? "Yanıt şu an çok uzun sürdü. Lütfen sorunuzu daha kısa veya daha net sorup tekrar deneyin."
+        : "Asistana şu an ulaşılamıyor. Lütfen birkaç saniye sonra tekrar deneyin.",
+    };
+    return json(200, body);
+  } finally {
+    clearTimeout(timer);
+  }
   let reply = text;
   try {
     const parsed = JSON.parse(text);

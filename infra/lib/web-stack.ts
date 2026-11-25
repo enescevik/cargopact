@@ -34,12 +34,25 @@ export class WebStack extends cdk.Stack {
     });
 
     const webDist = path.join(__dirname, "../../apps/web/dist");
+    const mobileDist = path.join(__dirname, "../../apps/mobile/dist");
     if (fs.existsSync(webDist)) {
       new s3deploy.BucketDeployment(this, "Deploy", {
         sources: [s3deploy.Source.asset(webDist)],
         destinationBucket: bucket,
         distribution: dist,
         distributionPaths: ["/*"],
+        prune: false,
+      });
+    }
+    if (fs.existsSync(mobileDist)) {
+      // Expo web çıktısı (baseUrl /m) -> s3://<bucket>/m/
+      new s3deploy.BucketDeployment(this, "DeployMobile", {
+        sources: [s3deploy.Source.asset(mobileDist)],
+        destinationBucket: bucket,
+        destinationKeyPrefix: "m/",
+        distribution: dist,
+        distributionPaths: ["/m/*"],
+        prune: false,
       });
     }
 

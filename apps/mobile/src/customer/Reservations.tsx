@@ -1,0 +1,203 @@
+import { useState } from "react";
+import { Text, View } from "react-native";
+import { api } from "../api";
+import { c, mono, serif } from "../theme";
+import { dt, money } from "../format";
+import { RouteHead } from "../common";
+import { BackBar, Btn, Card, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
+import type { Reservation, Tracking } from "../types";
+
+export function Reservations() {
+  const [sel, setSel] = useState<string>();
+  const list = useLoad(() => api<{ items: Reservation[] }>("GET", "/customer/reservations"), [], 8000);
+  if (sel) {
+    const r = list.data?.items.find((x) => x.id === sel);
+    return <Detail id={sel} initial={r} onBack={() => { setSel(undefined); void list.reload(true); }} />;
+  }
+  return (
+    <Screen>
+      <Title sub="Tüm tekliflerin ve siparişlerin.">Rezervasyonlarım</Title>
+      {list.loading && !list.data ? <Skeletons n={3} h={110} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
+        !list.data?.items.length ? <Empty title="Henüz rezervasyonunuz yok" text="“Gönder” sekmesinden bir sefer seçin." /> :
+          list.data.items.map((r) => (
+            <Card key={r.id} onPress={() => setSel(r.id)}>
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text style={{ fontFamily: mono, fontSize: 13, color: c.ink500 }}>{r.orderNumber ?? r.reference}</Text>
+                <StatusBadge status={r.status} label={r.statusLabel} />
+              </Row>
+              <RouteHead trip={r.trip} size={22} />
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text style={{ color: c.ink500, fontSize: 13 }}>{r.pallets} palet · {dt(r.trip.departureAt)}</Text>
+                <Text style={{ fontWeight: "800", color: c.ink900 }}>{money(r.totalPriceMinor)}</Text>
+              </Row>
+            </Card>
+          ))}
+    </Screen>
+  );
+}
+
+const FLOW = ["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM"];
+const FLOW_LABEL: Record<string, string> = {
+  TASIYICI_ONAYI_BEKLIYOR: "Taşıyıcı onayı bekliyor", ONAYLI: "Onaylandı", DEPO_KABUL: "Çıkış deposunda kabul edildi",
+  YUKLENDI: "Araca yüklendi", VARISTA: "Varışta teslime hazır", TESLIM: "Teslim edildi",
+};
+
+function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; onBack: () => void }) {
+  const toast = useToast();
+  const { data, error, reload, setData } = useLoad(() => api<Reservation>("GET", `/customer/reservations/${id}`), [id], 6000);
+  const r = data ?? initial;
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [preview, setPreview] = useState<{ refundMinor: number; feeMinor: number; rule: string }>();
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const openCancel = async () => {
+    setCancelOpen(true); setPreview(undefined);
+    try { setPreview(await api("GET", `/customer/reservations/${id}/cancel-preview`)); }
+    catch (e) { toast((e as Error).message, "err"); setCancelOpen(false); }
+  };
+  const doCancel = async () => {
+    setBusy(true);
+    try {
+      setData(await api<Reservation>("POST", `/customer/reservations/${id}/cancel`, { reason: reason.trim() || undefined }));
+      toast("Rezervasyon iptal edildi"); setCancelOpen(false);
+    } catch (e) { toast((e as Error).message, "err"); } finally { setBusy(false); }
+  };
+
+  if (!r) return <View style={{ flex: 1 }}><BackBar title="Geri" onBack={onBack} /><Screen>{error ? <ErrorBox message={error} onRetry={() => reload()} /> : <Skeletons n={3} h={120} />}</Screen></View>;
+
+  const idx = FLOW.indexOf(r.status);
+  const failed = idx < 0;
+  const stamp = (t: string) => r.events.find((e) => e.type === t)?.at;
+  const steps = failed
+    ? [{ label: "Teklif verildi", done: true, at: dt(r.createdAt) }, { label: r.statusLabel, done: true, at: r.decisionReason ?? undefined }]
+    : FLOW.map((st, i) => ({ label: FLOW_LABEL[st], done: i <= idx, at: stamp(st) ? dt(stamp(st)) : i === 0 ? dt(r.createdAt) : undefined }));
+  const cancellable = ["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI"].includes(r.status);
+
+  return (
+    <View style={{ flex: 1 }}>
+      <BackBar title="Rezervasyonlarım" onBack={onBack} />
+      <Screen>
+        <Row style={{ justifyContent: "space-between" }}>
+          <Text style={{ fontFamily: mono, fontSize: 14, color: c.ink700 }}>{r.orderNumber ?? r.reference}</Text>
+          <StatusBadge status={r.status} label={r.statusLabel} />
+        </Row>
+        <RouteHead trip={r.trip} size={30} />
+        <Card>
+          <KV k="Kalkış" v={dt(r.trip.departureAt)} />
+          <KV k="Yük" v={`${r.pallets} palet · ${r.grossKg} kg · ${r.productClass.name}`} />
+          <KV k="Tutar" v={money(r.totalPriceMinor)} bold />
+          {r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.holdExpiresAt && <KV k="Blokaj bitişi" v={dt(r.holdExpiresAt)} />}
+          {!!r.decisionReason && <KV k="Taşıyıcı notu" v={r.decisionReason} />}
+        </Card>
+        <Card><Label>Durum</Label><Timeline steps={steps} /></Card>
+        <Card style={{ gap: 12 }}>
+          <Label>Palet kodları</Label>
+          {r.palletCodes.length === 0 ? <Text style={{ color: c.ink500 }}>Kodlar taşıyıcı onayından sonra oluşur.</Text> :
+            r.palletCodes.map((code) => (
+              <View key={code} style={{ flexDirection: "row", gap: 12, alignItems: "center", padding: 10, borderRadius: 12, backgroundColor: c.porcelain, borderWidth: 1, borderColor: c.line }}>
+                <QrMock seed={code} />
+                <Text style={{ fontFamily: mono, fontSize: 14, fontWeight: "700", color: c.ink900, flex: 1 }}>{code}</Text>
+              </View>
+            ))}
+        </Card>
+        <Card>
+          <Label>Ödeme</Label>
+          <KV k="Durum" v={payLabel(r.payment.status)} />
+          <KV k="Ödenen" v={money(r.payment.paidMinor)} />
+          {r.payment.refundedMinor > 0 && <KV k="İade" v={money(r.payment.refundedMinor)} />}
+          {r.payment.retainedMinor > 0 && <KV k="Kesinti" v={money(r.payment.retainedMinor)} />}
+          {r.payment.dueMinor > 0 && <KV k="Kalan" v={money(r.payment.dueMinor)} />}
+          {r.payment.entries.length > 0 && <Divider />}
+          {r.payment.entries.map((e, i) => (
+            <Row key={i} style={{ justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 12, color: c.ink500, flex: 1 }}>{e.type} · {dt(e.at)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: c.ink900 }}>{money(e.amountMinor)}</Text>
+            </Row>
+          ))}
+        </Card>
+        {cancellable && <Btn kind="outline" title="Rezervasyonu iptal et" onPress={openCancel} />}
+      </Screen>
+      {cancelOpen && (
+        <Sheet onClose={() => setCancelOpen(false)}>
+          <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>İptal önizlemesi</Text>
+          {!preview ? <Skeletons n={1} h={80} /> : (
+            <Card>
+              <KV k="İade edilecek" v={money(preview.refundMinor)} bold />
+              <KV k="İptal ücreti" v={money(preview.feeMinor)} />
+              <Text style={{ color: c.ink500, fontSize: 13 }}>{preview.rule}</Text>
+            </Card>
+          )}
+          <Field label="Neden (ops.)" value={reason} onChangeText={setReason} />
+          <Btn kind="danger" title="İptali onayla" loading={busy} disabled={!preview} onPress={doCancel} />
+          <Btn kind="ghost" title="Vazgeç" onPress={() => setCancelOpen(false)} />
+        </Sheet>
+      )}
+    </View>
+  );
+}
+
+function payLabel(s: string) {
+  return ({ authorized: "Provizyon alındı", captured: "Tahsil edildi", partially_captured: "Kısmen tahsil edildi", refunded: "İade edildi", released: "Provizyon serbest", failed: "Başarısız" } as Record<string, string>)[s] ?? s;
+}
+
+function QrMock({ seed }: { seed: string }) {
+  const N = 9;
+  let h = 7;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const cells: boolean[] = [];
+  for (let i = 0; i < N * N; i++) { h = (h * 1103515245 + 12345) >>> 0; cells.push(((h >>> 16) & 1) === 1); }
+  const finder = (x: number, y: number) => (x < 3 && y < 3) || (x > N - 4 && y < 3) || (x < 3 && y > N - 4);
+  return (
+    <View style={{ width: 54, height: 54, backgroundColor: "#fff", padding: 3, borderRadius: 6, flexDirection: "row", flexWrap: "wrap" }}>
+      {cells.map((on, i) => {
+        const x = i % N, y = Math.floor(i / N);
+        return <View key={i} style={{ width: 48 / N, height: 48 / N, backgroundColor: finder(x, y) || on ? c.cobalt900 : "#fff" }} />;
+      })}
+    </View>
+  );
+}
+
+export function TrackingScreen({ initial }: { initial?: string }) {
+  const [no, setNo] = useState(initial ?? "");
+  const [res, setRes] = useState<Tracking>();
+  const [err, setErr] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const search = async () => {
+    const n = no.trim().toUpperCase();
+    if (!n) return;
+    setBusy(true); setErr(undefined);
+    try { setRes(await api<Tracking>("GET", `/customer/orders/${encodeURIComponent(n)}/tracking`)); }
+    catch (e) { setRes(undefined); setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <Screen>
+      <Title sub="Sipariş numaranızla yükünüzün nerede olduğunu görün.">Takip</Title>
+      <Card>
+        <Field label="Sipariş no" value={no} onChangeText={setNo} placeholder="CP-2026-000123" autoCapitalize="characters" onSubmitEditing={search} />
+        <Btn title="Sorgula" loading={busy} onPress={search} />
+      </Card>
+      {err && <ErrorBox message={err} />}
+      {res && (
+        <>
+          <Card>
+            <Row style={{ justifyContent: "space-between" }}>
+              <Text style={{ fontFamily: mono, color: c.ink700 }}>{res.orderNumber}</Text>
+              <StatusBadge status={res.status} label={res.statusLabel} />
+            </Row>
+            <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>{res.origin.city} → {res.destination.city}</Text>
+            <Text style={{ color: c.ink500, fontSize: 13 }}>Son güncelleme {dt(res.updatedAt)}</Text>
+            <View style={{ backgroundColor: c.mint100, padding: 12, borderRadius: 12 }}><Text style={{ color: c.ink900, fontWeight: "600" }}>Sıradaki adım: {res.nextStep}</Text></View>
+          </Card>
+          <Card><Timeline steps={res.steps.map((s) => ({ label: s.label, done: s.done, at: s.at ? dt(s.at) : undefined }))} /></Card>
+          <Card>
+            <KV k="Çıkış deposu son kabul" v={dt(res.intakeCutoffAt)} />
+            {res.pickupWindow && <KV k="Varışta teslim penceresi" v={`${dt(res.pickupWindow.from)} – ${dt(res.pickupWindow.to)}`} />}
+            <KV k="Varış deposu" v={res.destination.name} />
+            {res.palletCodes.map((p) => <Text key={p} style={{ fontFamily: mono, color: c.ink700, fontSize: 13 }}>{p}</Text>)}
+          </Card>
+        </>
+      )}
+    </Screen>
+  );
+}

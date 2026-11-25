@@ -4,7 +4,9 @@
     "slug": "cargopact",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "experiments": { "baseUrl": "/m" },
+    "web": { "bundler": "metro", "output": "single", "name": "CargoPact", "shortName": "CargoPact", "backgroundColor": "#F7F5F0" },
     "ios": { "bundleIdentifier": "com.cargopact.app" },
     "android": { "package": "com.cargopact.app" }
   }
