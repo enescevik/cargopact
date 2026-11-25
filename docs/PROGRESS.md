@@ -8,17 +8,20 @@
 - [x] Plan `docs/` altına alındı, spec yapısı kuruldu (requirements taslakları).
 
 ## Sürüyor
-- [ ] Spec requirements onayı (aşağıdaki liste)
+- [x] Altı spec'in requirements onayı alındı
+- [ ] master-data-and-seed requirements onayı
+- [ ] platform-foundation + master-data-and-seed design
 
 ## Spec durumu
 | Spec | Requirements | Design | Tasks | Uygulama |
 |---|---|---|---|---|
-| platform-foundation | taslak | – | – | – |
-| capacity-and-pricing | taslak | – | – | – |
-| reservation-and-approval | taslak | – | – | – |
-| payments-and-cancellation | taslak | – | – | – |
-| warehouse-and-tracking | taslak | – | – | – |
-| agents-and-chat | taslak | – | – | – |
+| platform-foundation | onaylı | – | – | – |
+| capacity-and-pricing | onaylı | – | – | – |
+| reservation-and-approval | onaylı | – | – | – |
+| payments-and-cancellation | onaylı | – | – | – |
+| warehouse-and-tracking | onaylı | – | – | – |
+| master-data-and-seed | taslak | – | – | – |
+| agents-and-chat | onaylı | – | – | – |
 
 ## Henüz deploy edilmedi
 AWS'ye hiçbir kaynak deploy edilmedi. Hesapta başkasına ait bir DSQL cluster'ı var (dokunulmadı).

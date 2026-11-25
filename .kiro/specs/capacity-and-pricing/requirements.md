@@ -7,7 +7,7 @@ Taşıyıcı planlamacının sefer kapasitesini yayınlaması, müşterinin uygu
 
 ### 1. Sefer yayınlama ("Aracım var, yük ekle")
 **Kullanıcı hikayesi:** Taşıyıcı planlamacı olarak boş kapasiteyi satışa açmak istiyorum.
-1. WHEN planlamacı sefer yayınlarsa THEN sistem çıkış/varış deposu, kalkış zamanı (T), araç profili, toplam pozisyon, iç yük (palet/kg), satışa açılan palet/kg/m³, tampon, fiyat tabanı ve alt/üst sınırı kaydedecek.
+1. WHEN planlamacı sefer yayınlarsa THEN sistem çıkış/varış deposu, kalkış zamanı (T), araç profili, tesisler ve araç (master-data-and-seed spec'inden), toplam pozisyon, iç yük (palet/kg), satışa açılan palet/kg/m³, tampon, fiyat tabanı ve alt/üst sınırı kaydedecek.
 2. IF satışa açılan miktar (toplam − iç yük − tampon) kapasiteyi aşarsa THEN sistem yayını reddedecek ve nedeni gösterecek.
 3. Sistem T−3 (rezervasyon son saati) ve T−1 (çıkış deposu son kabul) değerlerini kalkıştan türetecek; varış alım penceresi ayrı alan olacak.
 4. WHEN araç veya kapasite değişirse THEN kapasite sürümü artacak ve etkilenen bekleyen talepler yeniden değerlendirilecek.
@@ -32,4 +32,5 @@ Taşıyıcı planlamacının sefer kapasitesini yayınlaması, müşterinin uygu
 
 ### 5. Uygunluk
 1. WHEN talep değerlendirilirse THEN palet adedi, brüt kg (toplam azami yük dahil), m³, ürün sınıfı uyumu ve zaman pencereleri kontrol edilecek; ret gerekçesi kodla ve metinle dönecek.
-2. Örnek kabul: 3+2+3 senaryosunda 22.300 kg talebi (azami 22.000) reddedilecek ve kalan kapasite değişmeyecek.
+2. Koli beyanlarında kapasite ve fiyat, master-data-and-seed spec'indeki palet eşdeğeri üzerinden hesaplanacak; sefer paletlenmemiş koli kabul etmiyorsa talep reddedilecek.
+3. Örnek kabul: 3+2+3 senaryosunda 22.300 kg talebi (azami 22.000) reddedilecek ve kalan kapasite değişmeyecek.

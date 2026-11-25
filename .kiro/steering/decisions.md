@@ -13,3 +13,5 @@ inclusion: always
 | 6 | "Q" = Amazon Q Business (plan) / Amazon Quick (ekip) | Kendi sohbet arayüzümüz + AgentCore birincil. Quick/Q ek kanal, sonra. |
 | 7 | Hackathon servisleri | Konsolda tümü listeli. Erişim CLI ile doğrulandı (25.11.2026): CloudFormation, Lambda, S3, Cognito, DSQL, DynamoDB, API Gateway, CloudFront, ECR, IAM, AgentCore (control), Bedrock, Bedrock KB, EventBridge, SQS, CDK bootstrap v34 hazır. **Amazon Q Business: AccessDenied** (kullanılamaz). Çalışan model: `us.anthropic.claude-sonnet-4-5-20250929-v1:0`. |
 | 8 | Mikro toplama / toplama | Müşteri yönetir; sistemde yok. Entegrasyon noktası ileride. |
+| 9 | Koli / paletlenmemiş yük | **VARSAYIM (onay bekliyor):** koli palet eşdeğerine çevrilir (hacim/doluluk katsayısı), taşıyıcı sefer bazında paletlenmemiş koli kabul eder. Plan MVP'si yalnız standart paleti kapsıyordu; bu genişletmedir. |
+| 10 | Ana veri sahipliği | Tesis/araç/araç tipi taşıyıcıya özel; ambalaj ve ürün sınıfı platform kataloğu + taşıyıcıya özel eklemeler. Seed verisi kurgusaldır. |

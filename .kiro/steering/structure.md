@@ -14,4 +14,4 @@ inclusion: always
 Yeni API alanı eklerken önce `packages/shared` sözleşmesini güncelle.
 
 ## Spec-driven geliştirme
-Özellikler `.kiro/specs/<ad>/` altında: `requirements.md` (EARS) → `design.md` → `tasks.md`. Her aşama onay ister; onaylanmamış aşamayı atlama. Spec'ler: platform-foundation, capacity-and-pricing, reservation-and-approval, payments-and-cancellation, warehouse-and-tracking, agents-and-chat. Uygulama sırası bu listedir (ilk üçü MVP çekirdeği). İnsan okuması için ilerleme `docs/PROGRESS.md` içinde tutulur.
+Özellikler `.kiro/specs/<ad>/` altında: `requirements.md` (EARS) → `design.md` → `tasks.md`. Her aşama onay ister; onaylanmamış aşamayı atlama. Spec'ler: platform-foundation, master-data-and-seed, capacity-and-pricing, reservation-and-approval, payments-and-cancellation, warehouse-and-tracking, agents-and-chat. Uygulama sırası bu listedir (ilk üçü MVP çekirdeği). İnsan okuması için ilerleme `docs/PROGRESS.md` içinde tutulur.

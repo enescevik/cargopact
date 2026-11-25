@@ -9,7 +9,7 @@
 **Kullanıcı hikayesi:** Taşıyıcı ve müşteri firması olarak yalnız kendi verilerimi görmek istiyorum.
 1. WHEN bir istek geçerli Cognito JWT ile gelirse THEN sistem `tenantId`, tenant türü (`carrier`/`customer`) ve rolü doğrulanmış üyelikten türetecek; istemciden gelen tenant alanını yok sayacak.
 2. WHEN bir kullanıcı başka kiracıya ait kayda erişmeye çalışırsa THEN sistem 404 dönecek ve olayı denetim kaydına yazacak.
-3. Roller: `customer_user`, `carrier_planner`, `carrier_warehouse`, `admin_viewer`. WHEN rol uç nokta için yetkisizse THEN sistem 403 dönecek.
+3. Roller: `customer_user`, `carrier_admin`, `carrier_planner`, `carrier_warehouse`, `admin_viewer`, `platform_admin`. WHEN rol uç nokta için yetkisizse THEN sistem 403 dönecek.
 4. WHEN yeni müşteri kaydolursa THEN firma üyeliği ve onay durumu kaydedilecek; onaysız firma sefer listesini göremeyecek.
 
 ### 2. Veri modeli (Aurora DSQL)
