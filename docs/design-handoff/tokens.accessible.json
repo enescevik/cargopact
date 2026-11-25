@@ -1,0 +1,65 @@
+{
+  "_meta": {
+    "purpose": "Ana paleti değiştirmeden okunabilir semantik eşlemeler",
+    "implementation": "Uygulamaya henüz uygulanmamış tasarım önerisi"
+  },
+  "action": {
+    "primaryBackground": "#2547E0",
+    "primaryForeground": "#FFFFFF",
+    "mintBackground": "#2FD39A",
+    "mintForeground": "#0B1A4A"
+  },
+  "status": {
+    "success": {
+      "accent": "#12A675",
+      "foreground": "#0B6E4D",
+      "background": "#E3FAF1"
+    },
+    "warning": {
+      "accent": "#C98A06",
+      "foreground": "#7A5503",
+      "background": "#FDF3DC"
+    },
+    "danger": {
+      "accent": "#C8372D",
+      "foreground": "#8F241C",
+      "background": "#FBE9E7"
+    },
+    "info": {
+      "accent": "#2547E0",
+      "foreground": "#13277A",
+      "background": "#E7ECFF"
+    },
+    "pending": {
+      "accent": "#7A5AF8",
+      "foreground": "#0B1A4A",
+      "background": "#EFEAFE"
+    },
+    "neutral": {
+      "accent": "#5B6275",
+      "foreground": "#2B3145",
+      "background": "#EEF0F4"
+    }
+  },
+  "text": {
+    "primary": "#0E1222",
+    "secondary": "#5B6275",
+    "onDark": "#FFFFFF"
+  },
+  "control": {
+    "border": "#5B6275",
+    "focus": "#2547E0",
+    "minHeightPx": 44,
+    "preferredHeightPx": 48
+  },
+  "typography": {
+    "bodyPx": 16,
+    "labelPx": 14,
+    "routeDesktopPx": 28,
+    "routeMobilePx": 24,
+    "routeWeight": 600,
+    "numericFontFamily": "Inter",
+    "numericVariant": "tabular-nums"
+  }
+}
+

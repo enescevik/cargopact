@@ -1,0 +1,92 @@
+{
+  "method": "WCAG sRGB göreli parlaklık; normal metin hedefi en az 4.5:1.",
+  "existing": [
+    {
+      "name": "Beyaz / mint600",
+      "fg": "#FFFFFF",
+      "bg": "#12A675",
+      "ratio": 3.12
+    },
+    {
+      "name": "Başarı rozeti",
+      "fg": "#12A675",
+      "bg": "#E3FAF1",
+      "ratio": 2.85
+    },
+    {
+      "name": "Uyarı rozeti",
+      "fg": "#C98A06",
+      "bg": "#FDF3DC",
+      "ratio": 2.67
+    },
+    {
+      "name": "Bekleyen rozeti",
+      "fg": "#7A5AF8",
+      "bg": "#EFEAFE",
+      "ratio": 3.85
+    },
+    {
+      "name": "Ret rozeti",
+      "fg": "#C8372D",
+      "bg": "#FBE9E7",
+      "ratio": 4.43
+    },
+    {
+      "name": "Şampanya / porselen",
+      "fg": "#C9B78F",
+      "bg": "#F7F5F0",
+      "ratio": 1.81
+    },
+    {
+      "name": "ink300 / porselen",
+      "fg": "#9AA0AE",
+      "bg": "#F7F5F0",
+      "ratio": 2.41
+    }
+  ],
+  "recommended": [
+    {
+      "name": "success",
+      "foreground": "#0B6E4D",
+      "background": "#E3FAF1",
+      "ratio": 5.73
+    },
+    {
+      "name": "warning",
+      "foreground": "#7A5503",
+      "background": "#FDF3DC",
+      "ratio": 6.08
+    },
+    {
+      "name": "danger",
+      "foreground": "#8F241C",
+      "background": "#FBE9E7",
+      "ratio": 7.35
+    },
+    {
+      "name": "info",
+      "foreground": "#13277A",
+      "background": "#E7ECFF",
+      "ratio": 11.16
+    },
+    {
+      "name": "pending",
+      "foreground": "#0B1A4A",
+      "background": "#EFEAFE",
+      "ratio": 14.17
+    },
+    {
+      "name": "neutral",
+      "foreground": "#2B3145",
+      "background": "#EEF0F4",
+      "ratio": 11.31
+    },
+    {
+      "name": "Mint eylem",
+      "foreground": "#0B1A4A",
+      "background": "#2FD39A",
+      "ratio": 8.65
+    }
+  ]
+}
+
