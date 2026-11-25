@@ -165,7 +165,7 @@ function OfferStep({ trip, quote, body, onBack, onDone }: {
   const [cvc, setCvc] = useState("123");
   const [recipient, setRecipient] = useState("");
   const [busy, setBusy] = useState(false);
-  const [key] = useState(uuid);
+  const [key, setKey] = useState(uuid);
   const pp = quote.paymentPlans.find((x) => x.code === plan);
   const b = quote.price.breakdown;
 
@@ -180,6 +180,7 @@ function OfferStep({ trip, quote, body, onBack, onDone }: {
       onDone(r);
     } catch (e) {
       const er = e as ApiError;
+      setKey(uuid()); // başarısız denemeden sonra yeni eylem (kart/plan değişmiş olabilir)
       toast(er.reason === "PAYMENT_DECLINED" ? "Kart reddedildi. Başka bir kart deneyin." : er.message, "err");
     } finally { setBusy(false); }
   };

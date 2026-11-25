@@ -4,7 +4,7 @@ import { api } from "../api";
 import { c, mono, serif } from "../theme";
 import { dt, money } from "../format";
 import { RouteHead } from "../common";
-import { BackBar, Btn, Card, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
+import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Reservation, Tracking } from "../types";
 
 export function Reservations() {
@@ -163,8 +163,10 @@ export function TrackingScreen({ initial }: { initial?: string }) {
   const [res, setRes] = useState<Tracking>();
   const [err, setErr] = useState<string>();
   const [busy, setBusy] = useState(false);
-  const search = async () => {
-    const n = no.trim().toUpperCase();
+  const mine = useLoad(() => api<{ items: Reservation[] }>("GET", "/customer/reservations"), []);
+  const orders = (mine.data?.items ?? []).filter((x) => x.orderNumber).map((x) => x.orderNumber as string);
+  const search = async (override?: string) => {
+    const n = (typeof override === "string" ? override : no).trim().toUpperCase();
     if (!n) return;
     setBusy(true); setErr(undefined);
     try { setRes(await api<Tracking>("GET", `/customer/orders/${encodeURIComponent(n)}/tracking`)); }
@@ -174,8 +176,13 @@ export function TrackingScreen({ initial }: { initial?: string }) {
     <Screen>
       <Title sub="Sipariş numaranızla yükünüzün nerede olduğunu görün.">Takip</Title>
       <Card>
-        <Field label="Sipariş no" value={no} onChangeText={setNo} placeholder="CP-2026-000123" autoCapitalize="characters" onSubmitEditing={search} />
-        <Btn title="Sorgula" loading={busy} onPress={search} />
+        <Field label="Sipariş no" value={no} onChangeText={setNo} placeholder="CP-2026-000123" autoCapitalize="characters" onSubmitEditing={() => search()} />
+        {orders.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {orders.map((o) => <Chip key={o} label={o} onPress={() => { setNo(o); void search(o); }} />)}
+          </View>
+        )}
+        <Btn title="Sorgula" loading={busy} onPress={() => search()} />
       </Card>
       {err && <ErrorBox message={err} />}
       {res && (

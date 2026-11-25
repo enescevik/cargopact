@@ -142,7 +142,7 @@ export function Warehouse() {
   const toast = useToast();
   const trips = useLoad(async () => {
     const l = await api<{ items: CarrierTrip[] }>("GET", "/carrier/trips");
-    const trip = l.items.find((t) => t.reference.includes("DEMO")) ?? l.items.find((t) => t.capacity.confirmed.pallets > 0) ?? l.items[0];
+    const trip = l.items.find((t) => t.reference === "DNC-DEMO-GEB-ANK") ?? l.items.find((t) => t.reference.includes("DEMO")) ?? l.items.find((t) => t.capacity.confirmed.pallets > 0) ?? l.items[0];
     if (!trip) return undefined;
     return api<TripFull>("GET", `/carrier/trips/${trip.id}`);
   }, [], 5000);
