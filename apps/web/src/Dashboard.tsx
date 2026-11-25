@@ -3,6 +3,7 @@ import { api } from "./api";
 import type { Dashboard } from "./types";
 import { full, initials, place, num, time, tl } from "./format";
 import { TracesPanel } from "./Traces";
+import { FIRM_COLORS, TruckMap, operatorCells } from "./components/TruckMap";
 import { Empty, ErrorBox, SkeletonCards, StatusBadge, useFetch } from "./ui";
 
 const COLORS = ["#2547E0", "#12A675", "#C98A06", "#7A5AF8", "#D6456B", "#0E8FB5", "#E2772B"];
@@ -20,7 +21,8 @@ export function DashboardView() {
   const cap = d.trip.capacity;
   const total = cap.totalPositions;
   const custs = d.customers.filter((c) => !DEAD.includes(c.status));
-  const colorOf = new Map(d.customers.map((c, i) => [c.name, COLORS[i % COLORS.length]!]));
+  const colorOf = new Map<string, string>();
+  d.customers.forEach((c) => { if (!colorOf.has(c.name)) colorOf.set(c.name, FIRM_COLORS[colorOf.size % FIRM_COLORS.length]!); });
 
   type Cell = { kind: "int" | "cust" | "empty"; name?: string; held?: boolean };
   const cells: Cell[] = [];
@@ -62,20 +64,8 @@ export function DashboardView() {
             <h3 className="serif" style={{ fontSize: 24 }}>Araç yerleşimi · {mode === "planned" ? "planlanan" : "fiili"}</h3>
             <span className="muted small">{cells.filter((c) => c.kind !== "empty").length} / {total} pozisyon dolu</span>
           </div>
-          <div className="pgrid">
-            {cells.map((c, i) => (
-              <div key={i} className={`pos ${c.kind === "int" ? "int" : c.kind === "empty" ? "vacant" : c.held ? "held" : ""}`}
-                style={c.kind === "cust" ? { background: colorOf.get(c.name!) } : undefined}
-                title={c.kind === "int" ? "İç transfer yükü" : c.name ?? "Boş"}>
-                {c.kind === "cust" ? initials(c.name!) : c.kind === "int" ? "İÇ" : i + 1}
-              </div>
-            ))}
-          </div>
-          <div className="legend" style={{ marginTop: 16 }}>
-            <span><i style={{ background: "#c3c7d1" }} />İç yük ({cap.internalPallets})</span>
-            {d.customers.map((c) => <span key={c.name}><i style={{ background: colorOf.get(c.name) }} />{c.name}</span>)}
-            <span><i style={{ border: "2px dashed var(--line)" }} />Boş</span>
-          </div>
+          <TruckMap operator positions={total} caption={mode === "planned" ? "planlanan" : "fiili"}
+            cells={operatorCells(cap.internalPallets, d.customers.map((c, i) => ({ id: String(i), name: c.name, pallets: c.pallets, status: c.status })), { mode })} />
         </div>
 
         <div className="col">

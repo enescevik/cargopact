@@ -1,351 +1,314 @@
-import { Notifications } from "./Notifications";
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, BarChart3, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, X,
+  AlertTriangle, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
 } from "lucide-react";
-import { api, ApiError, sendChat } from "./api";
-import type { CarrierReservation, CarrierTrip, Facility } from "./types";
-import { dt, full, isoToLocal, localToIso, num, place, time, tl, day } from "./format";
-import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge, TripBarCompact, errText, useFetch, useToast } from "./ui";
+import { api, sendChat } from "./api";
+import type { CarrierTrip } from "./types";
+import { dayNum, full, isoDay, num, place, time, tl, today, addDays } from "./format";
+import { Empty, ErrorBox, Modal, Skeleton, SkeletonCards, StatusBadge, errText, useFetch, useToast } from "./ui";
 import { Chat } from "./Chat";
-import { TracesView } from "./Traces";
 import { DashboardView } from "./Dashboard";
+import { TracesView } from "./Traces";
+import { Notifications } from "./Notifications";
 import { EditTripModal } from "./carrier/EditTrip";
 import { PodThumbs, TeslimModal } from "./carrier/Pod";
-import { KpiView } from "./Kpis";
-import { ExceptionsView } from "./Exceptions";
-import { ManifestView } from "./carrier/Manifest";
 import { MeasureModal } from "./carrier/Measure";
+import { NewTripWizard } from "./carrier/NewTrip";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
+import { ChipSelect, Countdown, Segmented } from "./components/controls";
+import { TruckMap, operatorCells } from "./components/TruckMap";
 
-type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string };
+type View = { name: "ops"; id?: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
-  const [view, setView] = useState<View>({ name: "trips" });
-  const tab = view.name === "trip" || view.name === "manifest" ? "trips" : view.name;
-  const nav: [string, string, React.ReactNode][] = [
-    ["trips", "Seferler", <Truck size={18} />], ["new", "Aracım var, yük ekle", <PackagePlus size={18} />],
-    ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />], ["traces", "Asistan işlem izi", <ScrollText size={18} />], ["exceptions", "İstisnalar", <AlertTriangle size={18} />], ["kpis", "Performans (KPI)", <BarChart3 size={18} />],
+  const [view, setView] = useState<View>({ name: "ops" });
+  const nav: [View["name"], string, React.ReactNode][] = [
+    ["ops", "Operasyon", <Truck size={19} />], ["new", "Aracım var, yük ekle", <PackagePlus size={19} />],
+    ["dash", "Jüri panosu", <LayoutDashboard size={19} />], ["chat", "Asistan", <MessageSquare size={19} />], ["traces", "Asistan işlem izi", <ScrollText size={19} />],
   ];
   return (
-    <div className="shell">
-      <aside className="side">
-        <div className="logo"><div className="logo-mark"><img src="/logo-mark.svg" alt="" /></div>CargoPact</div>
-        <div className="tiny" style={{ margin: "0 12px 8px", color: "#7f8cc2", letterSpacing: ".08em" }}>TRANSFER MERKEZİ</div>
+    <div className="app rail-shell">
+      <aside className="rail" aria-label="Menü">
+        <div className="logo-mark rail-logo"><img src="/logo-mark.svg" alt="CargoPact" /></div>
         {nav.map(([k, l, ic]) => (
-          <button key={k} className={`navlink ${tab === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)}>{ic}{l}</button>
+          <button key={k} className={`rail-btn ${view.name === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)} aria-label={l} title={l}>{ic}<span>{l.split(",")[0]}</span></button>
         ))}
-        <div style={{ margin: "12px 12px 0" }}><Notifications side onOpen={(n) => n.tripId && setView({ name: "trip", id: n.tripId })} /></div>
-        <div className="who">
-          <b style={{ color: "#fff" }}>{displayName}</b><div>{tenant}</div><div style={{ opacity: .7 }}>{role}</div>
-          <button className="btn sm" style={{ marginTop: 10 }} onClick={onLogout}><LogOut size={14} />Çıkış</button>
+        <div className="rail-bottom">
+          <Notifications side onOpen={(n) => n.tripId && setView({ name: "ops", id: n.tripId })} />
+          <button className="rail-btn" onClick={onLogout} title={`${displayName} · ${tenant ?? ""} · ${role} — Çıkış`} aria-label="Çıkış"><LogOut size={18} /><span>Çıkış</span></button>
         </div>
       </aside>
-      <div className="main">
-        {view.name === "trips" && <TripList onOpen={(id) => setView({ name: "trip", id })} onNew={() => setView({ name: "new" })} />}
-        {view.name === "trip" && <TripDetail id={view.id} onBack={() => setView({ name: "trips" })} onManifest={() => setView({ name: "manifest", id: view.id })} />}
-        {view.name === "manifest" && <ManifestView tripId={view.id} onBack={() => setView({ name: "trip", id: view.id })} />}
-        {view.name === "exceptions" && <ExceptionsView onOpenTrip={(id) => setView({ name: "trip", id })} />}
-        {view.name === "new" && <NewTrip onCreated={(id) => setView({ name: "trip", id })} />}
-        {view.name === "dash" && <DashboardView />}
-        {view.name === "traces" && <TracesView />}
-        {view.name === "kpis" && <KpiView />}
-        {view.name === "chat" && <Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} />}
-      </div>
+      <main className="stage">
+        {view.name === "ops" && <Cockpit initialId={view.id} onNew={() => setView({ name: "new" })} who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} />}
+        {view.name === "new" && <NewTripWizard onCreated={(id) => setView({ name: "ops", id })} />}
+        {view.name === "dash" && <div className="scroll"><DashboardView /></div>}
+        {view.name === "chat" && <div className="pagepad scroll"><Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} /></div>}
+        {view.name === "traces" && <div className="scroll"><TracesView /></div>}
+      </main>
     </div>
   );
 }
 
-/* ================= TRIP LIST ================= */
-function TripList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () => void }) {
+/* ================= KOKPİT: seferler · araç · talepler ================= */
+function Cockpit({ initialId, onNew, who }: { initialId?: string; onNew: () => void; who: string }) {
   const { data, error, loading, reload } = useFetch((s) => api<{ items: CarrierTrip[] }>("GET", "/carrier/trips", undefined, { signal: s }), [], 8000);
+  const items = data?.items ?? [];
+  const [sel, setSel] = useState<string | null>(initialId ?? null);
+  const current = items.find((t) => t.id === sel) ?? items.find((t) => t.pendingCount > 0) ?? items.find((t) => t.status === "published") ?? items[0];
+
+  const groups = useMemo(() => {
+    const t0 = today(), t1 = addDays(t0, 1);
+    const g: [string, CarrierTrip[]][] = [["Bugün", []], ["Yarın", []], ["Sonraki günler", []], ["Geçmiş", []]];
+    for (const t of [...items].sort((a, b) => a.departureAt.localeCompare(b.departureAt))) {
+      const d = isoDay(t.departureAt);
+      const i = ["completed", "cancelled", "departed"].includes(t.status) || d < t0 ? 3 : d === t0 ? 0 : d === t1 ? 1 : 2;
+      g[i]![1].push(t);
+    }
+    return g.filter(([, l]) => l.length);
+  }, [items]);
+
   return (
-    <div className="page">
-      <div className="page-head row between wrap">
-        <div><div className="kicker">Operasyon</div><h1 className="title">Seferler</h1></div>
-        <button className="btn primary" onClick={onNew}><PackagePlus size={16} />Aracım var, yük ekle</button>
-      </div>
-      {loading ? <SkeletonCards /> : error ? <ErrorBox error={error} onRetry={reload} /> : !data?.items.length ? (
-        <div className="card"><Empty title="Henüz sefer yok" text="Aracınız için boş palet kapasitesi yayınlayın." /></div>
-      ) : (
-        <div className="col">
-          {data.items.map((t) => (
-            <button key={t.id} className="card" onClick={() => onOpen(t.id)} style={{ textAlign: "left", cursor: "pointer", font: "inherit", display: "grid", gridTemplateColumns: "1.2fr 1fr auto", gap: 24, alignItems: "center" }}>
-              <div>
-                <div className="route" style={{ fontSize: 26 }}>{place(t.origin)} → {place(t.destination)}</div>
-                <div className="small muted" style={{ marginTop: 4 }}>{t.reference} · {t.vehicle.plate} · {day(t.departureAt)} {time(t.departureAt)}</div>
-              </div>
-              <TripBarCompact cap={t.capacity} />
-              <div style={{ textAlign: "right" }}>
-                <StatusBadge status={t.status} />
-                {t.pendingCount > 0 && <div style={{ marginTop: 6 }}><span className="badge pending">{t.pendingCount} bekleyen talep</span></div>}
-              </div>
-            </button>
-          ))}
+    <div className="cockpit">
+      <aside className="panel list-pane" aria-label="Seferler">
+        <div className="pane-head row between">
+          <div style={{ minWidth: 0 }}><span className="eyebrow">Seferler</span><div className="who-line" title={who}>{who}</div></div>
+          <button className="btn sm primary" onClick={onNew}><PackagePlus size={14} />Yeni</button>
         </div>
-      )}
+        <div className="pane-scroll">
+          {loading ? <div className="col" style={{ padding: 12 }}><Skeleton h={60} /><Skeleton h={60} /></div>
+            : error ? <div style={{ padding: 12 }}><ErrorBox error={error} onRetry={reload} /></div>
+            : !items.length ? <div className="mini-empty"><p>Henüz sefer yok.</p><button className="btn sm primary" onClick={onNew}>Kapasite yayınla</button></div>
+            : groups.map(([label, list]) => (
+              <div key={label}>
+                <div className="group-h">{label}</div>
+                {list.map((t) => {
+                  const fill = t.capacity.plannedPallets / t.capacity.totalPositions;
+                  return (
+                    <button key={t.id} className={`trow ${current?.id === t.id ? "on" : ""}`} onClick={() => setSel(t.id)}>
+                      <div className="trow-top">
+                        <b className="trow-route">{place(t.origin)} → {place(t.destination)}</b>
+                        <Ring v={fill} />
+                      </div>
+                      <div className="trow-sub">{dayNum(isoDay(t.departureAt))} {time(t.departureAt)} · {t.vehicle.plate}</div>
+                      <div className="row" style={{ gap: 6, marginTop: 4 }}>
+                        <StatusBadge status={t.status} />
+                        {t.pendingCount > 0 && <span className="badge pending">{t.pendingCount} talep</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+        </div>
+      </aside>
+      {current ? <TripOps key={current.id} id={current.id} onListChanged={reload} /> : !loading && <section className="panel"><Empty title="Sefer seçin" /></section>}
     </div>
   );
 }
 
-/* ================= TRIP DETAIL ================= */
+function Ring({ v }: { v: number }) {
+  const p = Math.max(0, Math.min(1, v)), r = 11, c = 2 * Math.PI * r;
+  return (
+    <svg width="30" height="30" viewBox="0 0 30 30" className="ring" aria-label={`Doluluk %${Math.round(p * 100)}`}>
+      <circle cx="15" cy="15" r={r} className="ring-bg" />
+      <circle cx="15" cy="15" r={r} className="ring-fg" strokeDasharray={`${c * p} ${c}`} transform="rotate(-90 15 15)" />
+      <text x="15" y="18.5" textAnchor="middle">{Math.round(p * 100)}</text>
+    </svg>
+  );
+}
+
 type TripFull = CarrierTripV & { reservations: CarrierRes[] };
 const NEXT: Record<string, { type: string; label: string }> = {
-  ONAYLI: { type: "DEPO_KABUL", label: "Depoda kabul" }, DEPO_KABUL: { type: "YUKLENDI", label: "Araca yüklendi" },
-  YUKLENDI: { type: "VARISTA", label: "Varışta" }, VARISTA: { type: "TESLIM", label: "Teslim" },
+  ONAYLI: { type: "DEPO_KABUL", label: "Depo kabul" }, DEPO_KABUL: { type: "YUKLENDI", label: "Araca yükle" },
+  YUKLENDI: { type: "VARISTA", label: "Varışta" }, VARISTA: { type: "TESLIM", label: "Teslim et" },
 };
+const CONFIRMED = ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
-function TripDetail({ id, onBack, onManifest }: { id: string; onBack: () => void; onManifest?: () => void }) {
+const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı bu araca uygun değil", "Zamanlama uymuyor", "Ağırlık sınırı aşılıyor"];
+
+function TripOps({ id, onListChanged }: { id: string; onListChanged: () => void }) {
   const toast = useToast();
   const { data: t, error, loading, reload } = useFetch((s) => api<TripFull>("GET", `/carrier/trips/${id}`, undefined, { signal: s }), [id], 5000);
+  const [tab, setTab] = useState<"req" | "loads">("req");
   const [busy, setBusy] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
   const [reject, setReject] = useState<CarrierRes | null>(null);
   const [teslim, setTeslim] = useState<CarrierRes | null>(null);
   const [measure, setMeasure] = useState<CarrierRes | null>(null);
-  const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<{ r: CarrierRes; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
-  const [historyFor, setHistoryFor] = useState<CarrierRes | null>(null);
-  const [historyReply, setHistoryReply] = useState("");
-  const [historyError, setHistoryError] = useState<Error | null>(null);
-  const [historyBusy, setHistoryBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [insight, setInsight] = useState<{ r: CarrierRes; text: string; err: Error | null; busy: boolean } | null>(null);
 
   const { pending, active } = useMemo(() => {
     const rs = t?.reservations ?? [];
     return {
       pending: rs.filter((r) => r.status === "TASIYICI_ONAYI_BEKLIYOR").sort((a, b) => a.priorityRank - b.priorityRank),
-      active: rs.filter((r) => ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"].includes(r.status)),
+      active: rs.filter((r) => CONFIRMED.includes(r.status) || r.status === "GELMEDI"),
     };
   }, [t]);
 
   async function act(key: string, path: string, body: unknown, ok: string) {
     setBusy(key);
-    try { await api("POST", path, body); toast(ok, "ok"); reload(); }
+    try { await api("POST", path, body); toast(ok, "ok"); reload(); onListChanged(); }
     catch (e) { toast(errText(e), "err"); }
     finally { setBusy(null); }
   }
-
-  async function showHistoryInsight(r: CarrierRes) {
-    setHistoryFor(r); setHistoryReply(""); setHistoryError(null); setHistoryBusy(true);
+  async function showInsight(r: CarrierRes) {
+    setInsight({ r, text: "", err: null, busy: true });
     const h = r.customerHistory;
     try {
-      const response = await sendChat({
+      const res = await sendChat({
         sessionId: `risk-${crypto.randomUUID()}`,
         message: `${t?.reference ?? id} seferindeki ${r.reference} numaralı ${r.customer.name} talebi için karar desteği hazırla. ` +
           `Önce trip_detail aracından customerHistory değerlerini doğrula: geçmiş sonuçlanmış talep ${h.historicalReservationCount}, doğrulanmış gelmeme ${h.verifiedNoShows}. ` +
           "Ardından carrier_knowledge aracını çağırarak bu geçmişin öncelik kuralına etkisini kısa ve tarafsız biçimde açıkla; kaynak dosya adını belirt. Onay veya ret kararı verme.",
       });
-      setHistoryReply(response.reply);
-    } catch (e) { setHistoryError(e as Error); }
-    finally { setHistoryBusy(false); }
+      setInsight({ r, text: res.reply, err: null, busy: false });
+    } catch (e) { setInsight({ r, text: "", err: e as Error, busy: false }); }
   }
 
+  if (loading) return <section className="panel center-pane"><div className="pane-scroll"><SkeletonCards n={2} h={160} /></div></section>;
+  if (error && !t) return <section className="panel center-pane"><div className="pane-scroll"><ErrorBox error={error} onRetry={reload} /></div></section>;
+  if (!t) return null;
+
+  const cap = t.capacity;
+  const cells = operatorCells(cap.internalPallets, t.reservations.map((r) => ({ id: r.id, name: r.customer.name, pallets: r.pallets, status: r.status })), { ghostId: hover });
+  const over = cap.plannedPallets > cap.totalPositions;
+
   return (
-    <div className="page">
-      <button className="link small" onClick={onBack} style={{ marginBottom: 14 }}><ArrowLeft size={14} style={{ verticalAlign: -2 }} /> Seferler</button>
-      {loading ? <SkeletonCards n={2} h={160} /> : error && !t ? <ErrorBox error={error} onRetry={reload} /> : t && (
-        <div className="col" style={{ gap: 22 }}>
-          <div className="row between wrap">
+    <>
+      <section className="panel center-pane" aria-label="Sefer">
+        <div className="pane-scroll">
+          <header className="trip-head">
             <div>
-              <div className="row"><span className="kicker">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span>
-                {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Seferi düzenle</button>}
-                {onManifest && <button className="btn sm" onClick={onManifest}>Manifest</button>}</div>
-              <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{place(t.origin)} → {place(t.destination)}</h1>
-              <div className="muted" style={{ marginTop: 6 }}>{t.origin.name} → {t.destination.name}</div>
+              <div className="eyebrow row" style={{ gap: 8 }}><span className="mono">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span></div>
+              <h1 className="route-h">{place(t.origin)} <span className="arrow">→</span> {place(t.destination)}</h1>
+              <div className="sub">{t.origin.name} → {t.destination.name} · {t.vehicleType.name}</div>
             </div>
-            <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
-              <div className="serif" style={{ fontSize: 22 }}>{full(t.departureAt)}</div>
-              <span className="chip">Son rezervasyon (T−3) <b>{time(t.bookingCutoffAt)}</b></span>
-              <span className="chip">Çıkış deposu son kabul (T−1) <b>{time(t.intakeCutoffAt)}</b></span>
+            <div className="trip-times">
+              <div><span className="eyebrow">Kalkış</span><b>{full(t.departureAt)}</b></div>
+              {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Düzenle</button>}
             </div>
+          </header>
+          <div className="cut-row">
+            <span className="cut">Son rezervasyon (T−3) <b>{time(t.bookingCutoffAt)}</b><Countdown to={t.bookingCutoffAt} prefix="·" /></span>
+            <span className="cut">Çıkış deposu son kabul (T−1) <b>{time(t.intakeCutoffAt)}</b></span>
           </div>
-          {error && <ErrorBox error={error} />}
-
-          <div className="card">
-            <h3 className="serif" style={{ fontSize: 22, marginBottom: 16 }}>Kapasite</h3>
-            <CapacityBars cap={t.capacity} />
-          </div>
-
-          <div className="card">
-            <div className="row between"><h3 className="serif" style={{ fontSize: 22 }}>Bekleyen talepler</h3><span className="muted small">öncelik sırasıyla</span></div>
-            {pending.length === 0 ? <Empty title="Bekleyen talep yok" text="Yeni talepler geldiğinde burada görünür." /> : (
-              <table style={{ marginTop: 10 }}>
-                <thead><tr><th>#</th><th>Firma</th><th>Yük</th><th>Fiyat</th><th>Uygunluk</th><th style={{ textAlign: "right" }}>Karar</th></tr></thead>
-                <tbody>
-                  {pending.map((r) => (
-                    <tr key={r.id}>
-                      <td><b className="serif" style={{ fontSize: 20 }}>{r.priorityRank}</b></td>
-                      <td><b>{r.customer.name}</b>
-                        {r.customerHistory.historicalReservationCount > 0 && (
-                          <div className="alert warn" style={{ marginTop: 6, padding: "8px 10px" }}>
-                            <div className="small"><AlertTriangle size={13} style={{ verticalAlign: -2 }} /> <b>Müşteri geçmişi:</b> {r.customerHistory.historicalReservationCount} sonuçlanmış talep, {r.customerHistory.verifiedNoShows} doğrulanmış gelmeme.</div>
-                            <button className="link small" style={{ marginTop: 5 }} onClick={() => showHistoryInsight(r)}>Knowledge Base yorumunu göster</button>
-                          </div>
-                        )}
-                        <div className="tiny mono">{r.reference}</div>
-                        {r.needsReview && <div style={{ marginTop: 4 }}><span className="badge warn"><AlertTriangle size={11} />Yeniden değerlendirme gerekli</span></div>}</td>
-                      <td className="small">{num(r.pallets)} palet<br />{num(r.grossKg)} kg<br />{r.volumeM3 ? `${r.volumeM3} m³` : "—"}</td>
-                      <td><b>{tl(r.totalPriceMinor)}</b><div className="tiny">{r.paymentPlan === "deposit" ? `%${r.depositPercent} kapora` : "peşin"}</div></td>
-                      <td>{r.eligibility.eligible ? <span className="badge ok">Uygun</span> : (
-                        <div className="red small">{r.eligibility.reasons.map((x) => <div key={x.code}>• {x.message}</div>)}</div>
-                      )}</td>
-                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                        <button className="btn sm mint" disabled={busy === r.id} onClick={() => act(r.id, `/carrier/reservations/${r.id}/decision`, { decision: "approve" }, `${r.customer.name} talebi onaylandı.`)}><Check size={14} />Onayla</button>{" "}
-                        <button className="btn sm danger" disabled={busy === r.id} onClick={() => setReject(r)}><X size={14} />Reddet</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="card">
-            <h3 className="serif" style={{ fontSize: 22 }}>Onaylı yükler</h3>
-            {active.length === 0 ? <Empty title="Onaylı yük yok" /> : (
-              <table style={{ marginTop: 10 }}>
-                <thead><tr><th>Sipariş</th><th>Firma</th><th>Yük</th><th>Durum</th><th style={{ textAlign: "right" }}>Depo işlemi</th></tr></thead>
-                <tbody>
-                  {active.map((r) => {
-                    const n = NEXT[r.status];
-                    return (
-                      <tr key={r.id}>
-                        <td className="mono small">{r.orderNumber ?? r.reference}</td>
-                        <td><b>{r.customer.name}</b><PodThumbs files={r.pod?.attachments ?? []} recipient={r.pod?.recipientName} /></td>
-                        <td className="small">{num(r.pallets)} palet · {num(r.grossKg)} kg</td>
-                        <td><StatusBadge status={r.status} label={r.statusLabel} /></td>
-                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                          {r.status === "INCELEME" && <button className="btn sm primary" onClick={() => setMeasure(r)}>İncele <ArrowRight size={13} /></button>}
-                          {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => (n.type === "TESLIM" ? setTeslim(r) : n.type === "DEPO_KABUL" ? setMeasure(r) : act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`))}>{n.label} <ArrowRight size={13} /></button>}{" "}
-                          {["ONAYLI", "DEPO_KABUL", "YUKLENDI"].includes(r.status) && (
-                            <>
-                              {r.status === "ONAYLI" && <button className="btn sm" onClick={() => setProblem({ r, type: "GELMEDI" })}>Gelmedi</button>}{" "}
-                              <button className="btn sm" onClick={() => setProblem({ r, type: "EKSIK_HASAR" })}>Eksik / hasar</button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+          <TruckMap operator positions={cap.totalPositions} cells={cells} caption={`${cap.plannedPallets} planlanan, ${cap.heldPallets} bloke`} />
+          {over && <div className="alert warn" style={{ marginTop: 8 }}><AlertTriangle size={15} /><span>Planlanan {cap.plannedPallets} palet, {cap.totalPositions} pozisyonu aşıyor.</span></div>}
+          <div className="capgrid">
+            {([
+              ["Palet", cap.plannedPallets, cap.totalPositions, "", cap.heldPallets],
+              ["Brüt kg", cap.internalKg + cap.confirmed.kg, cap.maxGrossKg, " kg", cap.held.kg],
+              ["Satışa açık m³", cap.confirmed.m3, cap.sellable.m3, " m³", cap.held.m3],
+            ] as [string, number, number, string, number][]).map(([l, used, tot, u, held]) => {
+              const p = tot ? used / tot : 0;
+              return (
+                <div key={l} className={`capcell ${1 - p < 0.1 ? "low" : ""}`}>
+                  <span className="eyebrow">{l}</span>
+                  <b>{num(Math.round(used * 10) / 10)}<small> / {num(tot)}{u}</small></b>
+                  <span className="meter-b"><i style={{ width: `${Math.min(100, p * 100)}%` }} /><i className="h" style={{ width: `${Math.min(100 - Math.min(100, p * 100), tot ? (held / tot) * 100 : 0)}%` }} /></span>
+                  <span className="tiny">{held > 0 ? `+${num(Math.round(held * 10) / 10)}${u} bloke` : `fiili ${l === "Palet" ? `${cap.actualPallets}/${cap.totalPositions}` : "—"}`}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
-      )}
+      </section>
+
+      <aside className="panel side-pane" aria-label="Talepler ve yükler">
+        <div className="pane-head">
+          <Segmented ariaLabel="Liste" value={tab} onChange={setTab} options={[
+            { value: "req", label: <>Talepler <i className="cnt">{pending.length}</i></> },
+            { value: "loads", label: <>Onaylı yükler <i className="cnt">{active.length}</i></> },
+          ]} />
+        </div>
+        <div className="pane-scroll">
+          {tab === "req" ? (
+            pending.length === 0 ? <div className="mini-empty"><p>Bekleyen talep yok. Yeni talepler geldiğinde burada belirir.</p></div>
+              : pending.map((r) => (
+                <article key={r.id} className={`req ${hover === r.id ? "hov" : ""}`} onMouseEnter={() => setHover(r.id)} onMouseLeave={() => setHover(null)} data-testid="request">
+                  <div className="row between">
+                    <div className="row" style={{ gap: 10 }}><span className="rank">{r.priorityRank}</span><div><b>{r.customer.name}</b><div className="mono tiny">{r.reference}</div></div></div>
+                    <b className="price-m">{tl(r.totalPriceMinor)}</b>
+                  </div>
+                  <div className="req-facts">{num(r.pallets)} palet · {num(r.grossKg)} kg{r.volumeM3 ? ` · ${r.volumeM3} m³` : ""} · {r.paymentPlan === "deposit" ? `%${r.depositPercent} kapora` : "peşin"}</div>
+                  {r.eligibility.eligible ? <span className="badge ok">Üç sınıra da uygun</span>
+                    : <div className="red small">{r.eligibility.reasons.map((x) => <div key={x.code}>• {x.message}</div>)}</div>}
+                  {r.needsReview && <span className="badge warn"><AlertTriangle size={11} />Yeniden değerlendirme gerekli</span>}
+                  {r.customerHistory.historicalReservationCount > 0 && (
+                    <button className="hist" onClick={() => showInsight(r)}>
+                      <AlertTriangle size={13} /> {r.customerHistory.historicalReservationCount} geçmiş talep · {r.customerHistory.verifiedNoShows} doğrulanmış gelmeme <span><Sparkles size={12} /> yorum</span>
+                    </button>
+                  )}
+                  <div className="row req-act">
+                    <button className="btn sm mint grow" disabled={busy === r.id || !r.eligibility.eligible} onClick={() => act(r.id, `/carrier/reservations/${r.id}/decision`, { decision: "approve" }, `${r.customer.name} talebi onaylandı.`)}><Check size={14} />Onayla</button>
+                    <button className="btn sm danger" disabled={busy === r.id} onClick={() => setReject(r)}><X size={14} />Reddet</button>
+                  </div>
+                </article>
+              ))
+          ) : (
+            active.length === 0 ? <div className="mini-empty"><p>Onaylı yük yok.</p></div>
+              : active.map((r) => {
+                const n = NEXT[r.status];
+                return (
+                  <article key={r.id} className="lrow static">
+                    <div className="row between"><b>{r.customer.name}</b><StatusBadge status={r.status} label={r.statusLabel} /></div>
+                    <div className="row between"><span className="mono tiny">{r.orderNumber ?? r.reference}</span><span className="tiny">{num(r.pallets)} palet · {num(r.grossKg)} kg</span></div>
+                    <PodThumbs files={r.pod?.attachments ?? []} recipient={r.pod?.recipientName} />
+                    <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
+                      {r.status === "INCELEME" && <button className="btn sm primary" onClick={() => setMeasure(r)}>İncele <ArrowRight size={13} /></button>}
+                      {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => (n.type === "TESLIM" ? setTeslim(r) : n.type === "DEPO_KABUL" ? setMeasure(r) : act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`))}>{n.label} <ArrowRight size={13} /></button>}
+                      {r.status === "ONAYLI" && <button className="btn sm quiet" onClick={() => setProblem({ r, type: "GELMEDI" })}>Gelmedi</button>}
+                      {["ONAYLI", "DEPO_KABUL", "YUKLENDI"].includes(r.status) && <button className="btn sm quiet" onClick={() => setProblem({ r, type: "EKSIK_HASAR" })}>Eksik / hasar</button>}
+                    </div>
+                  </article>
+                );
+              })
+          )}
+        </div>
+      </aside>
+
       {measure && <MeasureModal r={measure} onClose={() => setMeasure(null)} onDone={(msg) => { toast(msg, "ok"); setMeasure(null); reload(); }} />}
       {teslim && <TeslimModal r={teslim} onClose={() => setTeslim(null)} onDone={() => { toast(`Teslim kaydedildi: ${teslim.customer.name}`, "ok"); setTeslim(null); reload(); }} />}
-      {editing && t && <EditTripModal trip={t} onClose={() => setEditing(false)}
-        onSaved={(r: TripUpdateResult) => {
-          toast(r.reevaluated.length === 0 ? "Sefer güncellendi." : `Sefer güncellendi. ${r.reevaluated.length} bekleyen talep yeniden değerlendirildi; ${r.needsReviewCount} tanesi inceleme gerektiriyor.`, r.needsReviewCount > 0 ? "err" : "ok");
-          reload();
-        }} />}
-      {historyFor && <Modal title={`${historyFor.customer.name} · geçmiş değerlendirmesi`} onClose={() => setHistoryFor(null)}>
-        <div className="alert warn" style={{ marginBottom: 14 }}><AlertTriangle size={18} /><span><b>{historyFor.customerHistory.historicalReservationCount}</b> sonuçlanmış talebin <b>{historyFor.customerHistory.verifiedNoShows}</b> tanesinde onaylı yük zamanında getirilmedi.</span></div>
-        <div className="tiny" style={{ marginBottom: 10 }}>Sayılar işlem API’sinden, kural yorumu taşıyıcıya özel Bedrock Knowledge Base’den gelir. Bu panel karar desteğidir; otomatik onay veya ret vermez.</div>
-        {historyBusy ? <SkeletonCards n={1} h={120} /> : historyError ? <ErrorBox error={historyError} /> : <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{historyReply}</div>}
-      </Modal>}
-      {reject && <ReasonModal title={`${reject.customer.name} talebini reddet`} cta="Reddet" required
-        onClose={() => setReject(null)}
-        onSubmit={async (reason) => { await api("POST", `/carrier/reservations/${reject.id}/decision`, { decision: "reject", reason }); toast("Talep reddedildi.", "ok"); setReject(null); reload(); }} />}
+      {editing && <EditTripModal trip={t} onClose={() => setEditing(false)} onSaved={(r: TripUpdateResult) => {
+        toast(r.reevaluated.length === 0 ? "Sefer güncellendi." : `Sefer güncellendi. ${r.reevaluated.length} bekleyen talep yeniden değerlendirildi; ${r.needsReviewCount} tanesi inceleme gerektiriyor.`, r.needsReviewCount > 0 ? "err" : "ok");
+        reload();
+      }} />}
+      {insight && (
+        <Modal title={`${insight.r.customer.name} · geçmiş değerlendirmesi`} onClose={() => setInsight(null)}>
+          <div className="alert warn" style={{ marginBottom: 14 }}><AlertTriangle size={18} /><span><b>{insight.r.customerHistory.historicalReservationCount}</b> sonuçlanmış talebin <b>{insight.r.customerHistory.verifiedNoShows}</b> tanesinde onaylı yük zamanında getirilmedi.</span></div>
+          <div className="tiny" style={{ marginBottom: 10 }}>Sayılar işlem API’sinden, kural yorumu taşıyıcıya özel Bedrock Knowledge Base’den gelir. Bu panel karar desteğidir; otomatik onay veya ret vermez.</div>
+          {insight.busy ? <SkeletonCards n={1} h={120} /> : insight.err ? <ErrorBox error={insight.err} /> : <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{insight.text}</div>}
+        </Modal>
+      )}
+      {reject && <ReasonModal title={`${reject.customer.name} talebini reddet`} cta="Reddet" required presets={REJECT_REASONS} onClose={() => setReject(null)}
+        onSubmit={async (reason) => { await api("POST", `/carrier/reservations/${reject.id}/decision`, { decision: "reject", reason }); toast("Talep reddedildi.", "ok"); setReject(null); reload(); onListChanged(); }} />}
       {problem && <ReasonModal title={problem.type === "GELMEDI" ? "Yük getirilmedi olarak işaretle" : "Eksik / hasar kaydı"} cta="Kaydet" required={false}
+        presets={problem.type === "GELMEDI" ? ["Son kabul saatine kadar gelmedi", "Müşteri iptal bildirdi"] : ["Eksik palet", "Ambalaj hasarlı", "Etiket/QR okunmuyor"]}
         onClose={() => setProblem(null)}
         onSubmit={async (note) => { await api("POST", `/carrier/reservations/${problem.r.id}/events`, { type: problem.type, ...(note ? { note } : {}) }); toast("Olay kaydedildi.", "ok"); setProblem(null); reload(); }} />}
-    </div>
+    </>
   );
 }
 
-function ReasonModal({ title, cta, required, onClose, onSubmit }: { title: string; cta: string; required: boolean; onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
-  const [v, setV] = useState("");
+function ReasonModal({ title, cta, required, presets, onClose, onSubmit }: { title: string; cta: string; required: boolean; presets: string[]; onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
+  const [pick, setPick] = useState<string | null>(null);
+  const [other, setOther] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<Error | null>(null);
+  const v = pick === "__other" ? other.trim() : pick ?? "";
   return (
     <Modal title={title} onClose={onClose}>
-      <Field label={required ? "Gerekçe (zorunlu)" : "Not (isteğe bağlı)"}><textarea className="input" value={v} onChange={(e) => setV(e.target.value)} autoFocus /></Field>
+      <span className="lbl">{required ? "Gerekçe seçin" : "Not (isteğe bağlı)"}</span>
+      <ChipSelect value={pick} onChange={setPick} options={[...presets.map((p) => ({ value: p, label: p })), { value: "__other", label: "Diğer…" }]} />
+      {pick === "__other" && <textarea className="input" style={{ marginTop: 10 }} value={other} onChange={(e) => setOther(e.target.value)} autoFocus placeholder="Kısa açıklama" />}
       {err && <div style={{ marginTop: 12 }}><ErrorBox error={err} /></div>}
       <div className="row" style={{ justifyContent: "flex-end", marginTop: 16 }}>
         <button className="btn" onClick={onClose}>Vazgeç</button>
-        <button className="btn primary" disabled={busy || (required && !v.trim())}
-          onClick={async () => { setBusy(true); setErr(null); try { await onSubmit(v.trim()); } catch (e) { setErr(e as Error); } finally { setBusy(false); } }}>{cta}</button>
+        <button className="btn primary" disabled={busy || (required && !v)}
+          onClick={async () => { setBusy(true); setErr(null); try { await onSubmit(v); } catch (e) { setErr(e as Error); } finally { setBusy(false); } }}>{cta}</button>
       </div>
     </Modal>
   );
 }
-
-/* ================= NEW TRIP ================= */
-function NewTrip({ onCreated }: { onCreated: (id: string) => void }) {
-  const toast = useToast();
-  const fac = useFetch((s) => api<{ items: Facility[] }>("GET", "/carrier/facilities", undefined, { signal: s }), []);
-  const veh = useFetch((s) => api<{ items: any[] }>("GET", "/carrier/vehicles", undefined, { signal: s }), []);
-  const tomorrow = isoToLocal(new Date(Date.now() + 24 * 3600e3).toISOString()).slice(0, 10);
-  const [f, setF] = useState({
-    origin: "", dest: "", vehicle: "", dep: `${tomorrow}T18:00`, eta: `${tomorrow}T23:00`,
-    intP: "25", intKg: "17000", maxKg: "22000", sP: "8", sKg: "5000", sM3: "12", price: "3750", publish: true,
-  });
-  const set = (k: string, v: string | boolean) => setF((x) => ({ ...x, [k]: v }));
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<ApiError | null>(null);
-  const [key] = useState(() => crypto.randomUUID());
-
-  const all = fac.data?.items ?? [];
-  const isOrigin = (x: Facility) => !x.kind || x.kind.toLowerCase().includes("transfer") || x.kind.toLowerCase().includes("hub") || x.kind.toLowerCase().includes("terminal");
-  const origins = all.filter((x) => (all.some((y) => y.kind) ? isOrigin(x) : true));
-  const dests = all.filter((x) => (all.some((y) => y.kind) ? !isOrigin(x) : true));
-  const vehicles = (veh.data?.items ?? []).filter((v) => v.active !== false && v.status !== "inactive");
-  const ok = f.origin && f.dest && f.vehicle && f.origin !== f.dest;
-
-  async function submit() {
-    setBusy(true); setErr(null);
-    try {
-      const t = await api<CarrierTrip>("POST", "/carrier/trips", {
-        originFacilityId: f.origin, destinationFacilityId: f.dest, vehicleId: f.vehicle,
-        departureAt: localToIso(f.dep), arrivalEta: localToIso(f.eta),
-        internalPallets: Number(f.intP), internalKg: Number(f.intKg), maxGrossKg: Number(f.maxKg),
-        sellablePallets: Number(f.sP), sellableKg: Number(f.sKg), sellableM3: Number(f.sM3),
-        basePriceMinor: Math.round(Number(f.price.replace(",", ".")) * 100), publish: f.publish,
-      }, { idempotencyKey: key });
-      toast("Sefer oluşturuldu.", "ok");
-      onCreated(t.id);
-    } catch (e) { setErr(e as ApiError); } finally { setBusy(false); }
-  }
-  const sel = (k: "origin" | "dest", list: Facility[]) => (
-    <select className="input" value={f[k]} onChange={(e) => set(k, e.target.value)}>
-      <option value="">Seçin…</option>{list.map((x) => <option key={x.id} value={x.id}>{x.name} · {x.city}</option>)}
-    </select>
-  );
-  const num_ = (k: string, label: string) => <Field label={label}><input type="number" className="input" value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} /></Field>;
-  return (
-    <div className="page" style={{ maxWidth: 820 }}>
-      <div className="page-head"><div className="kicker">Kapasite yayınla</div><h1 className="title">Aracım var, yük ekle</h1>
-        <p className="muted" style={{ marginTop: 6 }}>Planlı transferinizde boş kalan palet alanını müşterilere açın.</p></div>
-      {(fac.error || veh.error) && <ErrorBox error={(fac.error ?? veh.error)!} />}
-      <div className="card col" style={{ gap: 18 }}>
-        <div className="grid2">
-          <Field label="Çıkış transfer merkezi">{sel("origin", origins)}</Field>
-          <Field label="Varış dağıtım merkezi">{sel("dest", dests)}</Field>
-          <Field label="Araç">
-            <select className="input" value={f.vehicle} onChange={(e) => set("vehicle", e.target.value)}>
-              <option value="">Seçin…</option>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}{v.vehicleType?.name ? ` · ${v.vehicleType.name}` : v.driverName ? ` · ${v.driverName}` : ""}</option>)}
-            </select>
-          </Field>
-          <Field label="Baz fiyat, palet başı (TL)"><input type="number" className="input" value={f.price} onChange={(e) => set("price", e.target.value)} /></Field>
-          <Field label="Kalkış (İstanbul saati)"><input type="datetime-local" className="input" value={f.dep} onChange={(e) => set("dep", e.target.value)} /></Field>
-          <Field label="Tahmini varış"><input type="datetime-local" className="input" value={f.eta} onChange={(e) => set("eta", e.target.value)} /></Field>
-        </div>
-        <hr className="hr" style={{ margin: 0 }} />
-        <div className="grid2" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-          {num_("intP", "İç yük (palet)")}{num_("intKg", "İç yük (kg)")}{num_("maxKg", "Azami brüt (kg)")}
-          {num_("sP", "Satışa açık palet")}{num_("sKg", "Satışa açık kg")}{num_("sM3", "Satışa açık m³")}
-        </div>
-        <label className="row"><input type="checkbox" checked={f.publish} onChange={(e) => set("publish", e.target.checked)} /> Hemen yayınla (müşteriler görsün)</label>
-        {f.origin && f.origin === f.dest && <div className="alert warn">Çıkış ve varış merkezi aynı olamaz.</div>}
-        {err && <ErrorBox error={err} />}
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <button className="btn primary lg" disabled={!ok || busy} onClick={submit}>{busy ? "Oluşturuluyor…" : "Seferi oluştur"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-void dt;
