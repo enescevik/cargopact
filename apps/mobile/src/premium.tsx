@@ -328,7 +328,7 @@ export function WalletCard({ orderNumber, trip, recipients, pallets, code }: { o
   const share = () => {
     const text = `CargoPact teslim kartı\nSipariş: ${orderNumber}\n${place(trip.origin)} → ${place(d)} · ${pallets} palet\n` +
       `Teslim noktası: ${d.name}, ${d.address}\nAlım penceresi: ${win}\nTahmini varış: ${dt(trip.arrivalEta)}\n` +
-      `Yetkili alıcı: ${recipients.length ? recipients.join(", ") : "Rezervasyon sahibi firma"}\nDepoda sipariş QR kodunu gösterin.`;
+      `Yetkili alıcı: ${recipients.length ? recipients.join(", ") : "henüz eklenmedi (Yüklerim > yük detayı)"}\nDepoda sipariş QR kodunu gösterin.`;
     Share.share({ message: text, title: `Teslim kartı ${orderNumber}` }).catch(() => undefined);
   };
   return (
@@ -354,7 +354,7 @@ export function WalletCard({ orderNumber, trip, recipients, pallets, code }: { o
             <Text style={{ color: "#8F9BCF", fontSize: 11 }}>Yalnız yetkili alıcıyla paylaşın</Text>
           </View>
         ) : null}
-        <NoirKV k="Alıcı" v={recipients.length ? recipients.join(", ") : "Firma yetkilisi"} />
+        <NoirKV k="Alıcı" v={recipients.length ? recipients.join(", ") : "Eklenmedi ⚠︎"} />
         <NoirKV k="Palet" v={String(pallets)} />
         <NoirKV k="Tahmini varış" v={dt(trip.arrivalEta)} />
         <NoirKV k="Alım penceresi" v={win} />
