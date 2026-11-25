@@ -124,3 +124,41 @@ TASIYICI_ONAYI_BEKLIYOR "Taşıyıcı onayı bekliyor" · ONAYLI "Onaylandı" ·
 - `POST /carrier/exceptions/{id}/resolve` `{note}` — idempotent; ilk not korunur, denetim kaydı yazılır.
 - `GET /carrier/trips/{id}/manifest` — onaylı+ rezervasyonlar, palet kodları, alıcılar. Web: sefer detayında "Manifest" (yazdır).
 - Smoke: `node scripts/smoke-exceptions.mjs`
+
+
+## Ek: Karbon ve sözleşme (25.11.2026)
+
+### Karbon (tek kaynak: sunucu, `packages/domain/src/carbon.ts`)
+Kararlar: (1a) **tasarruf yalnız müşteri alternatif senaryosunu seçtiyse** gösterilir; seçmediyse yalnız yükün payına düşen emisyon. (2) Katsayılar **demo varsayımıdır** (`isDemoFactors: true`), ekranda "demo katsayıları, tahmini" etiketi zorunlu.
+
+```ts
+type AlternativeScenario = "dedicated" | "groupage";   // ayrı araçla gönderirdim | parsiyel/ambar ile gönderirdim
+type Carbon = {
+  distanceKm: number;               // kuş uçuşu × 1,25 (tesis koordinatlarından)
+  vehicleClass: "kamyonet" | "kamyon" | "tir";
+  vehicleFactorKgPerKm: number;     // demo: kamyonet 0,32 · kamyon 0,55 · tır 0,90 kg CO₂e/km
+  allocatedKg: number;              // seferin emisyonu × (yükün paleti / araç palet pozisyonu)  [ISO 14083/GLEC pay dağıtımı yaklaşımı]
+  alternativeScenario: AlternativeScenario | null;
+  alternativeKg: number | null;     // dedicated: km × katsayı(palete göre araç sınıfı) · groupage: km × 1,2 × 0,55 × palet/18 / 0,7
+  savedKg: number | null;           // max(0, alternativeKg − allocatedKg); alternatif yoksa null (tasarruf iddiası yok)
+  method: string;                   // "ISO 14083 / GLEC pay dağıtımı yaklaşımı · demo katsayıları"
+  isDemoFactors: true;
+  note: string;                     // "Tahmini; pilotta gerçek yakıt/telemetri ve doğrulanmış alternatif senaryo ile hesaplanır."
+};
+type TripCarbon = { distanceKm: number; vehicleFactorKgPerKm: number; tripKg: number; externalPallets: number;
+  allocatedExternalKg: number; declaredSavedKg: number; reservationsWithScenario: number; reservationsTotal: number; method: string; isDemoFactors: true };
+```
+- `TripCard.carbon: Carbon` (istenen palet adediyle, alternatif yok) · quote isteği opsiyonel `alternativeScenario` alır ve `carbon` döner.
+- `POST /customer/reservations` opsiyonel `alternativeScenario` alır; `Reservation.carbon: Carbon` (kaydedilen senaryoyla).
+- `CarrierTrip.carbon: TripCarbon` (onaylı+ dış rezervasyonlar). `/carrier/dashboard` ve `/carrier/kpis` → `carbon: { allocatedKg, declaredSavedKg, perPalletAllocatedKg, reservationsWithScenario, reservationsTotal, method, isDemoFactors }`.
+- Müşteri `GET /customer/carbon/summary` → dönem toplamı `{ allocatedKg, declaredSavedKg, reservations, method, isDemoFactors }` (yalnız kendi firması).
+
+### Taşıma sözleşmesi (taslak)
+Metin: `docs/contracts/tasima-sozlesmesi-taslak-v1.md` (`{{alan}}` yer tutucuları sunucuda doldurulur). Kod `TASIMA`, sürüm `1.0-taslak`, `isDraft: true`.
+| Yöntem | Yol | Gövde | Yanıt |
+|---|---|---|---|
+| POST | `/customer/trips/{id}/contract-preview` | quote gövdesi + `paymentPlan` (+ opsiyonel `recipientName`) | `{ contractCode, version, isDraft, title, renderedMarkdown, renderedHash }` — yazmaz; fiyat/saatler sunucudan doldurulur |
+| POST | `/customer/reservations` | mevcut gövde + **zorunlu** `contract: { version, renderedHash, signerName, accepted: true }` | `renderedHash` sunucunun aynı girdilerle ürettiği değerle eşleşmeli; yoksa/uyuşmazsa 400 `details.reason=CONTRACT_NOT_ACCEPTED` (kapasite değişmez). Kabul kaydı: kullanıcı, imzalayan adı, zaman, hash, sürüm, IP, user-agent |
+| GET | `/customer/reservations/{id}/contract` | | `{ renderedMarkdown (imza bölümü dolu), acceptance: { signerName, acceptedAt, version, renderedHash } }` |
+| GET | `/carrier/reservations/{id}/contract` | | aynı (taşıyıcı kendi rezervasyonları için) |
+`Reservation.contract = { version, signerName, acceptedAt, renderedHash } | null`. Asistan: teyit özeti sözleşme özetini ve hash'ini gösterir; kullanıcının "onaylıyorum" teyidi, imzalayan adı = kullanıcının görünen adı olarak sözleşme kabulü sayılır (özette açıkça yazılır).
