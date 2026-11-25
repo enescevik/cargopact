@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChipSelect, Segmented } from "./components/controls";
 import { api } from "./api";
 import { dt } from "./format";
 import { Empty, ErrorBox, Field, Modal, SkeletonCards, errText, useFetch, useToast } from "./ui";
@@ -42,15 +43,12 @@ export function ExceptionsView({ onOpenTrip }: { onOpenTrip?: (id: string) => vo
         <div className="muted" style={{ marginTop: 6 }}>Gelmeme, geç bırakma, ölçüm farkı, hasar ve teslim alınmayan yükler. Kayıtlar mevcut sipariş verisinden hesaplanır.</div>
       </div>
       <div className="row wrap" style={{ gap: 10, marginBottom: 16 }}>
-        <select className="input" style={{ width: 220 }} value={type} onChange={(e) => setType(e.target.value)} aria-label="Tür">
-          <option value="">Tüm türler</option>
-          {Object.entries(EXC_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-        </select>
-        <select className="input" style={{ width: 180 }} value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Durum">
-          <option value="open">Açık</option><option value="resolved">Çözülmüş</option><option value="">Tümü</option>
-        </select>
-        {data && <span className="chip">Açık <b>{data.counts.open}</b></span>}
-        {data && <span className="chip">Çözülmüş <b>{data.counts.resolved}</b></span>}
+        <Segmented ariaLabel="Durum" value={status} onChange={setStatus} options={[
+          { value: "open", label: <>Açık {data && <i className="cnt">{data.counts.open}</i>}</> },
+          { value: "resolved", label: <>Çözülmüş {data && <i className="cnt">{data.counts.resolved}</i>}</> },
+          { value: "", label: "Tümü" },
+        ]} />
+        <ChipSelect size="sm" ariaLabel="Tür" value={type} onChange={setType} options={[{ value: "", label: "Tüm türler" }, ...Object.entries(EXC_TYPES).map(([k, l]) => ({ value: k, label: l }))]} />
       </div>
       {loading && !data ? <SkeletonCards n={3} h={110} /> : error && !data ? <ErrorBox error={error} onRetry={reload} /> :
         !items.length ? <Empty title="İstisna yok" text="Seçili filtrelerde kayıt bulunmuyor." /> : (

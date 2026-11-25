@@ -1,5 +1,6 @@
 """İş API'sine çağrı yapan araçlar. Kimlik, çağıranın ID token'ıdır; kiracı/rol backend'de zorlanır."""
 import json
+import logging
 import os
 import urllib.error
 import urllib.parse
@@ -9,6 +10,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from strands import tool
+
+log = logging.getLogger("cargopact.tools")
 
 API_URL = os.environ.get("API_URL", "https://765h182ijf.execute-api.us-east-1.amazonaws.com").rstrip("/")
 _TIMEOUT = 8
@@ -60,6 +63,56 @@ def api_call(token: str, method: str, path: str, query: dict | None = None, body
         return out
     except Exception as e:  # ağ/zaman aşımı
         return {"error": True, "message": f"API çağrısı başarısız: {type(e).__name__}"}
+
+
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "").strip()
+USE_GATEWAY = os.environ.get("USE_GATEWAY", "0") == "1" and bool(GATEWAY_URL)
+_GW_PREFIX = "cargopact-mcp-tools___"
+_GW_TIMEOUT = 12
+
+
+def _gateway_call(token: str, tool_name: str, args: dict) -> dict:
+    """AgentCore Gateway (MCP, streamable HTTP) üzerinden salt okunur araç çağır. Hata olursa istisna fırlatır."""
+    from datetime import timedelta
+    from strands.tools.mcp import MCPClient
+    headers = {"Authorization": f"Bearer {token}", "X-User-Token": str(token)}  # token yalnızca başlıkta; model görmez
+    corr = getattr(token, "correlation_id", "")
+    sess = getattr(token, "session_id", "")
+    if corr and sess:
+        headers["x-correlation-id"] = corr
+        headers["x-agent-session"] = sess
+
+    def transport():
+        try:  # eski mcp sürümleri
+            from mcp.client.streamable_http import streamablehttp_client
+            return streamablehttp_client(GATEWAY_URL, headers=headers, timeout=timedelta(seconds=_GW_TIMEOUT))
+        except ImportError:  # yeni mcp sürümleri: başlıklar http_client üzerinden
+            from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
+            return streamable_http_client(GATEWAY_URL, http_client=create_mcp_http_client(headers=headers))
+
+    client = MCPClient(transport)
+    with client:
+        res = client.call_tool_sync(str(uuid.uuid4()), _GW_PREFIX + tool_name, args,
+                                    read_timeout_seconds=timedelta(seconds=_GW_TIMEOUT))
+    if res.get("status") != "success":
+        raise RuntimeError("gateway tool error")
+    text = "".join(c.get("text", "") for c in res.get("content", []) if isinstance(c, dict))
+    out = json.loads(text)
+    if not isinstance(out, dict):
+        raise RuntimeError("unexpected gateway payload")
+    return out
+
+
+def read_call(token: str, tool_name: str, args: dict, path: str, query: dict | None = None) -> dict:
+    """Salt okunur okuma: USE_GATEWAY=1 ise Gateway/MCP, hata olursa doğrudan API (yedek). Backend hataları (403 vb.) yedeğe düşmez."""
+    if USE_GATEWAY:
+        try:
+            out = _gateway_call(token, tool_name, {k: v for k, v in args.items() if v not in (None, "")})
+            log.info("gateway tool=%s ok", tool_name)
+            return out
+        except Exception as e:
+            log.warning("gateway tool=%s failed (%s); direct API fallback", tool_name, type(e).__name__)
+    return api_call(token, "GET", path, query)
 
 
 _TR = ZoneInfo("Europe/Istanbul")
@@ -133,7 +186,7 @@ def build_customer_tools(token: str) -> list:
     def search_trips(originCity: str = "", destinationCity: str = "", date: str = "", pallets: int = 1) -> str:
         """Uygun seferleri ara (originCity/destinationCity il, ilçe veya tesis adı olabilir, örn. Gebze). date: YYYY-MM-DD (opsiyonel). Fiyat istenen palet adediyle hesaplanır."""
         # Şehir/ilçe adı eşleşmesi ('Gebze' ilçedir, şehir Kocaeli) için süzme burada yapılır.
-        r = api_call(token, "GET", "/customer/trips", {"date": date, "pallets": pallets})
+        r = read_call(token, "search_trips", {"date": date, "pallets": pallets}, "/customer/trips", {"date": date, "pallets": pallets})
         if r.get("error"):
             return _out(r)
         items = [t for t in r.get("items", [])
@@ -151,7 +204,7 @@ def build_customer_tools(token: str) -> list:
     @tool
     def my_reservations() -> str:
         """Çağıran firmanın rezervasyonlarını listele (yeniden eskiye)."""
-        r = api_call(token, "GET", "/customer/reservations")
+        r = read_call(token, "my_reservations", {}, "/customer/reservations")
         if r.get("error"):
             return _out(r)
         return _out({"items": [_slim_res(x) for x in r.get("items", [])]})
@@ -159,7 +212,7 @@ def build_customer_tools(token: str) -> list:
     @tool
     def track(orderNumber: str) -> str:
         """Sipariş numarasıyla (CP-2026-000123) palet/sipariş takibi."""
-        return _out(api_call(token, "GET", f"/customer/orders/{urllib.parse.quote(orderNumber, safe='')}/tracking"))
+        return _out(read_call(token, "track_order", {"orderNumber": orderNumber}, f"/customer/orders/{urllib.parse.quote(orderNumber, safe='')}/tracking"))
 
     return [search_trips, quote, my_reservations, track]
 
@@ -191,7 +244,7 @@ def retrieve_carrier_kb(carrier_id: str, question: str, top_k: int = 4) -> list[
     return out
 def build_carrier_tools(token: str, carrier_id: str | None = None) -> list:
     def _resolve(trip: str) -> str | None:
-        r = api_call(token, "GET", "/carrier/trips")
+        r = read_call(token, "carrier_trips", {}, "/carrier/trips")
         for t in r.get("items", []):
             if trip in (t.get("id"), t.get("reference")):
                 return t["id"]
@@ -200,7 +253,7 @@ def build_carrier_tools(token: str, carrier_id: str | None = None) -> list:
     @tool
     def list_trips() -> str:
         """Taşıyıcının seferlerini listele (kalkışa göre) ve kapasite özetini getir."""
-        r = api_call(token, "GET", "/carrier/trips")
+        r = read_call(token, "carrier_trips", {}, "/carrier/trips")
         if r.get("error"):
             return _out(r)
         return _out({"items": [_slim_trip(t) for t in r.get("items", [])]})
@@ -209,7 +262,7 @@ def build_carrier_tools(token: str, carrier_id: str | None = None) -> list:
     def trip_detail(tripIdOrReference: str) -> str:
         """Sefer detayı: kapasite ve talepler (priorityRank, verifiedNoShows, uygunluk). Sefer id veya referans (örn. DNC-DEMO-GEB-ANK) verilebilir."""
         trip_id = _resolve(tripIdOrReference) or tripIdOrReference
-        r = api_call(token, "GET", f"/carrier/trips/{urllib.parse.quote(trip_id, safe='')}")
+        r = read_call(token, "carrier_trip_detail", {"tripId": trip_id}, f"/carrier/trips/{urllib.parse.quote(trip_id, safe='')}")
         if r.get("error"):
             return _out(r)
         out = _slim_trip(r)
@@ -221,7 +274,7 @@ def build_carrier_tools(token: str, carrier_id: str | None = None) -> list:
     def dashboard(tripIdOrReference: str = "") -> str:
         """Gelir/maliyet/katkı özeti ve müşteri listesi. Boşsa en yakın demo seferi."""
         trip_id = _resolve(tripIdOrReference) if tripIdOrReference else None
-        r = api_call(token, "GET", "/carrier/dashboard", {"tripId": trip_id or tripIdOrReference})
+        r = read_call(token, "carrier_dashboard", {"tripId": trip_id or tripIdOrReference}, "/carrier/dashboard", {"tripId": trip_id or tripIdOrReference})
         if r.get("error"):
             return _out(r)
         r["trip"] = _slim_trip(r.get("trip") or {})

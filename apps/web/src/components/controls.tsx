@@ -95,3 +95,8 @@ export function RollNumber({ value, format }: { value: number; format: (n: numbe
   }, [value]);
   return <>{format(shown)}</>;
 }
+
+/** Kokpitle aynı çerçeve: ray yanında tam yükseklik panel. */
+export function Sheet({ children }: { children: ReactNode }) {
+  return <div className="sheet"><section className="panel sheet-in"><div className="pane-scroll">{children}</div></section></div>;
+}

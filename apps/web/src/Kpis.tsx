@@ -1,3 +1,4 @@
+import { ChipSelect } from "./components/controls";
 import { useState } from "react";
 import { api } from "./api";
 import { day, num, tl } from "./format";
@@ -47,15 +48,27 @@ function Bar({ label, planned, held, actual, cap, unit }: { label: string; plann
 export function KpiView() {
   const [from, setFrom] = useState(() => ymd(new Date(Date.now() - 30 * 86_400_000)));
   const [to, setTo] = useState(() => ymd(new Date(Date.now() + 7 * 86_400_000)));
+  const [preset, setPreset] = useState<"7" | "30" | "90" | "custom">("30");
+  const pickPreset = (p: "7" | "30" | "90" | "custom") => {
+    setPreset(p);
+    if (p !== "custom") { setFrom(ymd(new Date(Date.now() - Number(p) * 86_400_000))); setTo(ymd(new Date(Date.now() + 7 * 86_400_000))); }
+  };
   const { data, error, loading, reload } = useKpis(from, to);
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
       <div className="page-head row between wrap">
         <div><span className="kicker">Performans</span><h1 className="title">Performans (KPI)</h1>
           <div className="muted small">Metriğin üzerine gelince hesaplama formülü görünür.{data ? ` Kapsam: ${data.scope === "all-carriers" ? "tüm taşıyıcılar" : "firmanız"}.` : ""}</div></div>
-        <div className="row" style={{ gap: 8 }}>
-          <label className="small muted">Başlangıç <input className="input" type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></label>
-          <label className="small muted">Bitiş <input className="input" type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} /></label>
+        <div className="col" style={{ gap: 8, alignItems: "flex-end" }}>
+          <ChipSelect size="sm" ariaLabel="Dönem" value={preset} onChange={pickPreset} options={[
+            { value: "7", label: "Son 7 gün" }, { value: "30", label: "Son 30 gün" }, { value: "90", label: "Son 90 gün" }, { value: "custom", label: "Özel aralık" },
+          ]} />
+          {preset === "custom" && (
+            <div className="row" style={{ gap: 8 }}>
+              <input className="input sm" type="date" aria-label="Başlangıç" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              <input className="input sm" type="date" aria-label="Bitiş" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} />
+            </div>
+          )}
         </div>
       </div>
       {loading && !data && <SkeletonCards n={2} h={160} />}

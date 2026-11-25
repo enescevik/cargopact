@@ -288,11 +288,10 @@ export function Warehouse() {
   };
   const onCode = (code: string) => {
     setScanning(false);
-    const r = find(code);
-    setScanned({ code, id: r?.id });
-    if (!r) toast("Bu sefer için eşleşen yük bulunamadı", "err");
+    setScanned({ code });
+    if (!find(code)) void trips.reload(true).then(() => undefined); // liste eski olabilir (yeni onaylanan yük): tazele
   };
-  const hit = scanned?.id ? all.find((r) => r.id === scanned.id) : undefined;
+  const hit = scanned ? find(scanned.code) : undefined; // liste tazelendikçe yeniden eşleşir
   const card = (r: CarrierReservation, hl = false) => {
     const nx = NEXT[r.status];
     const pending = queued.filter((q) => q.reservationId === r.id);
@@ -363,7 +362,7 @@ export function Warehouse() {
       )}
       {meas && <MeasureSheet r={meas} busy={busy === meas.id + "DEPO_KABUL"} onClose={() => setMeas(undefined)} onSubmit={(measurement) => fire(meas, "DEPO_KABUL", { measurement })} />}
       {rev && <ReviewSheet r={rev} onClose={() => setRev(undefined)} onDone={(msg) => { toast(msg); setRev(undefined); void trips.reload(true); }} />}
-      {pod && <PodSheet r={pod} busy={busy === pod.id + "TESLIM"} onClose={() => setPod(undefined)} onSubmit={(recipientName, podKeys, pickupCode) => fire(pod, "TESLIM", { recipientName, podKeys, pickupCode })} />}
+      {pod && <PodSheet r={all.find((x) => x.id === pod.id) ?? pod} busy={busy === pod.id + "TESLIM"} onClose={() => setPod(undefined)} onSubmit={(recipientName, podKeys, pickupCode) => fire(pod, "TESLIM", { recipientName, podKeys, pickupCode })} />}
       {scanning && <Scanner onCode={onCode} onClose={() => setScanning(false)} />}
     </View>
   );

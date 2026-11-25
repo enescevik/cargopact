@@ -7,6 +7,7 @@ import { Construct } from "constructs";
 export interface AgentsStackProps extends cdk.StackProps {
   dsqlClusterArn: string;
   agentImageTag?: string;
+  gatewayUrl?: string;
 }
 
 /**
@@ -92,6 +93,8 @@ export class AgentsStack extends cdk.Stack {
           MODEL_ID: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
           SPECIALIST_MODEL_ID: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
           KB_ID: kbId,
+          GATEWAY_URL: props.gatewayUrl ?? "",
+          USE_GATEWAY: props.gatewayUrl ? "1" : "0",
           API_URL: this.node.tryGetContext("apiUrl") ?? "https://765h182ijf.execute-api.us-east-1.amazonaws.com",
         },
       });
