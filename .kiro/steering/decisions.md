@@ -5,7 +5,7 @@ inclusion: always
 
 | # | Konu | Durum |
 |---|---|---|
-| 1 | Veri tabanı: plan DynamoDB diyor, ekip ilişkisel (Aurora DSQL) seçti | **DSQL**. Çift rezervasyon: tek kapasite satırı + OCC çakışmasında yeniden deneme + idempotency tablosu. DSQL'de yabancı anahtar yok, bütünlük uygulamada. |
+| 1 | Veri tabanı: plan DynamoDB diyor, ekip ilişkisel (Aurora DSQL) seçti | **DSQL**. Çift rezervasyon: tek kapasite satırı + OCC çakışmasında yeniden deneme + idempotency tablosu. Yabancı anahtar desteği kaynaklarda çelişkili (eski belgeler yok, yeni adaptör belgeleri OCC ile destekli diyor): platform-foundation design aşamasında gerçek cluster'da doğrulanacak; doğrulanana kadar bütünlük uygulama katmanında. |
 | 2 | Tek taşıyıcı (Dinçer) vs çoklu taşıyıcı (Dinçer, Siva…) | **Çoklu**: `carrier` kiracı, `customer` ayrı kiracı. Tüm sorgular tenant filtreli. |
 | 3 | Fiyat | **KARAR:** Sabit fiyat, müşteri pazarlık etmez. Fiyatı backend dinamik hesaplar (talep yüksekse artar, kalkışa yaklaştıkça satılmamış kapasitede düşer). Bkz. domain.md "Dinamik fiyat". |
 | 4 | Ödeme sağlayıcı | **KARAR:** Hackathon için simüle sağlayıcı. Soyut `PaymentProvider` arayüzü arkasında; gerçek sağlayıcı sonra takılır. |
