@@ -23,7 +23,7 @@ const LOADED = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
 async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknown[]) {
   const sub = `select id from reservations where ${where}`;
-  for (const t of ["notifications", "ledger_entries", "reservation_events", "reservation_attachments"]) {
+  for (const t of ["notifications", "warehouse_measurements", "ledger_entries", "reservation_events", "reservation_attachments"]) {
     await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id in (${sub})`, params));
   }
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
@@ -58,6 +58,8 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
   const carriers = [tenantId("dincer"), tenantId("siva")];
   const allRes = "trip_id in (select id from trips where carrier_id = any($1::uuid[]))";
   await withTx(pool, (c) => c.query(`delete from wms_pallet_events where reservation_id in (select id from reservations where ${allRes})`, [carriers]));
+  await withTx(pool, (c) => c.query("delete from exception_resolutions where carrier_id = any($1::uuid[])", [carriers]));
+  await withTx(pool, (c) => c.query("delete from quote_requests where carrier_id = any($1::uuid[])", [carriers]));
   await deleteReservationsOf(pool, allRes, [carriers]);
   const extraTrips = (await pool.query("select id, reference from trips where carrier_id = any($1::uuid[]) and not (id = any($2::uuid[]))", [carriers, seedTripIds])).rows;
   if (extraTrips.length) {
@@ -123,6 +125,9 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       events: [["TASIYICI_ONAYI_BEKLIYOR", 20], ["ONAYLI", 19]] },
     { key: "hist-anadolu-kny", customer: "anadolu", trip: "DNC-KMP-KNY", status: "TASIYICI_ONAYI_BEKLIYOR", pallets: 1, kg: 500, order: null, createdHoursBeforeDep: 30,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 30]] },
+    // İstisna kuyruğu demosu: varışta eksik/hasar bildirilen sevkiyat (geçmiş sefer; kapasite satırı aşağıda yeniden kurulur).
+    { key: "past-anadolu-eksik-hasar", customer: "anadolu", trip: "DNC-PAST-GEB-ANK", status: "EKSIK_HASAR", pallets: 1, kg: 480, order: 13, createdHoursBeforeDep: 50,
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 50], ["ONAYLI", 48], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -6], ["EKSIK_HASAR", -7]] },
   ];
   const resRows: Row[] = [], ledgerRows: Row[] = [], eventRows: Row[] = [];
   for (const s of resSeeds) {
@@ -148,9 +153,20 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     await upsert(pool, "reservations", resRows, ["id"], log);
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
-  // Tüm canlı siparişler silindiği için sayaç en yüksek seed numarasına (12) döner.
+  // KPI hunisi: her seed rezervasyonu için uygun teklif + dönüşmeyen birkaç teklif (tutarlı, is_demo).
+  const quoteRows: Row[] = resRows.map((r) => ({ id: demoId("quote_requests", `q:${r.id}`), carrier_id: r.carrier_id, customer_id: r.customer_id, trip_id: r.trip_id, pallets: r.pallets, gross_kg: r.gross_kg, eligible: true, unit_price_minor: r.unit_price_minor, created_at: new Date(r.created_at.getTime() - HOUR), is_demo: true }));
+  const extraQ: [string, string, number, number, boolean][] = [
+    ["marmara", "DNC-GEB-BRS", 2, 900, true], ["anadolu", "DNC-GEB-BRS", 1, 500, true], ["baskent", "DNC-KMP-KNY", 3, 1500, true], ["marmara", "DNC-PAST-GEB-ANK", 2, 1000, true],
+    ["anadolu", "DNC-PAST-GEB-ANK", 4, 2000, true], ["baskent", "DNC-GEB-BRS", 20, 30000, false], ["marmara", "DNC-KMP-KNY", 25, 26000, false],
+  ];
+  extraQ.forEach(([cu, tr, p, kg, el], i) => {
+    const t = tripBy.get(tr)!;
+    quoteRows.push({ id: demoId("quote_requests", `x${i}`), carrier_id: t.carrier_id, customer_id: tenantId(cu), trip_id: t.id, pallets: p, gross_kg: kg, eligible: el, unit_price_minor: t.base_price_minor, created_at: new Date(t.departure_at.getTime() - (40 + i * 3) * HOUR), is_demo: true });
+  });
+  await upsert(pool, "quote_requests", quoteRows, ["id"], log);
+  // Tüm canlı siparişler silindiği için sayaç en yüksek seed numarasına (13) döner.
   await withTx(pool, async (c) => {
-    await c.query("insert into order_counters (year, last_value) values ($1, 12) on conflict (year) do update set last_value = 12", [year]);
+    await c.query("insert into order_counters (year, last_value) values ($1, 13) on conflict (year) do update set last_value = 13", [year]);
   });
 
   // 4) Kapasite satırlarını rezervasyon toplamlarından yeniden kur (tüm seed seferleri).

@@ -3,7 +3,7 @@ import { Platform, Text, View } from "react-native";
 import { createElement } from "react";
 import { api, ApiError } from "../api";
 import { c, serif } from "../theme";
-import { Btn, Field, Sheet } from "../ui";
+import { Btn, Chip, Field, Sheet } from "../ui";
 import type { CarrierReservation } from "../types";
 
 type Up = { uploadUrl: string; key: string };
@@ -15,8 +15,10 @@ async function upload(id: string, kind: "photo" | "signature", blob: Blob): Prom
   if (!res.ok) throw new ApiError(`Dosya yüklenemedi (HTTP ${res.status}).`, res.status);
   return u.key;
 }
-export function PodSheet({ r, busy, onClose, onSubmit }: { r: CarrierReservation; busy: boolean; onClose: () => void; onSubmit: (recipient: string, keys: string[]) => void }) {
-  const [name, setName] = useState("");
+export function PodSheet({ r, busy, onClose, onSubmit }: { r: CarrierReservation; busy: boolean; onClose: () => void; onSubmit: (recipient: string, keys: string[], pickupCode: string) => void }) {
+  const recips = r.pickup?.recipients ?? [];
+  const [name, setName] = useState(recips.length === 1 ? recips[0].name : "");
+  const [code, setCode] = useState("");
   const [photo, setPhoto] = useState<File>();
   const [signed, setSigned] = useState(false);
   const [working, setWorking] = useState(false);
@@ -54,13 +56,19 @@ export function PodSheet({ r, busy, onClose, onSubmit }: { r: CarrierReservation
       } else { setMsg((e as Error).message); setWorking(false); return; }
     }
     setWorking(false);
-    onSubmit(name.trim(), keys);
+    onSubmit(name.trim(), keys, code.trim());
   };
   return (
     <Sheet onClose={onClose}>
       <Text style={{ fontFamily: serif, fontSize: 24, color: c.ink900 }}>Teslim kanıtı (e-POD)</Text>
       <Text style={{ color: c.ink500 }}>{r.customer.name} · {r.orderNumber}</Text>
-      <Field label="Teslim alan kişi (zorunlu)" value={name} onChangeText={setName} placeholder="Ad Soyad" />
+      <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 1, color: c.ink500 }}>YETKİLİ ALICI (ZORUNLU)</Text>
+      {recips.length === 0 ? <Text style={{ color: c.warning, fontWeight: "600" }}>Müşteri yetkili alıcı tanımlamamış; teslim yapılamaz.</Text> : (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {recips.map((x) => <Chip key={x.name} label={x.name} active={name === x.name} onPress={() => setName(x.name)} />)}
+        </View>
+      )}
+      <Field label="Müşterinin teslim kodu (6 hane)" value={code} onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 6))} keyboardType="number-pad" placeholder="••••••" />
       {web && (
         <View style={{ gap: 6 }}>
           <Text style={{ fontSize: 11, fontWeight: "700", letterSpacing: 1, color: c.ink500 }}>FOTOĞRAF</Text>
@@ -72,7 +80,7 @@ export function PodSheet({ r, busy, onClose, onSubmit }: { r: CarrierReservation
         </View>
       )}
       {!!msg && <Text style={{ color: c.warning, fontSize: 13, fontWeight: "600" }}>{msg}</Text>}
-      <Btn title="Teslimi kaydet" disabled={!name.trim()} loading={working || busy} onPress={submit} />
+      <Btn title="Teslimi kaydet" disabled={!name.trim() || code.length !== 6 || r.pickup?.locked === true} loading={working || busy} onPress={submit} />
       <Btn kind="ghost" title="Vazgeç" onPress={onClose} />
     </Sheet>
   );

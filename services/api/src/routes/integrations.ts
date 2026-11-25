@@ -73,6 +73,8 @@ export function integrationRoutes(pool: pg.Pool): Route[] {
         const r = (await pool.query("select id, status, pallets, pallet_codes, is_demo from reservations where order_number = $1 and carrier_id = $2", [m[1], ctx.tenantId])).rows[0];
         if (!r || !(r.pallet_codes as string[]).includes(i.palletCode)) throw notFound("Palet");
         const type = WMS_TO_RESERVATION[i.eventType];
+        // Teslim yetkisi palet kodundan ayrı doğrulanır: WMS teslim bildirimi alıcı/kod kontrolünü atlayamaz.
+        if (i.eventType === "DELIVERED") throw new HttpError("CONFLICT", "Teslim, alıcı adı ve teslim koduyla taşıyıcı uygulamasında kaydedilmelidir; WMS bildirimi bu kontrolü atlayamaz.", { reason: "RECIPIENT_CHECK_REQUIRED" });
         await pool.query(
           "insert into wms_pallet_events (carrier_id, reservation_id, pallet_code, event_type, occurred_at, is_demo) values ($1,$2,$3,$4,$5,$6) on conflict (pallet_code, event_type) do nothing",
           [ctx.tenantId, r.id, i.palletCode, i.eventType, new Date(i.occurredAt), r.is_demo]);

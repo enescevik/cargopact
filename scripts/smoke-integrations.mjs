@@ -66,6 +66,8 @@ try {
   expect("WMS son palet: DEPO_KABUL uygulandı", r.status === 200 && r.body.transitioned === true && r.body.reservationStatus === "DEPO_KABUL", r);
   r = await call(YONETICI, "POST", "/warehouse/integrations/wms/pallet-events", { palletCode: "CP-2026-999999-P1", eventType: "RECEIVED", occurredAt: at });
   expect("bilinmeyen palet 404", r.status === 404, r);
+  r = await call(YONETICI, "POST", "/warehouse/integrations/wms/pallet-events", { palletCode: codes[0], eventType: "DELIVERED", occurredAt: at });
+  expect("WMS DELIVERED alıcı kontrolünü atlayamaz (409 RECIPIENT_CHECK_REQUIRED)", r.status === 409 && r.body.details?.reason === "RECIPIENT_CHECK_REQUIRED", r);
   r = await call(MUSTERI, "POST", "/warehouse/integrations/wms/pallet-events", { palletCode: codes[0], eventType: "LOADED", occurredAt: at });
   expect("müşteri WMS uç noktasına erişemez (403)", r.status === 403, r);
 

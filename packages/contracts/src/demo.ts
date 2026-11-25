@@ -16,6 +16,8 @@ export const reservationInput = quoteInput.extend({
   tripId: z.string().uuid(),
   paymentPlan: z.enum(["full", "deposit"]),
   recipientName: z.string().max(120).optional(),
+  /** Yetkili alıcılar (en çok 3). Verilmezse recipientName tek alıcı sayılır. */
+  recipients: z.array(z.object({ name: z.string().trim().min(2).max(120), phone: z.string().trim().max(30).optional() })).max(3).optional(),
   card: cardInput,
 });
 export const cancelInput = z.object({ reason: z.string().max(300).optional() });
@@ -36,14 +38,30 @@ export const tripCreateInput = z.object({
 });
 export const tripStatusInput = z.object({ action: z.enum(["publish", "close", "cancel"]) });
 export const decisionInput = z.object({ decision: z.enum(["approve", "reject"]), reason: z.string().max(300).optional() });
+/** Depo ölçümü (DEPO_KABUL ile birlikte gönderilir). */
+export const measurementInput = z.object({
+  measuredPallets: z.number().int().min(1).max(60),
+  measuredKg: z.number().int().min(0).max(60000),
+  measuredHeightMm: z.number().int().min(0).max(4000).optional(),
+  note: z.string().trim().max(300).optional(),
+});
+export const reviewInput = z.discriminatedUnion("decision", [
+  z.object({ decision: z.literal("accept_partial"), acceptedPallets: z.number().int().min(1).max(60), note: z.string().trim().max(300).optional() }),
+  z.object({ decision: z.literal("reject"), reason: z.string().trim().max(300).optional() }),
+]);
 export const reservationEventInput = z.object({
+  /** DEPO_KABUL için isteğe bağlı depo ölçümü. */
+  measurement: measurementInput.optional(),
   type: z.enum(["DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"]),
   note: z.string().max(300).optional(),
   /** TESLIM için zorunlu: teslim alan kişi. */
   recipientName: z.string().trim().min(2).max(120).optional(),
+  /** TESLIM için zorunlu: müşterinin teslim kodu (6 hane). */
+  pickupCode: z.string().trim().regex(/^\d{6}$/, "Teslim kodu 6 haneli olmalı").optional(),
   /** TESLIM e-POD: pod-upload-url ile yüklenen nesne anahtarları (fotoğraf/imza). */
   podKeys: z.array(z.string().min(10).max(300)).max(6).optional(),
 });
+export const recipientsInput = z.object({ recipients: z.array(z.object({ name: z.string().trim().min(2).max(120), phone: z.string().trim().max(30).optional() })).max(3) });
 export const podUploadInput = z.object({
   kind: z.enum(["photo", "signature"]),
   contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),

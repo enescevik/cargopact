@@ -78,11 +78,12 @@ Pilotta: TMS planlama çıktısı her sefer için bu uca (API anahtarı yerine C
 | RECEIVED | DEPO_KABUL |
 | LOADED | YUKLENDI |
 | ARRIVED | VARISTA |
-| DELIVERED | TESLIM |
+| DELIVERED | TESLIM (**kabul edilmez**, aşağıya bakın) |
 
 - Palet olayı `wms_pallet_events` tablosuna (palet + tür tekil) yazılır; aynı okutma çift sayılmaz.
 - **Tüm paletler** bildirildiğinde rezervasyon düzeyi geçiş mevcut durum makinesine (`POST /carrier/reservations/{id}/events` işleyicisi) devredilir. Yanıt `palletsSeen/palletsTotal` ve `transitioned` verir. Zaman sınırı ve geçersiz geçiş kuralları orada uygulanır (409).
 - Bilinmeyen/başka taşıyıcıya ait palet: 404.
+- **DELIVERED → 409 `RECIPIENT_CHECK_REQUIRED`:** teslim yetkisi palet kodundan ayrı doğrulanır. WMS teslim bildirimi alıcı adı + müşterinin 6 haneli teslim kodu kontrolünü atlayamaz; teslim yalnız `POST /carrier/reservations/{id}/events` (`type=TESLIM`, `recipientName`, `pickupCode`) ile kaydedilir. WMS tarafında DELIVERED palet olayı da saklanmaz.
 
 ## Durum
 

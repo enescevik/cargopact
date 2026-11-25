@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "./zod";
-import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
+import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, recipientsInput, reviewInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
 import type { Role } from "./common";
 import { integrationStatusResponse, tmsTripInput, wmsPalletEventInput } from "./integrations";
 import {
@@ -79,6 +79,7 @@ export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/customer/reservations/{id}", summary: "Rezervasyon ayrıntı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "GET", path: "/customer/reservations/{id}/cancel-preview", summary: "İptal önizleme", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "POST", path: "/customer/reservations/{id}/cancel", summary: "Rezervasyon iptal", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: cancelInput, response: looseResponse, idempotent: true },
+  { method: "PUT", path: "/customer/reservations/{id}/recipients", summary: "Yetkili alıcıları güncelle (en çok 3, TESLIM'e kadar)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: recipientsInput, response: looseResponse, idempotent: true },
   { method: "GET", path: "/customer/orders/{orderNumber}/tracking", summary: "Sipariş takibi", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "GET", path: "/carrier/trips", summary: "Seferler", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ status: z.string().optional() }), response: itemsResponse },
   { method: "POST", path: "/carrier/trips", summary: "Sefer oluştur (aracım var, yük ekle)", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripCreateInput, response: looseResponse, status: 201, idempotent: true },
@@ -86,6 +87,7 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/carrier/trips/{id}/status", summary: "Sefer yayınla/kapat/iptal", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripStatusInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/decision", summary: "Talebi onayla/reddet", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: decisionInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/events", summary: "Depo/sefer olayı", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reservationEventInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/carrier/reservations/{id}/review", summary: "Ölçüm farkı incelemesi: kısmi kabul (accept_partial + acceptedPallets) veya depoda ret (reject)", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reviewInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/pod-upload-url", summary: "e-POD fotoğraf/imza için S3 yükleme URL'si", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: podUploadInput, response: podUploadResponse, idempotent: true },
   { method: "PUT", path: "/carrier/trips/{id}", summary: "Seferi düzenle (araç/kapasite) ve bekleyen talepleri yeniden değerlendir; If-Match: sürüm", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripUpdateInput, response: looseResponse, idempotent: true, ifMatch: true },
   { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
@@ -98,6 +100,10 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/carrier/integrations/events/flush", summary: "Bekleyen olayları şimdi yayınla", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], response: looseResponse , idempotent: true },
   { method: "GET", path: "/carrier/agent-traces", summary: "Asistan işlem izi: sohbet turları, araç çağrıları ve correlationId ile eşleşen denetim kayıtları (taşıyıcı: kendi kiracısı; platform: tümü)", tag: "Asistan", roles: [...READ_CARRIER], query: z.object({ limit: z.string().optional() }), response: looseResponse },
   { method: "POST", path: "/agent/turns/{correlationId}/complete", summary: "Sohbet turunu tamamla (gecikme, yanıt uzunluğu, başarı); yalnız çağıranın kendi turuna yazar", tag: "Asistan", roles: "any-authenticated", body: z.object({ latencyMs: z.number().int().min(0), replyChars: z.number().int().min(0), ok: z.boolean(), sessionId: z.string().optional() }), response: looseResponse },
+  { method: "GET", path: "/carrier/exceptions", summary: "İstisna iş kuyruğu (gelmeme, hasar, geç bırakma, ölçüm farkı, teslim alınmama...)", tag: "İstisnalar", roles: CARRIER_ALL, query: z.object({ status: z.enum(["open", "resolved"]).optional(), tripId: z.string().uuid().optional() }), response: looseResponse },
+  { method: "POST", path: "/carrier/exceptions/{id}/resolve", summary: "İstisnayı çözüldü işaretle (idempotent, denetim kaydı)", tag: "İstisnalar", roles: CARRIER_ALL, body: z.object({ note: z.string().min(1).max(500) }), response: looseResponse },
+  { method: "GET", path: "/carrier/trips/{id}/manifest", summary: "Sefer manifestosu (onaylı+ rezervasyonlar, palet kodları, alıcılar)", tag: "İstisnalar", roles: CARRIER_ALL, response: looseResponse },
+  { method: "GET", path: "/carrier/kpis", summary: "KPI panosu: huni, karar süresi, zamanında bırakma/teslim, hasar, gelmeme, doluluk (palet/kg/m³), gelir-katkı; her metrik {value, numerator, denominator, formula}", tag: "KPI", roles: [...READ_CARRIER], query: z.object({ from: z.string().optional(), to: z.string().optional() }), response: looseResponse },
 ];
 
 export function buildOpenApiDocument(serverUrl?: string) {

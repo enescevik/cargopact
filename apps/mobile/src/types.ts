@@ -1,5 +1,10 @@
 export type Dim = { pallets: number; kg: number; m3: number };
-export type Facility = { id: string; code: string; name: string; city: string; district: string | null; address: string };
+export type Hours = Partial<Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", [string, string][]>>;
+export type Facility = {
+  id: string; code: string; name: string; city: string; district: string | null; address: string;
+  latitude?: number | null; longitude?: number | null; contactPhone?: string | null; openingHours?: Hours | null;
+  intakeWindow?: { from: string; to: string } | null; pickupWindow?: { from: string; to: string } | null;
+};
 export type Price = {
   unitPriceMinor: number; totalPriceMinor: number; currency: "TRY";
   breakdown: {
@@ -19,6 +24,12 @@ export type Capacity = {
   plannedPallets: number; heldPallets: number; actualPallets: number; plannedGrossKg: number;
 };
 export type LedgerEntry = { type: string; amountMinor: number; at: string; reason: string };
+export type Recipient = { name: string; phone?: string };
+export type Pickup = { recipients: Recipient[]; hint: string | null; locked: boolean; code?: string | null };
+export type Measurement = {
+  declared: { pallets: number; kg: number }; measured: { pallets: number; kg: number; heightMm: number | null };
+  diff: { pallets: number; kg: number }; outcome: "ok" | "review" | "partial" | "rejected"; note: string | null; at: string;
+};
 export type Reservation = {
   id: string; reference: string; orderNumber: string | null; status: string; statusLabel: string;
   trip: TripCard; customer: { id: string; name: string };
@@ -28,6 +39,9 @@ export type Reservation = {
   holdExpiresAt: string | null; decisionReason: string | null; createdAt: string;
   events: { type: string; label: string; at: string; note: string | null }[];
   palletCodes: string[];
+  measurement?: Measurement | null;
+  /** Teslim yetkisi: düz `code` yalnız müşteri yanıtında gelir. */
+  pickup?: Pickup;
 };
 export type CarrierReservation = Reservation & {
   priorityRank: number; verifiedNoShows: number;

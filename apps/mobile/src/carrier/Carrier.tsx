@@ -4,6 +4,7 @@ import { api, uuid } from "../api";
 import { postEvent, useQueue, useQueueFlusher, setOfflineSim } from "../queue";
 import { Scanner } from "../scanner";
 import { PodSheet } from "./Pod";
+import { MeasureSheet, ReviewSheet } from "./Measure";
 import { c, mono, serif } from "../theme";
 import { dt, num } from "../format";
 import { RouteHead } from "../common";
@@ -176,7 +177,7 @@ const NEXT: Record<string, { type: string; label: string }> = {
   YUKLENDI: { type: "VARISTA", label: "Varışta" },
   VARISTA: { type: "TESLIM", label: "Teslim" },
 };
-const WH_STATES = ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"];
+const WH_STATES = ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"];
 const CODE_RE = /CP-\d{4}-\d{4,}(?:-P\d+)?/i;
 export function QueuePill() {
   const { items } = useQueue();
@@ -201,6 +202,8 @@ export function Warehouse() {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState<{ code: string; id?: string }>();
   const [pod, setPod] = useState<CarrierReservation>();
+  const [meas, setMeas] = useState<CarrierReservation>();
+  const [rev, setRev] = useState<CarrierReservation>();
   const [manual, setManual] = useState("");
   const qlen = queued.length;
   useEffect(() => { void trips.reload(true); }, [qlen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -213,7 +216,7 @@ export function Warehouse() {
       const res = await postEvent(r.id, type, extra, keys.current.get(g));
       if (res === "queued") toast("Bekliyor – sunucu teyidi yok", "err");
       else { toast("Kaydedildi"); keys.current.delete(g); }
-      setNote(undefined); setNoteTxt(""); setPod(undefined);
+      setNote(undefined); setNoteTxt(""); setPod(undefined); setMeas(undefined);
       await trips.reload(true);
     } catch (e) { toast((e as Error).message, "err"); } finally { inflight.current.delete(g); setBusy(undefined); }
   };
@@ -246,7 +249,8 @@ export function Warehouse() {
         <Text style={{ fontFamily: mono, fontSize: 12, color: c.ink500 }}>{r.orderNumber}</Text>
         {r.palletCodes.length > 0 && <Text style={{ fontFamily: mono, fontSize: 11, color: c.ink300 }}>{r.palletCodes.join("  ")}</Text>}
         {pending.map((q) => <Badge key={q.idempotencyKey} tone="warning" label={`Bekliyor – sunucu teyidi yok (${q.type})`} />)}
-        {nx && !pend && <Btn title={nx.label} loading={busy === r.id + nx.type} onPress={() => (nx.type === "TESLIM" ? setPod(r) : fire(r, nx.type))} style={{ minHeight: 60 }} />}
+        {nx && !pend && <Btn title={nx.label} loading={busy === r.id + nx.type} onPress={() => (nx.type === "TESLIM" ? setPod(r) : nx.type === "DEPO_KABUL" ? setMeas(r) : fire(r, nx.type))} style={{ minHeight: 60 }} />}
+        {r.status === "INCELEME" && <Btn title="Ölçüm farkını incele" onPress={() => setRev(r)} style={{ minHeight: 60 }} />}
         {r.status === "ONAYLI" && !pending.length && <Btn kind="outline" small title="Gelmedi" loading={busy === r.id + "GELMEDI"} onPress={() => fire(r, "GELMEDI")} />}
         {["DEPO_KABUL", "YUKLENDI", "VARISTA"].includes(r.status) && !pending.length && <Btn kind="outline" small title="Eksik / hasar bildir" onPress={() => setNote(r)} />}
       </Card>
@@ -299,7 +303,9 @@ export function Warehouse() {
           <Btn kind="ghost" title="Vazgeç" onPress={() => setNote(undefined)} />
         </Sheet>
       )}
-      {pod && <PodSheet r={pod} busy={busy === pod.id + "TESLIM"} onClose={() => setPod(undefined)} onSubmit={(recipientName, podKeys) => fire(pod, "TESLIM", { recipientName, podKeys })} />}
+      {meas && <MeasureSheet r={meas} busy={busy === meas.id + "DEPO_KABUL"} onClose={() => setMeas(undefined)} onSubmit={(measurement) => fire(meas, "DEPO_KABUL", { measurement })} />}
+      {rev && <ReviewSheet r={rev} onClose={() => setRev(undefined)} onDone={(msg) => { toast(msg); setRev(undefined); void trips.reload(true); }} />}
+      {pod && <PodSheet r={pod} busy={busy === pod.id + "TESLIM"} onClose={() => setPod(undefined)} onSubmit={(recipientName, podKeys, pickupCode) => fire(pod, "TESLIM", { recipientName, podKeys, pickupCode })} />}
       {scanning && <Scanner onCode={onCode} onClose={() => setScanning(false)} />}
     </View>
   );

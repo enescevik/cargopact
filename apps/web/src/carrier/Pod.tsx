@@ -33,7 +33,9 @@ const canvasBlob = (c: HTMLCanvasElement) => new Promise<Blob>((res, rej) => c.t
 
 /** Teslim: alıcı adı + fotoğraf + imza → presigned URL ile S3 → TESLIM olayı. */
 export function TeslimModal({ r, onClose, onDone }: { r: CarrierRes; onClose: () => void; onDone: () => void }) {
-  const [name, setName] = useState(r.pod?.recipientName ?? "");
+  const recips = r.pickup?.recipients ?? [];
+  const [name, setName] = useState(recips.length === 1 ? recips[0].name : "");
+  const [code, setCode] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [blank, setBlank] = useState(true);
@@ -59,7 +61,7 @@ export function TeslimModal({ r, onClose, onDone }: { r: CarrierRes; onClose: ()
       const canvas = document.querySelector<HTMLCanvasElement>("canvas[data-testid=signature-pad]");
       if (canvas && !blank) await send("signature", await canvasBlob(canvas), "image/png");
       setStep("Teslim kaydediliyor…");
-      await api("POST", `/carrier/reservations/${r.id}/events`, { type: "TESLIM", recipientName: name.trim(), ...(keys.length ? { podKeys: keys } : {}) }, { idempotencyKey: key });
+      await api("POST", `/carrier/reservations/${r.id}/events`, { type: "TESLIM", recipientName: name.trim(), pickupCode: code.trim(), ...(keys.length ? { podKeys: keys } : {}) }, { idempotencyKey: key });
       onDone();
     } catch (e) { setErr(e as Error); } finally { setBusy(false); setStep(""); }
   }
@@ -68,7 +70,17 @@ export function TeslimModal({ r, onClose, onDone }: { r: CarrierRes; onClose: ()
     <Modal title={`Teslim (e-POD): ${r.customer.name}`} onClose={onClose}>
       <div className="col" style={{ gap: 14 }}>
         <div className="small muted">{r.orderNumber ?? r.reference} · {r.pallets} palet · teslim alan kişinin bilgilerini ve kanıtı kaydedin.</div>
-        <Field label="Teslim alan kişi (zorunlu)"><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ad Soyad" autoFocus /></Field>
+        <Field label="Yetkili alıcı (zorunlu)">
+          {recips.length > 0 ? (
+            <select className="input" data-testid="recipient-select" value={name} onChange={(e) => setName(e.target.value)} autoFocus>
+              <option value="">Seçin…</option>
+              {recips.map((x) => <option key={x.name} value={x.name}>{x.name}</option>)}
+            </select>
+          ) : <div className="small muted">Müşteri yetkili alıcı tanımlamamış; teslim yapılamaz.</div>}
+        </Field>
+        <Field label="Müşterinin teslim kodu (6 hane, zorunlu)">
+          <input className="input mono" data-testid="pickup-code-input" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="••••••" />
+        </Field>
         <Field label="Teslim fotoğrafı">
           <input type="file" accept="image/*" capture="environment" className="input"
             onChange={(e) => { const f = e.target.files?.[0] ?? null; setPhoto(f); setPreview(f ? URL.createObjectURL(f) : null); }} />
@@ -79,7 +91,7 @@ export function TeslimModal({ r, onClose, onDone }: { r: CarrierRes; onClose: ()
         <div className="row" style={{ justifyContent: "flex-end" }}>
           {step && <span className="small muted">{step}</span>}
           <button className="btn" onClick={onClose} disabled={busy}>Vazgeç</button>
-          <button className="btn primary" disabled={busy || name.trim().length < 2} onClick={submit}><Camera size={14} />Teslimi kaydet</button>
+          <button className="btn primary" disabled={busy || name.trim().length < 2 || code.length !== 6 || r.pickup?.locked === true} onClick={submit}><Camera size={14} />Teslimi kaydet</button>
         </div>
       </div>
     </Modal>

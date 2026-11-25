@@ -133,10 +133,30 @@ for (const u of [up1, up2]) {
   const put = await fetch(u.body.uploadUrl, { method: "PUT", headers: { "content-type": "image/png" }, body: PNG });
   expect("presigned PUT 200", put.status === 200, put.status);
 }
-r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", podKeys: [`pod/${randomUUID()}/${randomUUID()}/${randomUUID()}.png`] });
+// Teslim yetkisi: müşteri yetkili alıcı tanımlar, kodu yalnız müşteri görür.
+r = await call(MARMARA, "PUT", `/customer/reservations/${marmara.id}/recipients`, { recipients: [{ name: "Ayşe Alıcı", phone: "+90 532 111 22 33" }] });
+expect("müşteri yetkili alıcı tanımlar (PUT recipients)", r.status === 200 && r.body.pickup.recipients.length === 1 && r.body.pickup.recipients[0].name === "Ayşe Alıcı", r.body);
+r = await call(MARMARA, "PUT", `/customer/reservations/${marmara.id}/recipients`, { recipients: ["A Bir", "B İki", "C Üç", "D Dört"].map((name) => ({ name })) });
+expect("4 alıcı reddedilir (en çok 3)", r.status === 400, r.body);
+r = await call(ANADOLU, "PUT", `/customer/reservations/${marmara.id}/recipients`, { recipients: [{ name: "Kötü Niyetli" }] });
+expect("başka müşteri alıcıları değiştiremez (404)", r.status === 404, r.body);
+const mView = (await call(MARMARA, "GET", `/customer/reservations/${marmara.id}`)).body;
+const pickupCode = mView.pickup?.code;
+expect("müşteri 6 haneli teslim kodunu görür", /^\d{6}$/.test(pickupCode ?? "") && mView.pickup.hint === pickupCode.slice(-2), mView.pickup);
+const cView = await call(YONETICI, "GET", `/carrier/trips/${tripId}`);
+const cRes = cView.body.reservations.find((x) => x.id === marmara.id);
+expect("taşıyıcı yanıtında düz kod yok (alıcı listesi + ipucu var)", cRes.pickup.recipients.length === 1 && !("code" in cRes.pickup) && !JSON.stringify(cView.body).includes(pickupCode), cRes.pickup);
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı" });
+expect("TESLIM kodsuz 400 (pickupCode)", r.status === 400 && r.body?.details?.field === "pickupCode", r.body);
+const wrongCode = pickupCode === "000000" ? "111111" : "000000";
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", pickupCode: wrongCode });
+expect("yanlış kod → 403 UNAUTHORIZED_RECIPIENT", r.status === 403 && r.body.details?.reason === "UNAUTHORIZED_RECIPIENT" && r.body.details.remainingAttempts === 4, r.body);
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Veli Yetkisiz", pickupCode });
+expect("yetkisiz alıcı adı → 403 UNAUTHORIZED_RECIPIENT", r.status === 403 && r.body.details?.reason === "UNAUTHORIZED_RECIPIENT", r.body);
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", pickupCode, podKeys: [`pod/${randomUUID()}/${randomUUID()}/${randomUUID()}.png`] });
 expect("başka rezervasyon önekli podKey 400", r.status === 400 && r.body?.details?.field === "podKeys", r.body);
-r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", podKeys: [up1.body.key, up2.body.key] });
-expect("VARISTA → TESLIM (alıcı + 2 e-POD dosyası)", r.body?.status === "TESLIM" && r.body.pod?.recipientName === "Ayşe Alıcı" && r.body.pod.attachments.length === 2, r.body);
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "AYSE alici", pickupCode, podKeys: [up1.body.key, up2.body.key] });
+expect("VARISTA → TESLIM (büyük/küçük + aksan duyarsız alıcı, doğru kod, 2 e-POD dosyası)", r.body?.status === "TESLIM" && r.body.pod?.recipientName === "Ayşe Alıcı" && r.body.pod.attachments.length === 2, r.body);
 const podRes = await call(MARMARA, "GET", `/customer/reservations/${marmara.id}`);
 const podAtt = podRes.body.pod?.attachments ?? [];
 const teslimEv = podRes.body.events.find((e) => e.type === "TESLIM");
@@ -172,6 +192,17 @@ r = await reserve(MARMARA, 1, 500, "full", { ...CARD, number: "4000000000000002"
 d = await dash();
 expect("reddedilen kart: 400 PAYMENT_DECLINED, kapasite değişmez", r.status === 400 && r.body.details?.reason === "PAYMENT_DECLINED" && JSON.stringify(d.trip.capacity) === capBefore, r.body);
 
+// 6b) 5 başarısız deneme teslimi kilitler (Anadolu siparişi)
+r = await event(MYONETICI, anadolu.id, "VARISTA");
+expect("Anadolu VARISTA", r.body?.status === "VARISTA", r.body);
+await call(ANADOLU, "PUT", `/customer/reservations/${anadolu.id}/recipients`, { recipients: [{ name: "Can Alıcı" }] });
+const anCode = (await call(ANADOLU, "GET", `/customer/reservations/${anadolu.id}`)).body.pickup.code;
+for (let i = 1; i <= 5; i++) {
+  r = await event(MYONETICI, anadolu.id, "TESLIM", { recipientName: "Yanlış Kişi", pickupCode: "999999" === anCode ? "888888" : "999999" });
+  if (i === 5) expect("5. yanlış deneme 403, kalan 0", r.status === 403 && r.body.details?.remainingAttempts === 0, r.body);
+}
+r = await event(MYONETICI, anadolu.id, "TESLIM", { recipientName: "Can Alıcı", pickupCode: anCode });
+expect("kilit: doğru bilgiyle bile 409 PICKUP_LOCKED", r.status === 409 && r.body.details?.reason === "PICKUP_LOCKED", r.body);
 // 7) Ret + süre/iptal akışı (BRS seferinde)
 const brs = search.body.items.find((t) => t.reference === "DNC-GEB-BRS");
 const brsBefore = (await call(MARMARA, "GET", `/customer/trips/${brs.id}`)).body.remaining.pallets;
