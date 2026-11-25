@@ -518,3 +518,4 @@ body { font-size: 14px; font-variant-numeric: tabular-nums; }
 .fc-x small { color: var(--i3); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 1100px) { .rep-hero { grid-template-columns: 1fr 1fr; } .rep-row { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .rep-hero { grid-template-columns: 1fr; } .q-row { grid-template-columns: 1fr 1fr 50px; } .q-row > .tiny { display: none; } .funnel-row { grid-template-columns: 100px 1fr 40px 36px; } .cmp-row { grid-template-columns: 1fr 1fr; } .cmp-row b { grid-column: 1 / -1; text-align: left; } }
+.cmp-track.stack { position: relative; } .cmp-track.stack i.over { position: absolute; left: 0; top: 0; }

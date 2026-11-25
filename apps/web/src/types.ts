@@ -24,7 +24,15 @@ export type Capacity = {
   sellable: Dim; held: Dim; confirmed: Dim; loaded: { pallets: number; kg: number }; remaining: Dim;
   plannedPallets: number; heldPallets: number; actualPallets: number; plannedGrossKg: number;
 };
+export type TripCarbon = {
+  distanceKm: number; vehicleFactorKgPerKm: number; tripKg: number; externalPallets: number; allocatedExternalKg: number;
+  declaredSavedKg: number; reservationsWithScenario: number; reservationsTotal: number; method: string; isDemoFactors: true;
+};
+export type CarbonSummary = {
+  allocatedKg: number; declaredSavedKg: number; perPalletAllocatedKg: number; reservationsWithScenario: number; reservationsTotal: number; method: string; isDemoFactors: true;
+};
 export type CarrierTrip = TripCard & {
+  carbon?: TripCarbon;
   status: string; vehicle: { id: string; plate: string }; capacity: Capacity; pendingCount: number;
 };
 export type LedgerEntry = { type: string; amountMinor: number; at: string; reason: string };
@@ -70,6 +78,7 @@ export type Me = {
 export type Dashboard = {
   trip: CarrierTrip; grossRevenueMinor: number; variableCostMinor: number; contributionMinor: number;
   costPerPalletMinor: number;
+  carbon?: CarbonSummary;
   customers: { name: string; pallets: number; kg: number; totalMinor: number; status: string; statusLabel: string }[];
   timeline: { at: string; label: string }[];
 };

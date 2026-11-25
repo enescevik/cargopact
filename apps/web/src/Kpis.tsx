@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, Leaf } from "lucide-react";
 import { ChipSelect } from "./components/controls";
-import { co2Saved, roadKm } from "./lib/carbon";
-import type { CarrierTrip } from "./types";
+import type { CarbonSummary, CarrierTrip } from "./types";
 import { api } from "./api";
 import { day, num, tl } from "./format";
 import { Empty, ErrorBox, SkeletonCards, useFetch } from "./ui";
@@ -12,7 +11,7 @@ interface Triple { pallets: number; kg: number; m3: number }
 interface KpiTrip { tripId: string; reference: string; route: string; status: string; departureAt: string; sellable: Triple; held: Triple; planned: Triple; actual: Triple; internalReserveViolation: boolean; doubleBooking: boolean }
 export interface KpiResponse {
   from: string; to: string; scope: string; counts: { quotes: number; eligibleQuotes: number; reservations: number; trips: number };
-  metrics: Record<string, Metric>; trips: KpiTrip[];
+  metrics: Record<string, Metric>; trips: KpiTrip[]; carbon?: CarbonSummary;
 }
 const fmt = (m: Metric) => {
   if (m.value === null) return "—";
@@ -59,27 +58,11 @@ export function KpiView() {
   const { data, error, loading, reload } = useKpis(from, to);
   const trips = useFetch((s) => api<{ items: CarrierTrip[] }>("GET", "/carrier/trips", undefined, { signal: s }), []);
 
-  // Karbon: dış paletler ayrı araçlarla gitseydi vs paylaşımlı araçta (tahmini, GLEC yaklaşımı)
-  const carbon = useMemo(() => {
-    if (!data) return null;
-    const geo = new Map((trips.data?.items ?? []).map((t) => [t.id, t]));
-    const rows = data.trips.map((k) => {
-      const t = geo.get(k.tripId);
-      const km = t ? roadKm(t.origin, t.destination) : null;
-      const pallets = k.actual.pallets || k.planned.pallets;
-      const positions = t?.capacity.totalPositions ?? 33;
-      const c = km && pallets ? co2Saved(km, pallets, positions) : null;
-      return { k, km, pallets, c };
-    });
-    const known = rows.filter((r) => r.c);
-    return {
-      rows,
-      saved: known.reduce((a, r) => a + r.c!.savedKg, 0),
-      shared: known.reduce((a, r) => a + r.c!.sharedKg, 0),
-      dedicated: known.reduce((a, r) => a + r.c!.dedicatedKg, 0),
-      km: known.reduce((a, r) => a + (r.km ?? 0), 0),
-      missing: rows.length - known.length,
-    };
+  // Karbon: tek kaynak sunucu (ISO 14083 / GLEC pay dağıtımı, demo katsayıları). Sefer başına değerler /carrier/trips'ten.
+  const co2 = data?.carbon;
+  const tripCo2 = useMemo(() => {
+    const byId = new Map((trips.data?.items ?? []).map((t) => [t.id, t]));
+    return (data?.trips ?? []).map((k) => ({ k, c: byId.get(k.tripId)?.carbon })).filter((x) => x.c && x.c.tripKg > 0);
   }, [data, trips.data]);
 
   const m = data?.metrics ?? {};
@@ -116,10 +99,10 @@ export function KpiView() {
             </div>
             <Tile label="Dış palet doluluğu" value={pct(v("soldExternalPallets"))} sub={`${num(m.soldExternalPallets?.numerator ?? 0)} / ${num(m.soldExternalPallets?.denominator ?? 0)} satılabilir palet satıldı`} title={m.soldExternalPallets?.formula} />
             <Tile label="Teklif → rezervasyon" value={pct(v("quoteToReservation"))} sub={`${num(data.counts.reservations)} rezervasyon / ${num(data.counts.eligibleQuotes)} uygun teklif`} title={m.quoteToReservation?.formula} />
-            <div className="rep-tile green">
-              <span className="eyebrow"><Leaf size={12} /> CO₂ tasarrufu</span>
-              <b>{carbon ? `${num(Math.round(carbon.saved))} kg` : "—"}</b>
-              <span className="tiny">tahmini · ayrı araçlara göre %{carbon && carbon.dedicated ? Math.round((carbon.saved / carbon.dedicated) * 100) : 0} daha az</span>
+            <div className="rep-tile green" title={co2?.method}>
+              <span className="eyebrow"><Leaf size={12} /> Dış yük emisyon payı</span>
+              <b>{co2 ? `${num(co2.allocatedKg)} kg` : "—"}</b>
+              <span className="tiny">CO₂e · palet başı {co2 ? num(co2.perPalletAllocatedKg) : "—"} kg · demo katsayıları, tahmini</span>
             </div>
           </div>
 
@@ -177,33 +160,47 @@ export function KpiView() {
             </section>
             <section className="rep-card">
               <h3><Leaf size={16} /> Karbon emisyonu</h3>
-              <p className="tiny">Aynı dış yükler ayrı (özel) araçlarla taşınsaydı oluşacak emisyon ile paylaşımlı araçtaki payı.</p>
-              {carbon && carbon.dedicated > 0 ? (
+              <p className="tiny">Sefer emisyonu, yükün kapladığı palet payına göre dağıtılır.</p>
+              {co2 && co2.reservationsTotal > 0 ? (
                 <>
-                  <CompareBars rows={[["Ayrı araçlarla", carbon.dedicated, "#9AA0AE"], ["CargoPact paylaşımlı", carbon.shared, C_ACT]]} unit="kg CO₂e" />
                   <div className="rep-kv">
-                    <div><span>Önlenen emisyon</span><b className="good">{num(Math.round(carbon.saved))} kg CO₂e</b></div>
-                    <div><span>Toplam yol</span><b>{num(Math.round(carbon.km))} km</b></div>
-                    <div><span>≈ ağaç eşdeğeri</span><b>{num(Math.round(carbon.saved / 21))} ağaç/yıl</b></div>
+                    <div><span>Dış yüklerin emisyon payı</span><b>{num(co2.allocatedKg)} kg CO₂e</b></div>
+                    <div><span>Palet başına</span><b>{num(co2.perPalletAllocatedKg)} kg CO₂e</b></div>
+                    <div><span>Beyan edilen tasarruf</span><b className="good">{co2.reservationsWithScenario ? `${num(co2.declaredSavedKg)} kg CO₂e` : "—"}</b></div>
+                    <div><span>Alternatif beyan eden rezervasyon</span><b>{co2.reservationsWithScenario} / {co2.reservationsTotal}</b></div>
                   </div>
-                  <p className="tiny">Tahmin: yol ≈ kuş uçuşu × 1,25; araç sınıfına göre 0,32 / 0,55 / 0,9 kg CO₂e/km (GLEC yaklaşımı). Bir ağaç yılda ≈ 21 kg CO₂ tutar.{carbon.missing ? ` ${carbon.missing} seferin konumu eksik, hesaba katılmadı.` : ""}</p>
+                  {tripCo2.length > 0 && (
+                    <>
+                      <div className="row between" style={{ marginTop: 10 }}><span className="mini-l">Sefer emisyonu · dış yük payı</span>
+                        <div className="legend"><span><i className="sw" style={{ background: "#D9D2C2" }} />Sefer toplamı</span><span><i className="sw" style={{ background: C_ACT }} />Dış yük payı</span></div></div>
+                      <div className="cmp" style={{ marginTop: 8 }}>
+                        {tripCo2.slice(-6).map(({ k, c }) => (
+                          <div key={k.tripId} className="cmp-row" title={`${k.route}: sefer ${num(c!.tripKg)} kg, dış yük payı ${num(c!.allocatedExternalKg)} kg (${c!.externalPallets} palet, ${num(Math.round(c!.distanceKm))} km)`}>
+                            <span className="tiny">{day(k.departureAt).split(" ").slice(0, 2).join(" ")} · {k.reference.split("-").slice(-2).join("›")}</span>
+                            <span className="cmp-track stack"><i style={{ width: "100%", background: "#D9D2C2" }} /><i className="over" style={{ width: `${c!.tripKg ? (c!.allocatedExternalKg / c!.tripKg) * 100 : 0}%`, background: C_ACT }} /></span>
+                            <b>{num(c!.allocatedExternalKg)} <small>/ {num(c!.tripKg)} kg</small></b>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <p className="tiny">{co2.method}. Tasarruf yalnızca müşterinin rezervasyonda beyan ettiği alternatife (ayrı araç / parsiyel) göre hesaplanır; beyan yoksa tasarruf iddia edilmez. Ayrıntı: docs/CARBON.md.</p>
                 </>
-              ) : <Empty title="Karbon hesabı için veri yok" text="Seçili dönemde dış yük taşıyan, konumu bilinen sefer bulunamadı." />}
+              ) : <Empty title="Karbon verisi yok" text="Seçili dönemde onaylı dış yük bulunamadı." />}
             </section>
           </div>
 
           <details className="rep-card">
             <summary><h3 style={{ display: "inline" }}>Sefer ayrıntı tablosu</h3> <span className="tiny">palet · kg · m³</span></summary>
             <table style={{ marginTop: 10 }}>
-              <thead><tr><th>Sefer</th><th>Kalkış</th><th>Palet</th><th>Kg</th><th>m³</th><th>CO₂ tasarrufu</th><th>Kontrol</th></tr></thead>
-              <tbody>{(carbon?.rows ?? []).map(({ k: t, c }) => (
+              <thead><tr><th>Sefer</th><th>Kalkış</th><th>Palet</th><th>Kg</th><th>m³</th><th>Kontrol</th></tr></thead>
+              <tbody>{data.trips.map((t) => (
                 <tr key={t.tripId}>
                   <td><b>{t.reference}</b><div className="tiny muted">{t.route}</div></td>
                   <td className="small">{day(t.departureAt)}</td>
                   <td><Bar label="Palet" planned={t.planned.pallets} held={t.held.pallets} actual={t.actual.pallets} cap={t.sellable.pallets} unit="palet" /></td>
                   <td><Bar label="Kg" planned={t.planned.kg} held={t.held.kg} actual={t.actual.kg} cap={t.sellable.kg} unit="kg" /></td>
                   <td><Bar label="m³" planned={t.planned.m3} held={t.held.m3} actual={t.actual.m3} cap={t.sellable.m3} unit="m³" /></td>
-                  <td className="small">{c ? `${num(Math.round(c.savedKg))} kg` : "—"}</td>
                   <td className="small">{t.internalReserveViolation || t.doubleBooking ? <span style={{ color: "#D6456B" }}>İhlal</span> : "Temiz"}</td>
                 </tr>
               ))}</tbody>
@@ -254,17 +251,6 @@ function Quality({ label, m, good }: { label: string; m?: Metric; good: "high" |
       <span className="q-track"><i style={{ width: `${Math.min(100, val ?? 0)}%` }} className={ok === false ? "bad" : ""} /><em style={{ left: `${target}%` }} /></span>
       <b>{val === null ? "—" : `%${num(Math.round(val * 10) / 10)}`}</b>
       <span className="tiny">{m ? `${num(m.numerator)}/${num(m.denominator)}` : ""}</span>
-    </div>
-  );
-}
-
-function CompareBars({ rows, unit }: { rows: [string, number, string][]; unit: string }) {
-  const max = Math.max(1, ...rows.map(([, v]) => v));
-  return (
-    <div className="cmp">
-      {rows.map(([l, v, c]) => (
-        <div key={l} className="cmp-row"><span>{l}</span><span className="cmp-track"><i style={{ width: `${(v / max) * 100}%`, background: c }} /></span><b>{num(Math.round(v))} <small>{unit}</small></b></div>
-      ))}
     </div>
   );
 }

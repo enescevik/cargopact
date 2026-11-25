@@ -5,9 +5,6 @@ import type { Dashboard } from "../types";
 import { num, time, tl } from "../format";
 import { Skeleton, StatusBadge, useFetch } from "../ui";
 import { FIRM_COLORS } from "../components/TruckMap";
-import { co2Saved, roadKm } from "../lib/carbon";
-
-const DEAD = ["RET", "IPTAL", "SURESI_DOLDU", "GELMEDI"];
 
 /** Sefer kârlılığı: eski jüri panosunun verisi, kokpitte seçili sefer için. */
 export function TripProfit({ tripId }: { tripId: string }) {
@@ -19,10 +16,7 @@ export function TripProfit({ tripId }: { tripId: string }) {
   const gross = d.grossRevenueMinor, cost = d.variableCostMinor, contrib = d.contributionMinor;
   const margin = gross > 0 ? Math.round((contrib / gross) * 100) : 0;
   const costPct = gross > 0 ? Math.min(100, (cost / gross) * 100) : 0;
-  const ext = d.customers.filter((c) => !DEAD.includes(c.status));
-  const extPallets = ext.reduce((a, c) => a + c.pallets, 0);
-  const km = roadKm(d.trip.origin, d.trip.destination);
-  const co2 = km && extPallets ? co2Saved(km, extPallets, total) : null;
+  const co2 = d.carbon;
   const colorOf = new Map<string, string>();
   d.customers.forEach((c) => { if (!colorOf.has(c.name)) colorOf.set(c.name, FIRM_COLORS[colorOf.size % FIRM_COLORS.length]!); });
   const tl0 = (v: number) => tl(v).replace(",00", "");
@@ -38,10 +32,10 @@ export function TripProfit({ tripId }: { tripId: string }) {
           <span className="tiny">marj %{margin}</span>
         </div>
         <div className="profit-split">
-          <div className="split-bar" role="img" aria-label={`Brüt gelir ${tl0(gross)}: değişken maliyet ${tl0(cost)}, katkı ${tl0(contrib)}`}>
+          {gross <= 0 ? <div className="tiny">Bu seferde henüz onaylı dış yük geliri yok.</div> : <div className="split-bar" role="img" aria-label={`Brüt gelir ${tl0(gross)}: değişken maliyet ${tl0(cost)}, katkı ${tl0(contrib)}`}>
             <i className="cost" style={{ width: `${costPct}%` }} title={`Değişken maliyet ${tl0(cost)}`} />
             <i className="contrib" style={{ width: `${100 - costPct}%` }} title={`Katkı ${tl0(contrib)}`} />
-          </div>
+          </div>}
           <div className="split-legend">
             <span><i className="sw cost" />Değişken maliyet <b>{tl0(cost)}</b></span>
             <span><i className="sw contrib" />Katkı <b>{tl0(contrib)}</b></span>
@@ -57,7 +51,13 @@ export function TripProfit({ tripId }: { tripId: string }) {
               <b>{v}/{total}</b>
             </div>
           ))}
-          {co2 && co2.savedKg >= 1 && <div className="co2-line"><Leaf size={13} /> ≈ {num(Math.round(co2.savedKg))} kg CO₂ tasarrufu <small>tahmini</small></div>}
+          {co2 && co2.reservationsTotal > 0 && (
+            <div className="co2-line" title={co2.method}>
+              <Leaf size={13} /> Dış yük payı ≈ {num(co2.allocatedKg)} kg CO₂e
+              {co2.reservationsWithScenario > 0 && <> · beyan edilen tasarruf {num(co2.declaredSavedKg)} kg ({co2.reservationsWithScenario}/{co2.reservationsTotal})</>}
+              <small>demo katsayıları, tahmini</small>
+            </div>
+          )}
         </div>
       </div>
       <div className="profit-bottom">
