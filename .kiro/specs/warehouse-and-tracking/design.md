@@ -1,5 +1,5 @@
 # Design – Depo İşlemleri ve Takip
-Gerçekleşen uygulama: `routes/demo.ts` (`recordEvent`, `pod-upload-url`, `tracking`), `routes/integrations.ts` (WMS/TMS), `lib/events.ts`, `apps/mobile/src/{queue,scanner,qr}.ts(x)`, `apps/mobile/src/carrier/*`. Durum kodu: `devam ediyor` = kod çalışma ağacında/yeni, dağıtım ve doğrulama bitmedi (bkz. `tasks.md`).
+Gerçekleşen uygulama: `routes/demo.ts` (`recordEvent`, `pod-upload-url`, `tracking`), `routes/integrations.ts` (WMS/TMS), `lib/events.ts`, `apps/mobile/src/{queue,scanner,qr}.ts(x)`, `apps/mobile/src/carrier/*`. e-POD ve sefer düzenleme commit `70f10d2`, entegrasyonlar commit `24e7a28` (`docs/INTEGRATIONS.md`).
 
 ## 1. Model: rezervasyon düzeyi olay + palet kodu
 Durum ve olaylar **rezervasyon** düzeyindedir (bir rezervasyon = N palet). Palet kimliği onayda üretilir: `reservations.pallet_codes jsonb` = `["CP-2026-000123-P1", …]` (`<sipariş no>-P<n>`). Mobil QR bu kodu üretir ve okur; SSCC eşleme alanı yoktur. Palet bazlı olay yalnız WMS entegrasyon tablosunda tutulur.
@@ -33,10 +33,10 @@ Yalnız `VARISTA` durumunda; rezervasyon başına en çok 20 dosya; yanıt: pres
 - Çevrimdışı kuyruk (`queue.ts`): olay ağ yoksa `localStorage` kuyruğuna (idempotency anahtarıyla) alınır, UI "bekliyor" gösterir; bağlantıda sırayla gönderilir, sunucu teyidinden önce "tamam" sayılmaz. Çevrimdışı simülasyon anahtarı vardır (demo).
 - Teslimde e-POD sayfası (`carrier/Pod.tsx`): fotoğraf/imza yükleme + alıcı adı.
 
-## 7. Entegrasyonlar (devam ediyor)
+## 7. Entegrasyonlar
 - **WMS** `POST /warehouse/integrations/wms/pallet-events`: palet olayını (`RECEIVED/LOADED/ARRIVED/DELIVERED`) `wms_pallet_events`'e idempotent yazar; rezervasyonun **tüm** paletleri bildirilince aynı türde rezervasyon olayını mevcut `recordEvent` ile tetikler (durum makinesi tekrarlanmaz).
 - **TMS** `POST /carrier/integrations/tms/trips`: `externalTripNo` (= `trips.reference`), tesis kodu, plaka ile sefer **taslak** oluşturur (`POST /carrier/trips` işleyicisi içeriden çağrılır); aynı numara tekrarında mevcut sefer döner.
-- **EventBridge**: `audit_log` → `integration_cursors` imleciyle `cargopact-events` yoluna (`reservation.requested/approved/rejected/cancelled`, `warehouse.received/loaded`, `shipment.arrived/delivered/damaged`, `reservation.no_show`, `trip.*`). En az bir kez, kişisel veri yok. Lambda (`integrations-worker`) dakikada bir tetiklenir; `GET /carrier/integrations/status` ve `POST …/events/flush` ile izlenir.
+- **EventBridge**: `audit_log` → `integration_cursors` imleciyle `cargopact-events` yoluna (`reservation.requested/approved/rejected/cancelled`, `warehouse.received/loaded`, `shipment.arrived/delivered/damaged`, `reservation.no_show`, `trip.*`). En az bir kez, kişisel veri yok. Kural `source=cargopact.api` olayları SQS `cargopact-wms-erp-subscriber` (+ DLQ) kuyruğuna yönlendirir (abone yedeği). Lambda (`integrations-worker`) dakikada bir tetiklenir; `GET /carrier/integrations/status` ve `POST …/events/flush` ile izlenir.
 - Sefer düzenleme (`PUT /carrier/trips/{id}`, `If-Match`): kapasite bloke+onaylı altına inemez (409 `CAPACITY_BELOW_COMMITTED`); bekleyen talepler yeniden değerlendirilir, uygunsuz olan `needs_review` alır.
 
 ## 8. Gereksinimlerden sapmalar

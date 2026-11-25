@@ -1,5 +1,5 @@
 # Tasks – Depo İşlemleri ve Takip
-Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/smoke ile ya da kodla doğrulandı; [ ] = yapılmadı; "devam ediyor" = kod yazıldı, dağıtım/doğrulama bitmedi (durumu `docs/PROGRESS.md` izler).
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/smoke ile ya da kodla doğrulandı; [ ] = yapılmadı; e-POD, sefer düzenleme ve entegrasyonlar commit edildi (`70f10d2`, `24e7a28`); canlı doğrulama sonucu için `docs/PROGRESS.md`.
 - [ ] 1. Palet kimliği
   - [x] 1.1 Onayda palet başına kod `CP-YYYY-NNNNNN-Pn` (`pallet_codes`) ve mobilde QR üretimi (1.1) – smoke "palet kodları"
   - [ ] 1.1b SSCC eşleme alanı (1.1). Not: yok.
@@ -15,8 +15,8 @@ Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/
   - [x] 3.2 `VARISTA` olayı (3.2). Alıcıya bildirim yok.
   - [ ] 3.3 Alım penceresi dışı operasyon uyarısı (3.3). Not: yok.
 - [ ] 4. Teslim ve e-POD
-  - [x] 4.1 `TESLIM`: alıcı adı zorunlu, e-POD dosya anahtarları doğrulanır (S3 `HeadObject`) ve bağlanır (4.1, rezervasyon düzeyi) – `devam ediyor`: kod yazıldı, canlı doğrulama/commit bekliyor
-  - [x] 4.1b `pod-upload-url` (presigned PUT, yalnız `VARISTA`, ≤20 dosya) – `devam ediyor`
+  - [x] 4.1 `TESLIM`: alıcı adı zorunlu, e-POD dosya anahtarları doğrulanır (S3 `HeadObject`) ve bağlanır (4.1, rezervasyon düzeyi) – commit `70f10d2`; smoke-demo: alıcısız 400, yabancı önekli anahtar 400, presigned PUT/GET, TESLIM sonrası yeni URL 409
+  - [x] 4.1b `pod-upload-url` (presigned PUT, yalnız `VARISTA`, ≤20 dosya) – commit `70f10d2`; web (`carrier/Pod.tsx`) ve mobil (`carrier/Pod.tsx`) ekranı var
   - [ ] 4.1c Palet bazında teslim olayı/e-POD (4.1). Not: rezervasyon düzeyi; palet bazı yalnız WMS entegrasyonunda.
   - [ ] 4.2 Yetkisiz alıcıya teslim reddi (4.2). Not: yetkili alıcı doğrulaması yok.
   - [ ] 4.3 Kısmi teslimde palet/zaman/kişi görünümü (4.3). Not: kısmi teslim yok.
@@ -31,9 +31,9 @@ Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve test/
 - [ ] 7. İstisnalar ve rapor
   - [ ] 7.1 Gelmeme/geç bırakma/ölçüm farkı/hasar için durum-sorumlu-neden kodu-bildirim (7.1). Not: yalnız `GELMEDI`, `EKSIK_HASAR` durumları.
   - [x] 7.2 Planlanan, bloke ve fiili doluluk ayrı (7.2) – `Capacity`, dashboard
-- [ ] 8. Entegrasyonlar (plan ek maddeleri) – hepsi `devam ediyor`
-  - [ ] 8.1 WMS palet olayı `POST /warehouse/integrations/wms/pallet-events` (idempotent, tüm paletler bildirilince geçiş)
-  - [ ] 8.2 TMS sefer `POST /carrier/integrations/tms/trips` (idempotent taslak sefer)
-  - [ ] 8.3 EventBridge olay yayını + dakikalık worker + `integrations/status|events/flush`
-  - [ ] 8.4 Sefer düzenleme `PUT /carrier/trips/{id}` ve bekleyen taleplerin yeniden değerlendirilmesi (`needs_review`)
+- [x] 8. Entegrasyonlar (plan ek maddeleri) – commit `24e7a28`; `docs/INTEGRATIONS.md`. `scripts/smoke-integrations.mjs` 17 kontrol (canlı çalıştırma sonucu doğrulanmadı)
+  - [x] 8.1 WMS palet olayı `POST /warehouse/integrations/wms/pallet-events` (idempotent, tüm paletler bildirilince geçiş)
+  - [x] 8.2 TMS sefer `POST /carrier/integrations/tms/trips` (idempotent taslak sefer)
+  - [x] 8.3 EventBridge olay yayını + dakikalık worker + `integrations/status|events/flush`
+  - [x] 8.4 Sefer düzenleme `PUT /carrier/trips/{id}` ve bekleyen taleplerin yeniden değerlendirilmesi (`needs_review`) – commit `70f10d2`; smoke-demo: 409 `CAPACITY_BELOW_COMMITTED`, 409 `VERSION_MISMATCH`, `needsReview` bayrağı ve kalkışı
 - [x] 9. Sözleşme ve test: `reservationEventInput`, takip yanıtı, OpenAPI; smoke-demo depo akışı (kabul, yükleme, varış, teslim, T−1 öncesi `GELMEDI` reddi)

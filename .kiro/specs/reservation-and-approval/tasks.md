@@ -1,5 +1,5 @@
 # Tasks – Rezervasyon, Blokaj ve Taşıyıcı Onayı
-Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve smoke/birim testle ya da kodla doğrulandı; [ ] = yapılmadı (not belirtilir). Smoke: `scripts/smoke-demo.mjs` (54 kontrol).
+Gereksinim numaraları `requirements.md` ile eşleşir. [x] = kodda var ve smoke/birim testle ya da kodla doğrulandı; [ ] = yapılmadı (not belirtilir). Smoke: `scripts/smoke-demo.mjs` (72 kontrol).
 - [x] 1. Şema
   - [x] 1.1 `reservations`, `reservation_events`, `order_counters`, indeksler (migrasyon 0032, 0033, 0035, 0038–0041)
   - [x] 1.2 `needs_review`, `pod_recipient_name` (0052, 0053)

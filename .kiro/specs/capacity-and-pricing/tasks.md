@@ -15,10 +15,10 @@ Durum (kodla doğrulandı): çekirdek **uygulandı ve dağıtıldı**, ancak tas
   - [x] 3.2 Araç çakışma kontrolü: araç satırı `SELECT … FOR UPDATE` + aralık kesişim sorgusu (master-data 2.4) – smoke "aynı araç aynı aralık: 409 VEHICLE_OVERLAP"
 - [ ] 4. API – taşıyıcı
   - [ ] 4.1 Fiyat politikası CRUD (4.1). Not: yok; taban fiyat ve alt/üst oran sefer oluştururken verilir (`floor_ratio`/`ceiling_ratio` varsayılan 0.80/1.50), basamaklar kodda sabit.
-  - [x] 4.2 Sefer oluştur (`POST /carrier/trips`) ve güncelle (`PUT /carrier/trips/{id}`, `If-Match` sürümü): tesis/araç doğrulamaları, cutoff türetme, `capacity_version` artışı (1.1–1.5). Güncelleme (0054, bekleyen talep yeniden değerlendirme) `devam ediyor`: kod yazıldı, commit/dağıtım bekliyor.
+  - [x] 4.2 Sefer oluştur (`POST /carrier/trips`) ve güncelle (`PUT /carrier/trips/{id}`, `If-Match` sürümü): tesis/araç doğrulamaları, cutoff türetme, `capacity_version` artışı (1.1–1.5). Güncelleme (0054, bekleyen talep yeniden değerlendirme) commit `70f10d2`; smoke-demo `VERSION_MISMATCH`, `needsReview` kontrolleri.
   - [x] 4.3 Durum geçişleri `POST /carrier/trips/{id}/status`: publish, close, cancel (yeniden açma = `closed`'dan publish) (1.1, 1.3). `If-Match` yok; idempotency anahtarı var.
   - [x] 4.4 `GET /carrier/trips` ve `/{id}`: kapasite alanları (planlanan/bloke/fiili ayrı) `CarrierTrip.capacity` içinde (2.1). Ayrı `/capacity` ucu yok.
-  - [x] 4.5 Satışı bloke+onaylı altına indirme 409 `CAPACITY_BELOW_COMMITTED` (design §4.7) – `devam ediyor` (PUT ile birlikte)
+  - [x] 4.5 Satışı bloke+onaylı altına indirme 409 `CAPACITY_BELOW_COMMITTED` (design §4.7) – smoke-demo "PUT sellable < bloke → 409"
 - [ ] 5. API – müşteri
   - [x] 5.1 `GET /customer/trips` arama: şehir/tarih/palet filtreleri, T−3 sonrası ve yayında olmayan seferler yok, aktif taşıyıcı (3.1, 3.2). Sayfalama yok (liste).
   - [x] 5.2 Teklif/önizleme: `POST /customer/trips/{id}/quote` (yazmaz; uygunsuzsa `eligible:false` + nedenler) (4.5, 4.6)
@@ -32,7 +32,7 @@ Durum (kodla doğrulandı): çekirdek **uygulandı ve dağıtıldı**, ancak tas
   - [ ] 7.3 `seed:verify`'a sefer tutarlılık kontrolleri. Not: verify yalnız L1; demo akışı smoke sonunda 25/33 durumuna dönmesiyle doğrulanır.
 - [ ] 8. Testler
   - [ ] 8.1 Gerçek tablolarla entegrasyon testi. Not: eşzamanlı 6 istek testi genel tabloyla var (`dsql.integration.test.ts`); gerçek `trip_capacity` için smoke "son palet yarışı" ve "aynı araç aynı aralık" kullanıldı; satış<taahhüt 409 için test yok.
-  - [x] 8.2 Smoke: `scripts/smoke-demo.mjs` (54 kontrol: fiyat, uygunluk, yarış, araç çakışması, sefer iptali)
+  - [x] 8.2 Smoke: `scripts/smoke-demo.mjs` (72 kontrol: fiyat, uygunluk, yarış, araç çakışması, sefer iptali)
 - [ ] 9. Doğrulama ve belgeler
   - [x] 9.1 Typecheck, birim, smoke geçti; API ve web dağıtıldı
   - [x] 9.2 `docs/PROGRESS.md` güncellendi
