@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse } from "@cargopact/shared";
+import type { ChatRequest, ChatResponse } from "@cargopact/contracts";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 

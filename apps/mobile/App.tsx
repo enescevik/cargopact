@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, FlatList, SafeAreaView, Text, TextInput, View } from "react-native";
 import { AuthenticationDetails, CognitoUser, CognitoUserPool } from "amazon-cognito-identity-js";
-import type { ChatResponse } from "@cargopact/shared";
+import type { ChatResponse } from "@cargopact/contracts";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
 const pool = new CognitoUserPool({

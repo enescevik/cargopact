@@ -2,14 +2,25 @@
   "name": "cargopact",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["apps/*", "packages/*", "services/*", "infra"],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "infra"
+  ],
   "scripts": {
     "dev:web": "npm run dev -w @cargopact/web",
     "dev:mobile": "npm run start -w @cargopact/mobile",
     "build:web": "npm run build -w @cargopact/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "synth": "npm run synth -w @cargopact/infra",
-    "deploy": "npm run deploy -w @cargopact/infra"
+    "deploy": "npm run deploy -w @cargopact/infra",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w @cargopact/db",
+    "db:grant": "npm run db:grant -w @cargopact/db",
+    "seed": "npm run seed -w @cargopact/db"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

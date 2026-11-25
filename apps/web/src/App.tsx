@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { MAX_MESSAGE_LENGTH } from "@cargopact/shared";
+import { MAX_MESSAGE_LENGTH } from "@cargopact/contracts";
 import { signIn, signUp, confirmSignUp } from "./auth";
 import { sendChat } from "./api";
 

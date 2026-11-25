@@ -1,0 +1,20 @@
+create table packaging_types (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references tenants(id),
+  code text not null,
+  name text not null,
+  kind text not null check (kind in ('pallet','carton','other')),
+  length_mm int not null check (length_mm > 0),
+  width_mm int not null check (width_mm > 0),
+  height_mm int not null check (height_mm > 0),
+  max_gross_kg numeric(8,2) not null check (max_gross_kg > 0),
+  usable_volume_m3 numeric(6,3),
+  fill_factor numeric(3,2) check (fill_factor > 0 and fill_factor <= 1),
+  stackable boolean not null default false,
+  status text not null default 'active' check (status in ('active','inactive')),
+  version int not null default 1,
+  is_demo boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint uq_packaging_code unique (tenant_id, code)
+)

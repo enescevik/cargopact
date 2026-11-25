@@ -24,5 +24,7 @@ new ApiStack(app, `${p}-Api`, {
   agentRuntimeArn: agents.runtimeArn,
   agentRuntimeArnPattern: agents.runtimeArnPattern,
   uploadsBucket: data.uploads,
+  dsqlClusterArn: data.cluster.attrResourceArn,
+  dsqlIdentifier: data.cluster.attrIdentifier,
 });
 new WebStack(app, `${p}-Web`, { env });

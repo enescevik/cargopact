@@ -17,7 +17,7 @@ Mikro toplama ve toplama müşteri sorumluluğundadır (kapsam dışı, ileride 
 Müşteri, taşıyıcı planlamacı, taşıyıcı depo personeli, yönetim/jüri.
 
 ## Mimari (özet)
-- İstemciler: React + Vite (web), Expo/React Native (mobil), ortak tipler `packages/shared`.
+- İstemciler: React + Vite (web), Expo/React Native (mobil), ortak tipler `packages/contracts`.
 - Kimlik: Cognito. API: API Gateway HTTP API + Lambda (TS). Veri: Aurora DSQL. Dosya: S3 (özel).
 - Ajanlar: Strands + AgentCore Runtime (orkestratör + uzmanlar), AgentCore Memory, taşıyıcıya özel Bedrock Knowledge Base.
 - Sohbet: kendi React sohbet arayüzü → `/chat` → AgentCore. (Amazon Q Business bu hesapta kullanılamıyor.)

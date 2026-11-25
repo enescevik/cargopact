@@ -1,6 +1,6 @@
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from "@aws-sdk/client-bedrock-agentcore";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, APIGatewayProxyResultV2 } from "aws-lambda";
-import { MAX_MESSAGE_LENGTH, type ChatRequest, type ChatResponse } from "@cargopact/shared";
+import { MAX_MESSAGE_LENGTH, type ChatRequest, type ChatResponse } from "@cargopact/contracts";
 import { randomUUID } from "node:crypto";
 
 const client = new BedrockAgentCoreClient({});

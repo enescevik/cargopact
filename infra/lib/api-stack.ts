@@ -16,6 +16,8 @@ export interface ApiStackProps extends cdk.StackProps {
   agentRuntimeArn?: string;
   agentRuntimeArnPattern: string;
   uploadsBucket: s3.IBucket;
+  dsqlClusterArn: string;
+  dsqlIdentifier: string;
 }
 
 export class ApiStack extends cdk.Stack {
@@ -42,11 +44,33 @@ export class ApiStack extends cdk.Stack {
       }),
     );
 
+    // İş API'si: sabit rol adı, böylece DSQL'de `AWS IAM GRANT cargopact_app TO <rol ARN>` önceden bilinir.
+    const apiRole = new iam.Role(this, "BusinessApiRole", {
+      roleName: "cargopact-api-lambda",
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+    });
+    apiRole.addToPolicy(new iam.PolicyStatement({ actions: ["dsql:DbConnect"], resources: [props.dsqlClusterArn] }));
+    const business = new nodejs.NodejsFunction(this, "BusinessApi", {
+      entry: path.join(__dirname, "../../services/api/src/handler.ts"),
+      runtime: lambda.Runtime.NODEJS_22_X,
+      architecture: lambda.Architecture.ARM_64,
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(29),
+      role: apiRole,
+      environment: {
+        DSQL_ENDPOINT: `${props.dsqlIdentifier}.dsql.${this.region}.on.aws`,
+        DSQL_USER: "cargopact_app",
+        STAGE: this.node.tryGetContext("stage") ?? "dev",
+      },
+      bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },
+    });
+
     const api = new apigw.HttpApi(this, "Api", {
       corsPreflight: {
         allowOrigins: ["*"], // Web domain belli olunca daraltın.
-        allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST],
-        allowHeaders: ["authorization", "content-type"],
+        allowMethods: [apigw.CorsHttpMethod.GET, apigw.CorsHttpMethod.POST, apigw.CorsHttpMethod.PUT, apigw.CorsHttpMethod.PATCH],
+        allowHeaders: ["authorization", "content-type", "idempotency-key", "if-match", "x-tenant-id", "x-correlation-id"],
       },
     });
     const authorizer = new HttpJwtAuthorizer(
@@ -63,6 +87,19 @@ export class ApiStack extends cdk.Stack {
       path: "/chat",
       methods: [apigw.HttpMethod.POST],
       integration: new HttpLambdaIntegration("ChatInt", chat),
+      authorizer,
+    });
+
+    api.addRoutes({
+      path: "/{proxy+}",
+      methods: [apigw.HttpMethod.ANY],
+      integration: new HttpLambdaIntegration("BusinessInt", business),
+      authorizer,
+    });
+    api.addRoutes({
+      path: "/me",
+      methods: [apigw.HttpMethod.GET],
+      integration: new HttpLambdaIntegration("MeInt", business),
       authorizer,
     });
 

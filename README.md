@@ -3,7 +3,7 @@
 Web (React/Vite) + mobil (Expo) uygulaması; sohbet arayüzü, Strands çoklu ajan, AWS (Cognito, Lambda, Aurora DSQL, S3, AgentCore).
 
 ```
-apps/web  apps/mobile  packages/shared  services/api  agents  infra  .kiro/steering
+apps/web  apps/mobile  packages/contracts  services/api  agents  infra  .kiro/steering
 ```
 
 ## Başlangıç
