@@ -1,0 +1,171 @@
+{
+  "$comment": "MCP tool schemas exposed by AgentCore Gateway target 'cargopact-mcp-tools'. Source of truth for infra/lib/gateway-stack.ts. All tools are read-only. Identity is NOT a tool argument: the caller's Cognito ID token travels in the Authorization header (gateway inbound JWT auth) and X-User-Token (propagated to the Lambda), never through the model.",
+  "gatewayToolNamePrefix": "cargopact-mcp-tools___",
+  "tools": [
+    {
+      "name": "search_trips",
+      "description": "(Customer) Search trips open for booking. Read-only. Price is computed server-side for the given pallet count.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "originCity": {
+            "type": "string",
+            "description": "Origin city/district/facility filter (agent-side)"
+          },
+          "destinationCity": {
+            "type": "string",
+            "description": "Destination filter (agent-side)"
+          },
+          "date": {
+            "type": "string",
+            "description": "YYYY-MM-DD departure date (optional)"
+          },
+          "pallets": {
+            "type": "integer",
+            "description": "Pallet count for price calculation (default 1)"
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /customer/trips -> {items:[Trip]}"
+      }
+    },
+    {
+      "name": "trip_detail",
+      "description": "(Customer) One trip with remaining capacity and price. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "description": "Trip id"
+          },
+          "pallets": {
+            "type": "integer",
+            "description": "Pallet count for price"
+          }
+        },
+        "required": [
+          "tripId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /customer/trips/{id} -> Trip"
+      }
+    },
+    {
+      "name": "my_reservations",
+      "description": "(Customer) Caller company's reservations, newest first. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /customer/reservations -> {items:[Reservation]}"
+      }
+    },
+    {
+      "name": "track_order",
+      "description": "(Customer) Order/pallet tracking by order number such as CP-2026-000123. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string",
+            "description": "Order number"
+          }
+        },
+        "required": [
+          "orderNumber"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /customer/orders/{orderNumber}/tracking"
+      }
+    },
+    {
+      "name": "carrier_trips",
+      "description": "(Carrier) Carrier's trips with capacity summary. Read-only. Backend returns 403 for non-carrier users.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Optional trip status filter"
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /carrier/trips -> {items:[Trip]}"
+      }
+    },
+    {
+      "name": "carrier_trip_detail",
+      "description": "(Carrier) Trip detail with requests, priorityRank, verifiedNoShows, eligibility. Read-only. 403 for non-carrier users.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "description": "Trip id"
+          }
+        },
+        "required": [
+          "tripId"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /carrier/trips/{id}"
+      }
+    },
+    {
+      "name": "carrier_dashboard",
+      "description": "(Carrier) Revenue/cost/contribution summary and customer list for a trip. Read-only. 403 for non-carrier users.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "description": "Trip id (optional; default nearest trip)"
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /carrier/dashboard"
+      }
+    },
+    {
+      "name": "carrier_kpis",
+      "description": "(Carrier) KPI summary for a date range. Read-only. 403 for non-carrier users.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "description": "YYYY-MM-DD"
+          }
+        },
+        "required": []
+      },
+      "outputSchema": {
+        "type": "object",
+        "description": "GET /carrier/kpis"
+      }
+    }
+  ]
+}

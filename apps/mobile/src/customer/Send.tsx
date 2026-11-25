@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 import { api, ApiError, uuid } from "../api";
 import { c, serif } from "../theme";
 import { dt, money, num, place } from "../format";
-import { CutoffChips, RouteHead, TripSummary } from "../common";
+import { CutoffChips, RouteHead, TripSummary, WarehouseGuide } from "../common";
 import { BackBar, Badge, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Skeletons, StickyBar, Title, useLoad, useToast } from "../ui";
 import type { Quote, Reservation, TripCard } from "../types";
 
@@ -59,11 +59,12 @@ function Search({ pallets, setPallets, onPick }: { pallets: string; setPallets: 
   const [q, setQ] = useState({ o: "", d: "", date: "", p: "" });
   const { data, error, loading, reload } = useLoad(() => {
     const p = new URLSearchParams();
-    if (q.o.trim()) p.set("originCity", q.o.trim());
-    if (q.d.trim()) p.set("destinationCity", q.d.trim());
     if (/^\d{4}-\d{2}-\d{2}$/.test(q.date)) p.set("date", q.date);
     if (Number(q.p) > 0) p.set("pallets", q.p);
-    return api<{ items: TripCard[] }>("GET", `/customer/trips?${p}`);
+    // Şehir/ilçe/tesis adı eşleşmesi istemcide (API yalnız il adıyla eşleşir; kullanıcı "Gebze" yazar).
+    const norm = (x: string) => x.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const hit = (term: string, f: TripCard["origin"]) => !term.trim() || [f.city, f.district ?? "", f.name].some((v) => norm(v).includes(norm(term)));
+    return api<{ items: TripCard[] }>("GET", `/customer/trips?${p}`).then((r) => ({ items: r.items.filter((t) => hit(q.o, t.origin) && hit(q.d, t.destination)) }));
   }, [q]);
   return (
     <Screen>
@@ -144,6 +145,7 @@ function LoadStep(p: {
             </>
           )}
         </Card>
+        <WarehouseGuide title="Depoya nasıl giderim?" facility={p.trip.origin} intakeCutoffAt={p.trip.intakeCutoffAt} />
       </Screen>
       <StickyBar>
         <Btn title="Teklifi gör" disabled={!quote?.eligible} onPress={() => quote && p.onNext(quote)} />
@@ -192,6 +194,7 @@ function OfferStep({ trip, quote, body, onBack, onDone }: {
         <Steps n={3} />
         <RouteHead trip={trip} size={28} />
         <CutoffChips trip={trip} />
+        <WarehouseGuide title="Depoya nasıl giderim?" facility={trip.origin} intakeCutoffAt={trip.intakeCutoffAt} />
         <Card>
           <Label>Fiyat</Label>
           <Text style={{ fontSize: 34, fontWeight: "800", color: c.ink900 }}>{money(quote.price.totalPriceMinor)}</Text>

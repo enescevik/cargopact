@@ -70,6 +70,7 @@ export function Btn({ title, onPress, kind = "primary", loading, disabled, small
   const off = disabled || loading;
   return (
     <Pressable
+      accessibilityRole="button" accessibilityState={{ disabled: !!off }}
       onPress={off ? undefined : onPress}
       style={({ pressed }) => [{
         minHeight: small ? 44 : 52, borderRadius: 14, paddingHorizontal: 18, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8,
@@ -118,6 +119,7 @@ export function Field({ label, ...p }: TextInputProps & { label: string }) {
       <Label>{label}</Label>
       <TextInput
         placeholderTextColor={c.ink300}
+        accessibilityLabel={label}
         {...p}
         style={[{ minHeight: 48, borderRadius: 12, borderWidth: 1, borderColor: c.line, backgroundColor: c.surface, paddingHorizontal: 14, fontSize: 16, color: c.ink900 }, Platform.OS === "web" ? ({ outlineStyle: "none" } as object) : null]}
       />
@@ -243,7 +245,9 @@ export function Sheet({ children, onClose }: { children: ReactNode; onClose: () 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 50, justifyContent: "flex-end" }]}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(11,26,74,0.45)" }]} onPress={onClose} />
-      <View style={{ backgroundColor: c.porcelain, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 22, gap: 14, maxHeight: "85%" }}>{children}</View>
+      <View style={{ backgroundColor: c.porcelain, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "85%" }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 22, gap: 14 }}>{children}</ScrollView>
+      </View>
     </View>
   );
 }
