@@ -81,9 +81,11 @@ export function useQueueFlusher(onFlushed: () => void) {
     const run = async () => { if ((await flushQueue()) > 0) onFlushed(); };
     const h = setInterval(run, 10000);
     const on = () => void run();
-    if (typeof window !== "undefined") window.addEventListener("online", on);
+    // React Native'de `window` tanımlı ama addEventListener yok: yalnız gerçekten varsa dinle
+    const w = typeof window !== "undefined" && typeof window.addEventListener === "function" ? window : undefined;
+    w?.addEventListener("online", on);
     void run();
-    return () => { clearInterval(h); if (typeof window !== "undefined") window.removeEventListener("online", on); };
+    return () => { clearInterval(h); w?.removeEventListener("online", on); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

@@ -5,9 +5,37 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "experiments": { "baseUrl": "/m" },
-    "web": { "bundler": "metro", "output": "single", "name": "CargoPact", "shortName": "CargoPact", "backgroundColor": "#F7F5F0" },
-    "ios": { "bundleIdentifier": "com.cargopact.app" },
-    "android": { "package": "com.cargopact.app" }
+    "experiments": {
+      "baseUrl": "/m"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "CargoPact",
+      "shortName": "CargoPact",
+      "backgroundColor": "#F7F5F0"
+    },
+    "ios": {
+      "bundleIdentifier": "com.cargopact.app",
+      "buildNumber": "4",
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.cargopact.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F5F0"
+      }
+    },
+    "icon": "./assets/icon.png",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

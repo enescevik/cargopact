@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { api } from "./api";
 import { c, serif } from "./theme";
 import { dt, hm, money, place } from "./format";
@@ -103,9 +103,9 @@ export function Chat({ suggestions }: { suggestions: string[] }) {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <View style={{ flex: 1 }}>
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 10 }}
-        onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })} keyboardShouldPersistTaps="handled">
+        onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })} onLayout={() => scroll.current?.scrollToEnd({ animated: false })} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {msgs.length === 0 && (
           <View style={{ gap: 12 }}>
             <Text style={{ fontFamily: serif, fontSize: 28, color: c.ink900 }}>Merhaba, ben CargoPact asistanı.</Text>
@@ -136,7 +136,7 @@ export function Chat({ suggestions }: { suggestions: string[] }) {
           <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>↑</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Platform, Pressable, Text, View } from "react-native";
+import { QrMatrix } from "./premium";
 import QRCode from "qrcode";
 import { c, mono, serif } from "./theme";
 import { Sheet, Btn } from "./ui";
@@ -14,6 +15,11 @@ export function useQrUrl(value: string, width = 320) {
   return url;
 }
 export function QrImage({ value, size = 64 }: { value: string; size?: number }) {
+  // Native'de toDataURL canvas ister; orada saf JS matrisle çiziyoruz.
+  if (Platform.OS !== "web") return <QrMatrix value={value} size={size} color="#000" />;
+  return <QrImageWeb value={value} size={size} />;
+}
+function QrImageWeb({ value, size }: { value: string; size: number }) {
   const url = useQrUrl(value);
   return <View style={{ width: size, height: size, backgroundColor: "#fff", borderRadius: 6 }}>{url && <Image source={{ uri: url }} style={{ width: size, height: size }} />}</View>;
 }

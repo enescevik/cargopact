@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { ActivityIndicator, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from "react-native";
+import { ActivityIndicator, Animated, Keyboard, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from "react-native";
 import { c, serif, shadow } from "./theme";
 import { statusTone } from "./format";
 
@@ -30,10 +30,49 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/* ---------- Klavye ---------- */
+/** iOS'ta klavye yüksekliği (web/Android'de 0: Android pencereyi zaten küçültür). Kök görünüm bu kadar alttan boşluk bırakır. */
+export function useKeyboardHeight() {
+  const [h, setH] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    const anim = (d?: number) => LayoutAnimation.configureNext({ duration: d || 250, update: { type: LayoutAnimation.Types.keyboard } });
+    const a = Keyboard.addListener("keyboardWillShow", (e) => { anim(e.duration); setH(e.endCoordinates.height); });
+    const b = Keyboard.addListener("keyboardWillHide", (e) => { anim(e.duration); setH(0); });
+    return () => { a.remove(); b.remove(); };
+  }, []);
+  return h;
+}
+/** Klavye açılınca odaktaki alan kaydırma alanının görünen kısmında değilse onu görünür yere kaydırır. */
+export function useScrollToFocused() {
+  const ref = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      setTimeout(() => {
+        const sv = ref.current;
+        const input = TextInput.State.currentlyFocusedInput?.() as unknown as View | null;
+        const inner = (sv as unknown as { getInnerViewRef?: () => View | null })?.getInnerViewRef?.();
+        if (!sv || !input || !inner) return;
+        (sv as unknown as View).measureInWindow((_sx, sy, _sw, sh) => {
+          input.measureInWindow((_ix, iy, _iw, ih) => {
+            if (iy >= sy && iy + ih <= sy + sh - 12) return; // zaten görünüyor
+            try {
+              input.measureLayout(inner, (_x, y) => sv.scrollTo({ y: Math.max(0, y - sh / 3), animated: true }), () => undefined);
+            } catch { /* bu kaydırma alanında değil */ }
+          });
+        });
+      }, 60);
+    });
+    return () => sub.remove();
+  }, []);
+  return ref;
+}
+
 /* ---------- Primitives ---------- */
 export function Screen({ children, pad = true, refreshKey }: { children: ReactNode; pad?: boolean; refreshKey?: unknown }) {
-  const ref = useRef<ScrollView>(null);
-  useEffect(() => { ref.current?.scrollTo({ y: 0, animated: false }); }, [refreshKey]);
+  const ref = useScrollToFocused();
+  useEffect(() => { ref.current?.scrollTo({ y: 0, animated: false }); }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <ScrollView ref={ref} style={{ flex: 1 }} contentContainerStyle={{ padding: pad ? 20 : 0, paddingBottom: 32, gap: 14 }} keyboardShouldPersistTaps="handled">
       {children}
@@ -44,7 +83,7 @@ export function Screen({ children, pad = true, refreshKey }: { children: ReactNo
 export function Title({ children, sub }: { children: ReactNode; sub?: string }) {
   return (
     <View style={{ gap: 4 }}>
-      <Text style={{ fontFamily: serif, fontSize: 30, color: c.ink900, letterSpacing: -0.5 }}>{children}</Text>
+      <Text style={{ fontFamily: serif, fontSize: 30, color: c.cobalt900, letterSpacing: -0.5 }}>{children}</Text>
       {!!sub && <Text style={{ fontSize: 14, color: c.ink500 }}>{sub}</Text>}
     </View>
   );
@@ -242,11 +281,12 @@ export function Timeline({ steps }: { steps: { label: string; done: boolean; at?
 
 /* ---------- Overlay sheet ---------- */
 export function Sheet({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const ref = useScrollToFocused();
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 50, justifyContent: "flex-end" }]}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(11,26,74,0.45)" }]} onPress={onClose} />
       <View style={{ backgroundColor: c.porcelain, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "85%" }}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 22, gap: 14 }}>{children}</ScrollView>
+        <ScrollView ref={ref} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ padding: 22, gap: 14 }}>{children}</ScrollView>
       </View>
     </View>
   );
