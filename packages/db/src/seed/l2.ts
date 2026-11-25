@@ -63,7 +63,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     if (!v) throw new Error(`Araç bulunamadı: ${t.plate} (önce seed L1)`);
     const demoShape = t.tir && v.pos === 33;
     const internalPallets = demoShape ? 25 : Math.floor(v.pos * 0.6);
-    const sellablePallets = demoShape ? 8 : Math.max(2, Math.floor(v.pos * 0.25));
+    const sellablePallets = demoShape ? 8 : Math.min(v.pos - internalPallets, Math.max(3, Math.floor(v.pos * 0.3)));
     const maxGross = demoShape ? 22000 : v.payload;
     const internalKg = demoShape ? 17000 : Math.round(v.payload * 0.6);
     const sellableKg = demoShape ? 5000 : Math.round(v.payload * 0.25);

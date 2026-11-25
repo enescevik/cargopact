@@ -11,6 +11,7 @@
     "db:migrate": "tsx src/cli.ts migrate",
     "db:grant": "tsx src/cli.ts grant",
     "seed": "tsx src/cli.ts seed",
+    "seed:demo": "tsx src/cli.ts seed-demo",
     "seed:verify": "tsx src/cli.ts seed-verify",
     "seed:reset": "tsx src/cli.ts seed-reset",
     "seed:users": "tsx src/cli.ts seed-users",
