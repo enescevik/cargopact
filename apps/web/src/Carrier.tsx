@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, LogOut, MessageSquare, PackagePlus, Truck, X,
+  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, Truck, X,
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
@@ -8,6 +8,9 @@ import { dt, full, isoToLocal, localToIso, num, time, tl, day } from "./format";
 import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge, TripBarCompact, errText, useFetch, useToast } from "./ui";
 import { Chat } from "./Chat";
 import { DashboardView } from "./Dashboard";
+import { EditTripModal } from "./carrier/EditTrip";
+import { PodThumbs, TeslimModal } from "./carrier/Pod";
+import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 
 type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" };
 
@@ -75,7 +78,7 @@ function TripList({ onOpen, onNew }: { onOpen: (id: string) => void; onNew: () =
 }
 
 /* ================= TRIP DETAIL ================= */
-type TripFull = CarrierTrip & { reservations: CarrierReservation[] };
+type TripFull = CarrierTripV & { reservations: CarrierRes[] };
 const NEXT: Record<string, { type: string; label: string }> = {
   ONAYLI: { type: "DEPO_KABUL", label: "Depoda kabul" }, DEPO_KABUL: { type: "YUKLENDI", label: "Araca yüklendi" },
   YUKLENDI: { type: "VARISTA", label: "Varışta" }, VARISTA: { type: "TESLIM", label: "Teslim" },
@@ -85,8 +88,10 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const toast = useToast();
   const { data: t, error, loading, reload } = useFetch((s) => api<TripFull>("GET", `/carrier/trips/${id}`, undefined, { signal: s }), [id], 5000);
   const [busy, setBusy] = useState<string | null>(null);
-  const [reject, setReject] = useState<CarrierReservation | null>(null);
-  const [problem, setProblem] = useState<{ r: CarrierReservation; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
+  const [reject, setReject] = useState<CarrierRes | null>(null);
+  const [teslim, setTeslim] = useState<CarrierRes | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [problem, setProblem] = useState<{ r: CarrierRes; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
 
   const { pending, active } = useMemo(() => {
     const rs = t?.reservations ?? [];
@@ -110,7 +115,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <div className="col" style={{ gap: 22 }}>
           <div className="row between wrap">
             <div>
-              <div className="row"><span className="kicker">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span></div>
+              <div className="row"><span className="kicker">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span>
+                {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Seferi düzenle</button>}</div>
               <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{t.origin.city} → {t.destination.city}</h1>
               <div className="muted" style={{ marginTop: 6 }}>{t.origin.name} → {t.destination.name}</div>
             </div>
@@ -138,7 +144,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                       <td><b className="serif" style={{ fontSize: 20 }}>{r.priorityRank}</b></td>
                       <td><b>{r.customer.name}</b>
                         {r.verifiedNoShows > 0 && <div style={{ marginTop: 4 }}><span className="badge warn"><AlertTriangle size={11} />Doğrulanmış gelmeme: {r.verifiedNoShows}</span></div>}
-                        <div className="tiny mono">{r.reference}</div></td>
+                        <div className="tiny mono">{r.reference}</div>
+                        {r.needsReview && <div style={{ marginTop: 4 }}><span className="badge warn"><AlertTriangle size={11} />Yeniden değerlendirme gerekli</span></div>}</td>
                       <td className="small">{num(r.pallets)} palet<br />{num(r.grossKg)} kg<br />{r.volumeM3 ? `${r.volumeM3} m³` : "—"}</td>
                       <td><b>{tl(r.totalPriceMinor)}</b><div className="tiny">{r.paymentPlan === "deposit" ? `%${r.depositPercent} kapora` : "peşin"}</div></td>
                       <td>{r.eligibility.eligible ? <span className="badge ok">Uygun</span> : (
@@ -166,11 +173,11 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                     return (
                       <tr key={r.id}>
                         <td className="mono small">{r.orderNumber ?? r.reference}</td>
-                        <td><b>{r.customer.name}</b></td>
+                        <td><b>{r.customer.name}</b><PodThumbs files={r.pod?.attachments ?? []} recipient={r.pod?.recipientName} /></td>
                         <td className="small">{num(r.pallets)} palet · {num(r.grossKg)} kg</td>
                         <td><StatusBadge status={r.status} label={r.statusLabel} /></td>
                         <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                          {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`)}>{n.label} <ArrowRight size={13} /></button>}{" "}
+                          {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => (n.type === "TESLIM" ? setTeslim(r) : act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`))}>{n.label} <ArrowRight size={13} /></button>}{" "}
                           {["ONAYLI", "DEPO_KABUL", "YUKLENDI"].includes(r.status) && (
                             <>
                               {r.status === "ONAYLI" && <button className="btn sm" onClick={() => setProblem({ r, type: "GELMEDI" })}>Gelmedi</button>}{" "}
@@ -187,6 +194,12 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         </div>
       )}
+      {teslim && <TeslimModal r={teslim} onClose={() => setTeslim(null)} onDone={() => { toast(`Teslim kaydedildi: ${teslim.customer.name}`, "ok"); setTeslim(null); reload(); }} />}
+      {editing && t && <EditTripModal trip={t} onClose={() => setEditing(false)}
+        onSaved={(r: TripUpdateResult) => {
+          toast(r.reevaluated.length === 0 ? "Sefer güncellendi." : `Sefer güncellendi. ${r.reevaluated.length} bekleyen talep yeniden değerlendirildi; ${r.needsReviewCount} tanesi inceleme gerektiriyor.`, r.needsReviewCount > 0 ? "err" : "ok");
+          reload();
+        }} />}
       {reject && <ReasonModal title={`${reject.customer.name} talebini reddet`} cta="Reddet" required
         onClose={() => setReject(null)}
         onSubmit={async (reason) => { await api("POST", `/carrier/reservations/${reject.id}/decision`, { decision: "reject", reason }); toast("Talep reddedildi.", "ok"); setReject(null); reload(); }} />}

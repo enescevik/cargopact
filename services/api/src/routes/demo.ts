@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { z } from "zod";
 import {
-  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, type Role,
+  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, type Role,
 } from "@cargopact/contracts";
 import { withTx } from "@cargopact/db";
 import {
@@ -12,8 +12,9 @@ import { audit } from "../lib/audit";
 import { requireRole, type AuthContext } from "../lib/auth";
 import { HttpError, notFound, ok, validation } from "../lib/http";
 import { idempotent } from "../lib/idempotency";
+import { objectExists, POD_EXT, POD_PUT_TTL, presignPut, uploadsBucket } from "../lib/s3";
 import {
-  addEvent, addLedger, adjustCap, capacityOf, carrierTrip, COST_PER_PALLET_MINOR, CONFIRMED_STATES, expireDue, expireHolds, HOLD_MS, iso,
+  addEvent, addLedger, adjustCap, capacityOf, carrierTrip, COST_PER_PALLET_MINOR, CONFIRMED_STATES, round2, expireDue, expireHolds, HOLD_MS, iso,
   loadTrips, newReference, pendingCounts, quoteFor, RESERVATION_SELECT, reservationViews, setStatus, STATUS_LABELS, toPrice, tripCard, type Q,
 } from "../lib/trips";
 import type { Route } from "./master-data";
@@ -117,7 +118,23 @@ export function demoRoutes(pool: pg.Pool): Route[] {
     const t = (await c.query("select departure_at, intake_cutoff_at from trips where id = $1", [r.trip_id])).rows[0];
     const led = (await c.query("select type, amount_minor from ledger_entries where reservation_id = $1", [id])).rows;
     const captured = sumOf(led, "CAPTURED");
+    const extra: Record<string, unknown> = {};
     switch (input.type) {
+      case "TESLIM": {
+        const name = input.recipientName?.trim();
+        if (!name) throw validation("Teslim alan kişinin adı zorunludur.", { field: "recipientName" });
+        const keys = [...new Set(input.podKeys ?? [])];
+        const prefix = `pod/${r.carrier_id}/${id}/`;
+        if (keys.some((k) => !k.startsWith(prefix) || k.includes(".."))) throw validation("e-POD dosya anahtarı bu rezervasyona ait değil.", { field: "podKeys" });
+        if (keys.length > 0) {
+          const known = (await c.query("select s3_key from reservation_attachments where reservation_id = $1 and s3_key = any($2::text[])", [id, keys])).rows;
+          if (known.length !== keys.length) throw validation("e-POD dosyası için yükleme URL'si alınmamış.", { field: "podKeys" });
+          for (const k of keys) if (!(await objectExists(k))) throw validation("e-POD dosyası henüz yüklenmemiş.", { field: "podKeys", key: k });
+          await c.query("update reservation_attachments set attached = true where reservation_id = $1 and s3_key = any($2::text[])", [id, keys]);
+        }
+        extra.pod_recipient_name = name;
+        break;
+      }
       case "DEPO_KABUL": {
         if (!isWithinCutoff(now, t.intake_cutoff_at)) throw conflict("Çıkış deposu kabul süresi (kalkıştan 1 saat önce) geçti.", "INVALID_TRANSITION");
         const rest = Number(r.total_price_minor) - captured;
@@ -139,7 +156,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       default:
         break;
     }
-    await setStatus(c, id, input.type, now);
+    await setStatus(c, id, input.type, now, undefined, extra);
     await addEvent(c, id, input.type, input.note ?? null, ctx.userId, now, r.is_demo);
     await audit(c, ctx, { action: `reservation.event.${input.type}`, entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: input.type }, reason: input.note });
     return done();
@@ -492,6 +509,99 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const input = reservationEventInput.parse(req.body);
         const id = uid(req.params.id);
         return idempotent(pool, ctx, "reservation.event", req.headers["idempotency-key"], { id, ...input }, (c) => recordEvent(c, ctx, id, input));
+      },
+    },
+    {
+      method: "POST", pattern: "/carrier/reservations/{id}/pod-upload-url",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CARRIER_ALL);
+        const input = podUploadInput.parse(req.body);
+        const id = uid(req.params.id);
+        if (!uploadsBucket()) throw new HttpError("INTERNAL", "Dosya deposu yapılandırılmamış.");
+        const r = (await fetchRes(pool, "where r.id = $1 and r.carrier_id = $2", [id, ctx.tenantId]))[0];
+        if (!r) throw notFound("Rezervasyon");
+        if (r.status !== "VARISTA") throw conflict(`${STATUS_LABELS[r.status] ?? r.status} durumunda e-POD yüklenemez; yük varışta olmalı.`, "INVALID_TRANSITION");
+        const n = Number((await pool.query("select count(*) n from reservation_attachments where reservation_id = $1", [id])).rows[0].n);
+        if (n >= 20) throw validation("Bu rezervasyon için en fazla 20 dosya yüklenebilir.");
+        const key = `pod/${ctx.tenantId}/${id}/${randomUUID()}.${POD_EXT[input.contentType]}`;
+        await pool.query("insert into reservation_attachments (reservation_id, carrier_id, kind, s3_key, content_type, is_demo) values ($1,$2,$3,$4,$5,$6)", [id, ctx.tenantId, input.kind, key, input.contentType, Boolean(r.is_demo)]);
+        return ok({ uploadUrl: await presignPut(key, input.contentType), key, expiresIn: POD_PUT_TTL });
+      },
+    },
+    {
+      method: "PUT", pattern: "/carrier/trips/{id}",
+      handler: async (ctx, req) => {
+        requireRole(ctx, PLANNERS);
+        const version = Number(String(req.headers["if-match"] ?? "").replace(/"/g, ""));
+        if (!Number.isInteger(version)) throw validation("If-Match başlığı (sefer sürümü) gerekli.");
+        const i = tripUpdateInput.parse(req.body);
+        if (Object.keys(i).length === 0) throw validation("Değişiklik belirtilmedi.");
+        const id = uid(req.params.id);
+        return idempotent(pool, ctx, "trip.update", req.headers["idempotency-key"], { id, version, i }, async (c) => {
+          const now = new Date();
+          // Kapasite satırına yaz: eşzamanlı rezervasyon/blokaj işlemleriyle OCC ile serileşir (write skew yok).
+          await adjustCap(c, id, {});
+          await expireHolds(c, id, now);
+          const t = (await loadTrips(c, "where t.id = $1 and t.carrier_id = $2", [id, ctx.tenantId]))[0];
+          if (!t) throw notFound("Sefer");
+          if (Number(t.trip_version) !== version) throw conflict("Sefer başka biri tarafından değiştirilmiş (sürüm uyuşmuyor).", "VERSION_MISMATCH", { currentVersion: Number(t.trip_version) });
+          if (!["draft", "published", "closed"].includes(t.status)) throw conflict(`${t.status} durumundaki sefer düzenlenemez.`, "INVALID_TRANSITION");
+          const cap = capacityOf(t);
+          const vehicleId = i.vehicleId ?? t.vehicle_id;
+          const dep = i.departureAt ? new Date(i.departureAt) : (t.departure_at as Date);
+          const arr = i.arrivalEta ? new Date(i.arrivalEta) : (t.arrival_eta as Date);
+          if (i.departureAt && dep.getTime() <= now.getTime()) throw validation("Kalkış zamanı gelecekte olmalı.");
+          if (arr.getTime() <= dep.getTime()) throw validation("Varış zamanı kalkıştan sonra olmalı.");
+          const sP = i.sellablePallets ?? t.sellable_pallets, sKg = i.sellableKg ?? t.sellable_kg, sM3 = i.sellableM3 ?? Number(t.sellable_m3), maxKg = i.maxGrossKg ?? t.max_gross_kg;
+          // Araç satırını kilitle: aynı araca eşzamanlı sefer ekleme/düzenleme serileşir.
+          const v = (await c.query("select id, status, vehicle_type_id from vehicles where id = $1 and carrier_id = $2 for update", [vehicleId, ctx.tenantId])).rows[0];
+          if (!v) throw validation("Araç bulunamadı.");
+          if (v.status !== "active") throw validation("Araç aktif değil.");
+          const vt = (await c.query("select pallet_positions from vehicle_types where id = $1", [v.vehicle_type_id])).rows[0];
+          if (t.internal_pallets + sP > vt.pallet_positions) throw validation(`İç palet + satışa açık palet araç kapasitesini (${vt.pallet_positions}) aşıyor.`);
+          const ov = await c.query("select reference from trips where vehicle_id = $1 and id <> $4 and status in ('draft','published','closed','departed') and departure_at < $3 and arrival_eta > $2 limit 1", [vehicleId, dep, arr, id]);
+          if (ov.rows[0]) throw conflict(`Araç bu aralıkta başka bir seferde (${ov.rows[0].reference}).`, "VEHICLE_OVERLAP");
+          const below: string[] = [];
+          if (sP < cap.held.pallets + cap.confirmed.pallets) below.push(`palet (${cap.held.pallets + cap.confirmed.pallets} bloke/onaylı)`);
+          if (sKg < cap.held.kg + cap.confirmed.kg) below.push(`kg (${cap.held.kg + cap.confirmed.kg} bloke/onaylı)`);
+          if (sM3 < cap.held.m3 + cap.confirmed.m3) below.push(`m³ (${round2(cap.held.m3 + cap.confirmed.m3)} bloke/onaylı)`);
+          if (maxKg < t.internal_kg + cap.confirmed.kg) below.push(`azami brüt (iç + onaylı ${t.internal_kg + cap.confirmed.kg} kg)`);
+          if (below.length > 0) throw conflict(`Kapasite bloke ve onaylı yüklerin altına düşürülemez: ${below.join(", ")}.`, "CAPACITY_BELOW_COMMITTED", { committed: below });
+          const cut = i.departureAt ? [new Date(dep.getTime() - 3 * 3_600_000), new Date(dep.getTime() - 3_600_000)] : [t.booking_cutoff_at, t.intake_cutoff_at];
+          await c.query(
+            `update trips set vehicle_id = $2, total_positions = $3, sellable_pallets = $4, sellable_kg = $5, sellable_m3 = $6, max_gross_kg = $7, departure_at = $8, arrival_eta = $9,
+               booking_cutoff_at = $10, intake_cutoff_at = $11, capacity_version = coalesce(capacity_version, 1) + 1, version = version + 1, updated_at = $12 where id = $1`,
+            [id, vehicleId, vt.pallet_positions, sP, sKg, sM3, maxKg, dep, arr, cut[0], cut[1], now]);
+          const t2 = (await loadTrips(c, "where t.id = $1", [id]))[0];
+          const cap2 = capacityOf(t2);
+          const pend = await fetchRes(c, "where r.trip_id = $1 and r.status = 'TASIYICI_ONAYI_BEKLIYOR'", [id]);
+          const accepted = new Map((await c.query("select product_class_id, accepted from carrier_product_classes where carrier_id = $1", [ctx.tenantId])).rows.map((x) => [x.product_class_id, Boolean(x.accepted)]));
+          const reevaluated: Array<{ reservationId: string; reference: string; customer: string; eligible: boolean; reasons: { code: string; message: string }[] }> = [];
+          for (const r of pend) {
+            const elig = checkEligibility(
+              { status: t2.status, bookingCutoffAt: t2.booking_cutoff_at, internalKg: t2.internal_kg, maxGrossKg: t2.max_gross_kg, sellablePallets: t2.sellable_pallets, sellableKg: t2.sellable_kg, sellableM3: Number(t2.sellable_m3) },
+              { heldPallets: cap2.held.pallets - r.pallets, heldKg: cap2.held.kg - r.gross_kg, heldM3: cap2.held.m3 - Number(r.volume_m3), confirmedPallets: cap2.confirmed.pallets, confirmedKg: cap2.confirmed.kg, confirmedM3: cap2.confirmed.m3 },
+              { pallets: r.pallets, grossKg: r.gross_kg, volumeM3: Number(r.volume_m3), productClassAccepted: accepted.get(r.product_class_id) ?? true },
+              { now },
+            );
+            reevaluated.push({ reservationId: r.id, reference: r.reference, customer: r.customer_name, eligible: elig.eligible, reasons: elig.reasons });
+            const flagged = Boolean(r.needs_review);
+            if (!elig.eligible) {
+              await c.query("update reservations set needs_review = true, updated_at = $2 where id = $1", [r.id, now]);
+              await c.query("delete from reservation_events where reservation_id = $1 and type = 'YENIDEN_DEGERLENDIRME'", [r.id]);
+              await addEvent(c, r.id, "YENIDEN_DEGERLENDIRME", `Araç/kapasite değişti, yeniden değerlendirme gerekli: ${elig.reasons.map((x) => x.message).join("; ")}`.slice(0, 290), ctx.userId, now, r.is_demo);
+            } else if (flagged) {
+              await c.query("update reservations set needs_review = false, updated_at = $2 where id = $1", [r.id, now]);
+            }
+          }
+          await audit(c, ctx, {
+            action: "trip.update", entityType: "trip", entityId: id,
+            before: { vehicleId: t.vehicle_id, sellablePallets: t.sellable_pallets, sellableKg: t.sellable_kg, sellableM3: Number(t.sellable_m3), maxGrossKg: t.max_gross_kg, departureAt: iso(t.departure_at) },
+            after: { vehicleId, sellablePallets: sP, sellableKg: sKg, sellableM3: sM3, maxGrossKg: maxKg, departureAt: iso(dep), needsReview: reevaluated.filter((x) => !x.eligible).length },
+          });
+          const pc = await pendingCounts(c, [id]);
+          return ok({ ...carrierTrip(t2, now, pc.get(id) ?? 0), reevaluated, needsReviewCount: reevaluated.filter((x) => !x.eligible).length });
+        });
       },
     },
     {

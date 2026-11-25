@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "./zod";
-import { cancelInput, decisionInput, itemsResponse, looseResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput } from "./demo";
+import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
 import type { Role } from "./common";
 import {
   carrierProductClassesInput, estimatePalletsInput, facilityInput, packagingTypeInput, productClassInput,
@@ -85,6 +85,8 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/carrier/trips/{id}/status", summary: "Sefer yayınla/kapat/iptal", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripStatusInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/decision", summary: "Talebi onayla/reddet", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: decisionInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/events", summary: "Depo/sefer olayı", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reservationEventInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/carrier/reservations/{id}/pod-upload-url", summary: "e-POD fotoğraf/imza için S3 yükleme URL'si", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: podUploadInput, response: podUploadResponse, idempotent: true },
+  { method: "PUT", path: "/carrier/trips/{id}", summary: "Seferi düzenle (araç/kapasite) ve bekleyen talepleri yeniden değerlendir; If-Match: sürüm", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripUpdateInput, response: looseResponse, idempotent: true, ifMatch: true },
   { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
 ];
 

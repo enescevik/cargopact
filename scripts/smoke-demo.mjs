@@ -47,7 +47,7 @@ async function reserve(user, pallets, grossKg, plan, card = CARD, key) {
   return call(user, "POST", "/customer/reservations", { tripId, pallets, grossKg, productClassCode: "GENEL", paymentPlan: plan, card }, key ? { "idempotency-key": key } : {});
 }
 const decide = (id, decision, reason) => call(YONETICI, "POST", `/carrier/reservations/${id}/decision`, { decision, reason });
-const event = (user, id, type) => call(user, "POST", `/carrier/reservations/${id}/events`, { type });
+const event = (user, id, type, extra = {}) => call(user, "POST", `/carrier/reservations/${id}/events`, { type, ...extra });
 
 // 1) Marmara 3 palet / 1500 kg tam ödeme
 let q = await quote(MARMARA, 3, 1500);
@@ -121,7 +121,28 @@ d = await dash();
 expect("tekrarlanan olay çift hareket üretmez; fiili 33/33", r.status === 200 && d.trip.capacity.actualPallets === 33 && d.trip.capacity.loaded.pallets === 8, d.trip.capacity);
 r = await event(MYONETICI, marmara.id, "VARISTA");
 r = await event(MYONETICI, marmara.id, "TESLIM");
-expect("VARISTA → TESLIM", r.body?.status === "TESLIM", r.body);
+expect("TESLIM alıcı adı olmadan 400", r.status === 400 && r.body?.details?.field === "recipientName", r.body);
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+const podUrl = (id, kind) => call(MYONETICI, "POST", `/carrier/reservations/${id}/pod-upload-url`, { kind, contentType: "image/png" });
+const up1 = await podUrl(marmara.id, "photo"), up2 = await podUrl(marmara.id, "signature");
+expect("pod-upload-url: anahtar pod/<taşıyıcı>/<rez>/<uuid>.png + 300 sn", up1.status === 200 && new RegExp(`^pod/[0-9a-f-]{36}/${marmara.id}/[0-9a-f-]{36}\\.png$`).test(up1.body.key) && up1.body.expiresIn === 300 && up1.body.uploadUrl.startsWith("https://"), up1.body);
+for (const u of [up1, up2]) {
+  const put = await fetch(u.body.uploadUrl, { method: "PUT", headers: { "content-type": "image/png" }, body: PNG });
+  expect("presigned PUT 200", put.status === 200, put.status);
+}
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", podKeys: [`pod/${randomUUID()}/${randomUUID()}/${randomUUID()}.png`] });
+expect("başka rezervasyon önekli podKey 400", r.status === 400 && r.body?.details?.field === "podKeys", r.body);
+r = await event(MYONETICI, marmara.id, "TESLIM", { recipientName: "Ayşe Alıcı", podKeys: [up1.body.key, up2.body.key] });
+expect("VARISTA → TESLIM (alıcı + 2 e-POD dosyası)", r.body?.status === "TESLIM" && r.body.pod?.recipientName === "Ayşe Alıcı" && r.body.pod.attachments.length === 2, r.body);
+const podRes = await call(MARMARA, "GET", `/customer/reservations/${marmara.id}`);
+const podAtt = podRes.body.pod?.attachments ?? [];
+const teslimEv = podRes.body.events.find((e) => e.type === "TESLIM");
+expect("müşteri kendi e-POD'unu görür (pod + events[].attachments)", podAtt.length === 2 && podAtt.map((a) => a.kind).sort().join() === "photo,signature" && teslimEv.attachments.length === 2 && podRes.body.pod.deliveredAt, podRes.body.pod);
+const dl = await fetch(podAtt[0].url);
+const dlBuf = Buffer.from(await dl.arrayBuffer());
+expect("e-POD presigned GET 200 ve içerik aynı", dl.status === 200 && dlBuf.equals(PNG), dl.status);
+r = await podUrl(marmara.id, "photo");
+expect("TESLIM sonrası yeni e-POD URL'si 409", r.status === 409, r.body);
 
 // 5) Takip ve kiracı izolasyonu
 let tr = await call(MARMARA, "GET", `/customer/orders/${marmaraOrder}/tracking`);
@@ -198,6 +219,39 @@ expect("yarış sonrası held = 1, taşma yok", rt.capacity.heldPallets === 1 &&
 r = await call(YONETICI, "POST", `/carrier/trips/${raceTrip.id}/status`, { action: "cancel" });
 const rt2 = (await call(YONETICI, "GET", `/carrier/trips/${raceTrip.id}`)).body;
 expect("sefer iptali: bekleyen talep iade, sefer cancelled", r.body.status === "cancelled" && rt2.capacity.heldPallets === 0 && rt2.reservations[0].status === "IPTAL" && rt2.reservations[0].payment.status === "released", rt2);
+
+// 8b) Sefer düzenleme + yeniden değerlendirme
+const v2 = vehs.find((x) => x.plate === "41DNC201");
+r = await call(YONETICI, "POST", "/carrier/trips", {
+  originFacilityId: o.id, destinationFacilityId: de.id, vehicleId: v2.id, departureAt: dep.toISOString(), arrivalEta: arr.toISOString(),
+  internalPallets: 1, internalKg: 500, maxGrossKg: 5000, sellablePallets: 2, sellableKg: 1000, sellableM3: 4, basePriceMinor: 50000, publish: true,
+});
+expect("yeniden değerlendirme için taze sefer", r.status === 201 && r.body.version >= 1 && r.body.capacityVersion >= 1, r.body);
+const ed = r.body;
+const put = (body, ver = ed.version) => call(YONETICI, "PUT", `/carrier/trips/${ed.id}`, body, { "if-match": String(ver) });
+r = await call(MARMARA, "POST", "/customer/reservations", { tripId: ed.id, pallets: 1, grossKg: 400, productClassCode: "GENEL", paymentPlan: "full", card: CARD });
+expect("taze seferde bekleyen talep", r.status === 201, r.body);
+const pend = r.body;
+r = await put({ sellablePallets: 0 });
+expect("PUT sellable < bloke → 409 CAPACITY_BELOW_COMMITTED", r.status === 409 && r.body.details?.reason === "CAPACITY_BELOW_COMMITTED", r.body);
+r = await call(MARMARA, "PUT", `/carrier/trips/${ed.id}`, { sellablePallets: 3 }, { "if-match": String(ed.version) });
+expect("müşteri PUT /carrier/trips 403", r.status === 403, r.body);
+r = await put({ maxGrossKg: 800 }, ed.version + 5);
+expect("PUT eski sürüm → 409 VERSION_MISMATCH", r.status === 409 && r.body.details?.reason === "VERSION_MISMATCH", r.body);
+r = await put({ maxGrossKg: 800 });
+expect("PUT maxGross düşür → sürüm/capacityVersion artar, bekleyen needsReview", r.status === 200 && r.body.version === ed.version + 1 && r.body.capacityVersion === ed.capacityVersion + 1 && r.body.needsReviewCount === 1 && r.body.reevaluated[0].eligible === false, r.body);
+let edDetail = (await call(YONETICI, "GET", `/carrier/trips/${ed.id}`)).body;
+const pr = edDetail.reservations.find((x) => x.id === pend.id);
+expect("CarrierReservation.needsReview + gerekçe + denetim olayı", pr.needsReview === true && pr.eligibility.eligible === false && pr.events.some((e) => e.type === "YENIDEN_DEGERLENDIRME"), pr);
+const custView = (await call(MARMARA, "GET", `/customer/reservations/${pend.id}`)).body;
+expect("müşteri görünümünde needsReview/iç olay yok", !("needsReview" in custView) && !custView.events.some((e) => e.type === "YENIDEN_DEGERLENDIRME"), custView.events);
+r = await decide(pend.id, "approve");
+expect("needsReview talep onayı → 409 NOT_ELIGIBLE", r.status === 409 && r.body.details?.reason === "NOT_ELIGIBLE", r.body);
+r = await put({ maxGrossKg: 5000 }, ed.version + 1);
+edDetail = (await call(YONETICI, "GET", `/carrier/trips/${ed.id}`)).body;
+expect("kapasite geri açılınca needsReview kalkar", r.status === 200 && r.body.needsReviewCount === 0 && edDetail.reservations.find((x) => x.id === pend.id).needsReview === false, r.body);
+r = await call(YONETICI, "POST", `/carrier/trips/${ed.id}/status`, { action: "cancel" });
+expect("taze sefer temizlendi (iptal)", r.body.status === "cancelled", r.body);
 
 // 9) Demo seed'i yeniden çalıştır → 25/33
 try {

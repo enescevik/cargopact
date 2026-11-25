@@ -39,6 +39,24 @@ export const decisionInput = z.object({ decision: z.enum(["approve", "reject"]),
 export const reservationEventInput = z.object({
   type: z.enum(["DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"]),
   note: z.string().max(300).optional(),
+  /** TESLIM için zorunlu: teslim alan kişi. */
+  recipientName: z.string().trim().min(2).max(120).optional(),
+  /** TESLIM e-POD: pod-upload-url ile yüklenen nesne anahtarları (fotoğraf/imza). */
+  podKeys: z.array(z.string().min(10).max(300)).max(6).optional(),
+});
+export const podUploadInput = z.object({
+  kind: z.enum(["photo", "signature"]),
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+});
+export const podUploadResponse = z.object({ uploadUrl: z.string(), key: z.string(), expiresIn: z.number().int() });
+export const tripUpdateInput = z.object({
+  vehicleId: z.string().uuid().optional(),
+  sellablePallets: z.number().int().min(0).max(60).optional(),
+  sellableKg: z.number().int().min(0).max(100000).optional(),
+  sellableM3: z.number().min(0).max(200).optional(),
+  maxGrossKg: z.number().int().min(1).max(100000).optional(),
+  departureAt: z.string().datetime().optional(),
+  arrivalEta: z.string().datetime().optional(),
 });
 export const looseResponse = z.object({}).passthrough();
 export const itemsResponse = z.object({ items: z.array(z.object({}).passthrough()) });

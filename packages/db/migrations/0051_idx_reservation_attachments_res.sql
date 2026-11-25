@@ -1,0 +1,1 @@
+create index async idx_reservation_attachments_res on reservation_attachments (reservation_id)

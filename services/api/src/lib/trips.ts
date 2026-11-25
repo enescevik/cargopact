@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type pg from "pg";
 import { withTx } from "@cargopact/db";
+import { presignGet, uploadsBucket } from "./s3";
 import { defaultPolicy, priceQuote, checkEligibility, type PriceQuote } from "@cargopact/domain";
 
 export type Q = pg.Pool | pg.PoolClient;
@@ -10,6 +11,7 @@ export const STATUS_LABELS: Record<string, string> = {
   TASIYICI_ONAYI_BEKLIYOR: "Taşıyıcı onayı bekliyor", ONAYLI: "Onaylandı", DEPO_KABUL: "Çıkış deposunda kabul edildi",
   YUKLENDI: "Araca yüklendi", VARISTA: "Varışta teslime hazır", TESLIM: "Teslim edildi", SURESI_DOLDU: "Süresi doldu",
   RET: "Reddedildi", IPTAL: "İptal edildi", EKSIK_HASAR: "Eksik / hasar", GELMEDI: "Yük getirilmedi",
+  YENIDEN_DEGERLENDIRME: "Araç/kapasite değişti, yeniden değerlendirme gerekli",
 };
 export const CONFIRMED_STATES = ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 export const LOADED_STATES = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
@@ -23,7 +25,7 @@ export const round2 = r2;
 
 export const TRIP_SELECT = `select t.id, t.carrier_id, t.reference, t.departure_at, t.arrival_eta, t.booking_cutoff_at, t.intake_cutoff_at, t.status,
   t.total_positions, t.internal_pallets, t.internal_kg, t.max_gross_kg, t.sellable_pallets, t.sellable_kg, t.sellable_m3, t.base_price_minor,
-  t.floor_ratio, t.ceiling_ratio, t.is_demo, ca.name carrier_name, ca.status carrier_status,
+  t.floor_ratio, t.ceiling_ratio, t.is_demo, t.version trip_version, t.capacity_version, ca.name carrier_name, ca.status carrier_status,
   vt.code vt_code, vt.name vt_name, vt.pallet_positions vt_positions, v.id vehicle_id, v.plate,
   o.id o_id, o.code o_code, o.name o_name, o.city o_city, o.district o_district, o.address o_address, o.intake_window o_intake, o.pickup_window o_pickup,
   d.id d_id, d.code d_code, d.name d_name, d.city d_city, d.district d_district, d.address d_address, d.intake_window d_intake, d.pickup_window d_pickup,
@@ -85,6 +87,7 @@ export async function pendingCounts(q: Q, tripIds: string[]): Promise<Map<string
 
 export const carrierTrip = (r: Row, now: Date, pending: number) => ({
   ...tripCard(r, 1, now), status: r.status, vehicle: { id: r.vehicle_id, plate: r.plate }, capacity: capacityOf(r), pendingCount: pending,
+  version: Number(r.trip_version), capacityVersion: Number(r.capacity_version ?? 1),
 });
 
 export const newReference = (): string => {
@@ -181,11 +184,20 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const tripIds = [...new Set(rows.map((r) => r.trip_id))];
-  const [trips, evs, led] = await Promise.all([
+  const [trips, evs, led, att] = await Promise.all([
     loadTrips(q, "where t.id = any($1::uuid[])", [tripIds]),
     q.query("select reservation_id, type, note, created_at from reservation_events where reservation_id = any($1::uuid[])", [ids]),
     q.query("select reservation_id, type, amount_minor, reason, created_at from ledger_entries where reservation_id = any($1::uuid[])", [ids]),
+    uploadsBucket()
+      ? q.query("select reservation_id, kind, s3_key from reservation_attachments where reservation_id = any($1::uuid[]) and attached = true order by created_at", [ids])
+      : Promise.resolve({ rows: [] as Row[] }),
   ]);
+  const attUrls = new Map<string, { kind: string; url: string }[]>();
+  for (const a of att.rows) {
+    const list = attUrls.get(a.reservation_id) ?? [];
+    list.push({ kind: a.kind, url: await presignGet(a.s3_key) });
+    attUrls.set(a.reservation_id, list);
+  }
   const tripMap = new Map(trips.map((t) => [t.id, t]));
   let noShows = new Map<string, number>();
   let accepted = new Map<string, boolean>();
@@ -204,9 +216,12 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
   }
   return rows.map((r) => {
     const t = tripMap.get(r.trip_id)!;
-    const events = evs.rows.filter((e) => e.reservation_id === r.id)
+    const podFiles = attUrls.get(r.id) ?? [];
+    const events = evs.rows.filter((e) => e.reservation_id === r.id && (opts.carrierView || e.type !== "YENIDEN_DEGERLENDIRME"))
       .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at) || FLOW.indexOf(a.type) - FLOW.indexOf(b.type))
-      .map((e) => ({ type: e.type, label: STATUS_LABELS[e.type] ?? e.type, at: iso(e.created_at), note: e.note ?? null }));
+      .map((e) => ({ type: e.type, label: STATUS_LABELS[e.type] ?? e.type, at: iso(e.created_at), note: e.note ?? null, attachments: e.type === "TESLIM" ? podFiles : [] }));
+    const teslim = events.find((e) => e.type === "TESLIM");
+    const pod = r.status === "TESLIM" && teslim ? { recipientName: r.pod_recipient_name ?? null, deliveredAt: teslim.at, attachments: podFiles } : null;
     const base = {
       id: r.id, reference: r.reference, orderNumber: r.order_number ?? null, status: r.status, statusLabel: STATUS_LABELS[r.status] ?? r.status,
       trip: tripCard(t, r.pallets, now, { unitPriceMinor: Number(r.unit_price_minor), totalPriceMinor: Number(r.total_price_minor), breakdown: r.price_breakdown }),
@@ -216,7 +231,7 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       paymentPlan: r.payment_plan, depositPercent: r.deposit_percent,
       payment: paymentView(r, led.rows.filter((e) => e.reservation_id === r.id)),
       holdExpiresAt: r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.hold_expires_at ? iso(r.hold_expires_at) : null,
-      decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[],
+      decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[], pod,
     };
     if (!opts.carrierView) return base;
     const pending = r.status === "TASIYICI_ONAYI_BEKLIYOR";
@@ -230,7 +245,8 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
         { now },
       );
     }
-    return { ...base, priorityRank: rank.get(r.id) ?? 0, verifiedNoShows: noShows.get(`${r.carrier_id}:${r.customer_id}`) ?? 0, eligibility: elig };
+    const needsReview = pending && Boolean(r.needs_review) && !elig.eligible;
+    return { ...base, needsReview, priorityRank: rank.get(r.id) ?? 0, verifiedNoShows: noShows.get(`${r.carrier_id}:${r.customer_id}`) ?? 0, eligibility: elig };
   });
 }
 

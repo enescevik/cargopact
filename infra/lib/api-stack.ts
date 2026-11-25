@@ -51,6 +51,8 @@ export class ApiStack extends cdk.Stack {
       managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
     });
     apiRole.addToPolicy(new iam.PolicyStatement({ actions: ["dsql:DbConnect"], resources: [props.dsqlClusterArn] }));
+    // grant*() DataStack'ten yeni bir ARN export'u ister; ad zaten export'lu, ARN'yi addan kuruyoruz.
+    apiRole.addToPolicy(new iam.PolicyStatement({ actions: ["s3:PutObject", "s3:GetObject"], resources: [`arn:aws:s3:::${props.uploadsBucket.bucketName}/pod/*`] }));
     const business = new nodejs.NodejsFunction(this, "BusinessApi", {
       entry: path.join(__dirname, "../../services/api/src/handler.ts"),
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -61,6 +63,7 @@ export class ApiStack extends cdk.Stack {
       environment: {
         DSQL_ENDPOINT: `${props.dsqlIdentifier}.dsql.${this.region}.on.aws`,
         DSQL_USER: "cargopact_app",
+        UPLOADS_BUCKET: props.uploadsBucket.bucketName,
         STAGE: this.node.tryGetContext("stage") ?? "dev",
       },
       bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },

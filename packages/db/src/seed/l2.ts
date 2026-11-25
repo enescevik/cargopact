@@ -22,7 +22,7 @@ const LOADED = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
 async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknown[]) {
   const sub = `select id from reservations where ${where}`;
-  for (const t of ["ledger_entries", "reservation_events"]) {
+  for (const t of ["ledger_entries", "reservation_events", "reservation_attachments"]) {
     await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id in (${sub})`, params));
   }
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
@@ -114,7 +114,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     if (s.status === "GELMEDI") ledgerRows.push({ reservation_id: id, type: "RETAINED", amount_minor: total, reason: "Yük getirilmedi: iptal ücreti tutuldu", idempotency_key: `${id}:RETAINED`, is_demo: true, created_at: at(0) });
   }
   const seedResIds = resRows.map((r) => r.id);
-  for (const t of ["ledger_entries", "reservation_events"]) await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id = any($1::uuid[])`, [seedResIds]));
+  for (const t of ["ledger_entries", "reservation_events", "reservation_attachments"]) await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id = any($1::uuid[])`, [seedResIds]));
   await upsert(pool, "reservations", resRows, ["id"], log);
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
