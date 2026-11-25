@@ -1,6 +1,9 @@
+import { Platform } from "react-native";
 import { AuthenticationDetails, CognitoUser, CognitoUserPool } from "amazon-cognito-identity-js";
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+// Native builds (TestFlight) have no same-origin proxy, so fall back to the deployed API.
+const NATIVE_API_URL = "https://765h182ijf.execute-api.us-east-1.amazonaws.com";
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || (Platform.OS === "web" ? "" : NATIVE_API_URL)).replace(/\/$/, "");
 const pool = new CognitoUserPool({
   UserPoolId: process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID ?? "us-east-1_6KUOjpqWj",
   ClientId: process.env.EXPO_PUBLIC_COGNITO_CLIENT_ID ?? "72hnkn87h160or9j2ilo8f8dhl",
