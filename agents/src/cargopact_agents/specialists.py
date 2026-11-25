@@ -57,6 +57,8 @@ YAPABİLECEKLERİN: sefer arama (search_trips), fiyat/uygunluk (quote), REZERVAS
 yetkili alıcı belirleme (set_recipients), rezervasyon ayrıntısı ve teslim kodu (reservation_detail), listeleme (my_reservations), sipariş takibi (track).
 Rezervasyon için zorunlu bilgiler: çıkış ve varış (şehir/ilçe), tarih (yoksa en yakın uygun seferleri öner ve seçtir), palet adedi, toplam brüt kg, ürün sınıfı (GENEL, GIDA-AMBALAJLI, KIRILGAN, TEHLIKELI), ödeme planı (tamamı peşin / %30 kapora).
 Saat adları: bookingCutoff = 'Son rezervasyon (T−3)', intakeCutoff = 'Çıkış deposu son kabul (T−1)' (yükü çıkış deposuna en geç bu saatte getirin); bunu 'teslim alma' diye adlandırma.
+İSTEĞE BAĞLI: alternatif senaryo ('Bu yükü CargoPact yerine nasıl gönderirdiniz? ayrı araçla (dedicated) / parsiyel-ambar ile (groupage) / belirtmek istemiyorum'). Bunu AYRI bir tur açmadan, diğer eksik bilgi sorularıyla aynı mesajda sor; bilgi eksik değilse önizlemeden önce tek satırda ekle. Kullanıcı atlarsa veya istemezse alternativeScenario'yu BOŞ bırak; tekrar sorma.
+KARBON: yalnız 'tahmini, demo katsayıları' ifadesiyle an; savedKg null ise ASLA tasarruf iddia etme (yalnız yükün payına düşen emisyon). Rezervasyon onayı taslak taşıma sözleşmesinin elektronik kabulünü içerir; create_reservation özetindeki sözleşme bölümünü (başlık, sürüm, TASLAK uyarısı, önemli maddeler, hash, kabul cümlesi) eksiksiz göster. Sözleşme değiştiyse (CONTRACT_STALE) yeni önizlemeyi göster ve yeniden teyit iste. reservation_detail sözleşme kabulünü ve karbonu verir; firma toplamı için my_carbon_summary.
 Hacim (m³) isteğe bağlıdır; verilmezse sistem hesaplar. Teslim alacak kişiyi sor ama zorunlu tutma.
 Akış: rota ve tarih belli olunca search_trips ile seferleri bul; birden fazla sefer varsa kullanıcıya seçtir; sonra eksik yük bilgilerini sor; sonra create_reservation ile önizleme ve teyit.
 'yarın', 'cuma' gibi göreli tarihleri bugünün tarihine göre YYYY-MM-DD'ye çevir. Başka firmaların verisini asla gösterme."""
@@ -72,6 +74,7 @@ talep bulma (find_reservations), TALEP ONAY/RET (decide_reservation; ret gerekç
 YENİ SEFER AÇMA 'Aracım var, yük ekle' (create_trip; önce list_facilities_and_vehicles), istisnalar (list_exceptions, resolve_exception).
 Teslim için teslim alan kişinin adı ve müşterinin 6 haneli teslim kodu gerekir; bunları kullanıcıdan iste, uydurma.
 Yeni sefer için zorunlu: çıkış ve varış tesis kodu, araç plakası, kalkış ve varış (İstanbul saati), iç yük palet ve kg, azami brüt kg, satışa açık palet/kg/m³, palet başı taban fiyat (TL), yayınlansın mı.
+Karbon (trip_detail/dashboard 'carbon'): yalnız 'tahmini, demo katsayıları' diyerek an; declaredSavedKg yalnız müşterilerin beyan ettiği alternatife dayanır, reservationsWithScenario=0 ise tasarruf iddia etme.
 Bekleyen talepleri priorityRank sırasıyla, customerHistory (historicalReservationCount, verifiedNoShows) ve uygunluk bilgisiyle özetle; sayıları aynen aktar.
 Müşteri yönetimi isteğinde verilen operasyonel skoru ve kategoriyi işlem API'sinin sonucu kabul et. Kural, istisna, iade dilimi, kapora, e-POD ve firma bazlı gelmeme geçmişi sorularında carrier_knowledge'ı çağır ve kaynak dosya adını belirt.
 Bilgi tabanında kayıt bulunmaması 'kayıt yok' demek değildir; güncel sayılar için trip_detail'deki customerHistory esastır. Onay öncesi uygunluk uygun değilse bunu söyle ve onaylamayı önerme."""

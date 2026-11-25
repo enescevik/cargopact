@@ -106,20 +106,29 @@ def build_customer_write_tools(token) -> list:
 
     @tool
     def create_reservation(tripId: str, pallets: int, grossKg: float, productClassCode: str, paymentPlan: str,
-                           volumeM3: float = 0, recipientName: str = "") -> str:
+                           volumeM3: float = 0, recipientName: str = "", alternativeScenario: str = "") -> str:
         """Seferde yer ayır (teklifi kabul et). ZORUNLU bilgiler: tripId (search_trips sonucundaki id), pallets, grossKg (toplam brüt kg),
         productClassCode (GENEL, GIDA-AMBALAJLI, KIRILGAN, TEHLIKELI), paymentPlan ('full' = tamamı peşin, 'deposit' = %30 kapora).
-        Opsiyonel: volumeM3 (verilmezse sistem hesaplar), recipientName (varışta teslim alacak kişi).
+        Opsiyonel: volumeM3 (verilmezse sistem hesaplar), recipientName (varışta teslim alacak kişi),
+        alternativeScenario ('dedicated' = ayrı araçla gönderirdim, 'groupage' = parsiyel/ambar ile gönderirdim; kullanıcı belirtmediyse veya istemediyse BOŞ bırak).
+        Onay, taslak taşıma sözleşmesinin elektronik kabulünü de içerir; özet sözleşme bilgisini gösterir.
         Eksik zorunlu bilgi varsa ÇAĞIRMA, kullanıcıya sor. İlk çağrı yalnız önizleme döner; kullanıcı onaylayınca aynı parametrelerle tekrar çağır."""
         plan = (paymentPlan or "").strip().lower()
         plan = {"peşin": "full", "pesin": "full", "tamamı": "full", "kapora": "deposit"}.get(plan, plan)
         if plan not in ("full", "deposit"):
             return _out({"error": True, "message": "paymentPlan 'full' (tamamı) veya 'deposit' (%30 kapora) olmalı; kullanıcıya sor."})
+        scen = (alternativeScenario or "").strip().lower()
+        scen = {"ayrı araç": "dedicated", "ayri arac": "dedicated", "parsiyel": "groupage", "ambar": "groupage"}.get(scen, scen)
+        if scen not in ("dedicated", "groupage"):
+            scen = ""
         args = {"tripId": tripId, "pallets": int(pallets), "grossKg": float(grossKg), "productClassCode": productClassCode.strip().upper(),
-                "paymentPlan": plan, "volumeM3": float(volumeM3 or 0), "recipientName": (recipientName or "").strip()}
+                "paymentPlan": plan, "volumeM3": float(volumeM3 or 0), "recipientName": (recipientName or "").strip(),
+                "alternativeScenario": scen or None}
         q_body = {"pallets": args["pallets"], "grossKg": args["grossKg"], "productClassCode": args["productClassCode"]}
         if args["volumeM3"]:
             q_body["volumeM3"] = args["volumeM3"]
+        if scen:
+            q_body["alternativeScenario"] = scen
         q = api_call(token, "POST", f"/customer/trips/{urllib.parse.quote(tripId, safe='')}/quote", body=q_body)
         if q.get("error"):
             return _out(q)
@@ -128,6 +137,22 @@ def build_customer_write_tools(token) -> list:
                          "instruction": "Talep uygun değil; gerekçeleri kullanıcıya açıkla, değer değiştirmek isterse yeniden dene."})
         price = q.get("price") or {}
         plans = {p.get("code"): p for p in q.get("paymentPlans") or []}
+        cp_body = dict(q_body, paymentPlan=plan)
+        if args["recipientName"]:
+            cp_body["recipientName"] = args["recipientName"]
+        cp = api_call(token, "POST", f"/customer/trips/{urllib.parse.quote(tripId, safe='')}/contract-preview", body=cp_body)
+        if cp.get("error"):
+            return _out({"error": True, "executed": False, "message": "Sözleşme önizlemesi alınamadı; işlem yapılmadı. " + str(cp.get("message") or "")})
+        signer = getattr(token, "display_name", "") or "Kullanıcı"
+        rhash = cp.get("renderedHash") or ""
+        args["renderedHash"] = rhash       # sözleşme değişirse kapı anahtarı değişir → yeniden teyit
+        carbon = q.get("carbon") or {}
+        carbon_txt = None
+        if carbon:
+            carbon_txt = f"Yükünüzün payına düşen emisyon ≈ {carbon.get('allocatedKg')} kg CO₂e"
+            if carbon.get("savedKg") is not None:
+                carbon_txt += f"; seçtiğiniz alternatife göre tahmini tasarruf ≈ {carbon.get('savedKg')} kg CO₂e"
+            carbon_txt += " (demo katsayıları, tahmini)"
         summary = {
             "işlem": "Rezervasyon talebi (taşıyıcı onayına gider)",
             "seferId": tripId, "palet": args["pallets"], "brütKg": args["grossKg"], "ürünSınıfı": args["productClassCode"],
@@ -139,17 +164,34 @@ def build_customer_write_tools(token) -> list:
             "ödemeYöntemi": f"Simüle kayıtlı kart •••• {SIMULATED_CARD_LAST4} (demo)",
             "sonRezervasyon_T-3": _tr(q.get("bookingCutoffAt")), "çıkışDeposuSonKabul_T-1": _tr(q.get("intakeCutoffAt")),
             "iptalKoşulları": q.get("cancellationPolicy"), "teslimAlacakKişi": args["recipientName"] or "(belirtilmedi)",
+            "karbon": carbon_txt,
+            "sözleşme": {
+                "başlık": cp.get("title"), "sürüm": cp.get("version") or "1.0-taslak",
+                "durum": "TASLAK – hukuki inceleme yapılmamıştır",
+                "önemliMaddeler": [
+                    "Yük en geç çıkış deposu son kabul (T−1) saatine kadar getirilir: " + str(_tr(q.get("intakeCutoffAt"))),
+                    "İptal: 24 saatten fazla %100, 24 saat–T−3 arası %50, sonrası %0 iade",
+                    "Depo ölçümü beyandan %3 farka kadar tolerans; fazlası incelemeye alınır",
+                    "Varışta yalnız yetkili alıcıya ve teslim koduyla teslim: " + (args["recipientName"] or "(alıcı belirtilmedi)"),
+                ],
+                "özetHash": rhash[:12],
+            },
+            "sözleşmeKabulü": f"Onaylamanız, bu taslak sözleşmeyi {signer} adına elektronik olarak kabul etmeniz anlamına gelir.",
         }
         gate = _gate(token, "create_reservation", args, summary)
         if gate:
             return _out(gate)
         body = {k: v for k, v in q_body.items()}
+        body["contract"] = {"version": cp.get("version") or "1.0-taslak", "renderedHash": rhash, "signerName": signer, "accepted": True}
         body.update({"tripId": tripId, "paymentPlan": plan,
                      "card": {"holder": getattr(token, "display_name", "") or "CargoPact Demo", "number": "4242 4242 4242 4242", "expiry": "12/30", "cvc": "123"}})
         if args["recipientName"]:
             body["recipientName"] = args["recipientName"]
         r = api_call(token, "POST", "/customer/reservations", body=body, idempotency_key=_idem(token, "create_reservation", args))
         if r.get("error"):
+            if r.get("status") == 409 and r.get("code") == "CONTRACT_STALE":
+                return _out({"error": True, "executed": False, "code": "CONTRACT_STALE",
+                             "message": "Sözleşme metni/koşullar değişti. İşlem yapılmadı. Aynı parametrelerle aracı yeniden çağırarak yeni önizlemeyi al ve kullanıcıdan tekrar teyit iste."})
             return _out(r)
         return _out({"executed": True, "reservation": _slim_res(r), "note": "Talep oluşturuldu; taşıyıcı onayı bekleniyor. Referansı kullanıcıya ver."})
 
@@ -205,6 +247,10 @@ def build_customer_write_tools(token) -> list:
         out["events"] = [{"label": e.get("label"), "at": _tr(e.get("at"))} for e in r.get("events") or []]
         out["pickup"] = r.get("pickup")
         out["payment"] = r.get("payment")
+        out["carbon"] = r.get("carbon")
+        c = r.get("contract")
+        out["contract"] = ({"version": c.get("version"), "signerName": c.get("signerName"), "acceptedAtIstanbul": _tr(c.get("acceptedAt")),
+                            "renderedHash": (c.get("renderedHash") or "")[:12]} if c else None)
         return _out(out)
 
     return [create_reservation, cancel_reservation, set_recipients, reservation_detail]

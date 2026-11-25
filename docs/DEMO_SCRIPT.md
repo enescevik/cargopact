@@ -238,3 +238,8 @@ Teyit kodda zorunludur: önizlenmemiş bir işlem "evet" ile çalışmaz, aynı 
 Asistanın yapabildikleri — müşteri: sefer arama, teklif, rezervasyon, iptal (iade önizlemeli), yetkili alıcı, rezervasyon/teslim kodu, takip.
 Transfer merkezi: talep bulma, onay/ret (ret gerekçesi zorunlu), depo olayları (kabul+ölçüm, yükleme, varış, teslim için alıcı adı + teslim kodu), yeni sefer açma ("Aracım var"), istisnaları listeleme/kapatma.
 Kart bilgisi sohbette istenmez (demo: simüle kayıtlı kart).
+
+## Sözleşme ve karbon (ek)
+1. **Web/mobil:** sefer seç → palet/kg gir → "Alternatif senaryo" (isteğe bağlı: ayrı araç / parsiyel) seç → sözleşme önizlemesini göster (TASLAK etiketi, hash) → "Kabul ediyorum" ile rezervasyon. Karbon kartı: "yükünüzün payı ≈ X kg CO₂e"; alternatif seçildiyse tahmini tasarruf. "Demo katsayıları, tahmini" etiketine dikkat çek.
+2. **Asistan:** "Yarın Gebze'den Ankara'ya 3 palet, 1500 kg, genel kargo, peşin; alternatif olarak ayrı araçla gönderirdim." → özet sözleşme başlığı, TASLAK uyarısı, 3-4 madde, kısa hash ve "Onaylamanız, bu taslak sözleşmeyi <ad> adına elektronik olarak kabul etmeniz anlamına gelir." cümlesini gösterir → "evet" → rezervasyon. "Bu rezervasyonun sözleşmesi ve karbonu?" ve "Karbon özetim?" soruları.
+3. **Jüri/yönetim:** taşıyıcı panosunda sefer karbonu (dış yükün payı, beyan edilen tasarruf, senaryo seçen rezervasyon sayısı). Vurgu: tasarruf yalnız müşteri beyanına dayanır; sözleşme basit e-kabuldür, hukuki inceleme pilotta (docs/CONTRACT.md, docs/CARBON.md).

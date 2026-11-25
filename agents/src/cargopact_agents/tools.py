@@ -212,6 +212,7 @@ def _slim_trip(t: dict) -> dict:
         "priceExplanation": (p.get("breakdown") or {}).get("explanation"),
         "status": t.get("status"), "pendingCount": t.get("pendingCount"),
         "capacity": t.get("capacity"),
+        "carbon": t.get("carbon"),
     }
 
 
@@ -226,7 +227,11 @@ def _slim_res(r: dict) -> dict:
         "totalPriceMinor": r.get("totalPriceMinor"), "paymentStatus": (r.get("payment") or {}).get("status"),
         "holdExpiresIstanbul": _tr(r.get("holdExpiresAt")), "createdIstanbul": _tr(r.get("createdAt")),
     }
-    for k in ("priorityRank", "verifiedNoShows", "customerHistory", "eligibility"):
+    c = r.get("contract")
+    if c:
+        out["contract"] = {"version": c.get("version"), "signerName": c.get("signerName"), "acceptedAtIstanbul": _tr(c.get("acceptedAt")),
+                           "renderedHash": (c.get("renderedHash") or "")[:12]}
+    for k in ("priorityRank", "verifiedNoShows", "customerHistory", "eligibility", "carbon"):
         if k in r:
             out[k] = r[k]
     return out
@@ -275,7 +280,12 @@ def build_customer_tools(token: str) -> list:
         """Sipariş numarasıyla (CP-2026-000123) palet/sipariş takibi."""
         return _out(read_call(token, "track_order", {"orderNumber": orderNumber}, f"/customer/orders/{urllib.parse.quote(orderNumber, safe='')}/tracking"))
 
-    return [search_trips, quote, my_reservations, track]
+    @tool
+    def my_carbon_summary() -> str:
+        """Firmanın dönem toplamı karbon özeti (yükün payına düşen emisyon, beyan edilen alternatife göre tasarruf). Tahmini, demo katsayıları."""
+        return _out(api_call(token, "GET", "/customer/carbon/summary"))
+
+    return [search_trips, quote, my_reservations, track, my_carbon_summary]
 
 
 KB_ID = os.environ.get("KB_ID", "")

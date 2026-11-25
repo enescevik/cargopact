@@ -48,7 +48,7 @@ if __name__ == "__main__":
     if who == "customer":
         tok = converse("web.musteri@cargopact.example.test", [
             "Yarın Gebze'den Ankara'ya 3 palet göndermek istiyorum.",
-            "Toplam 1500 kg, genel kargo, tamamını peşin ödeyeceğim. Teslim alacak kişi Ayşe Kaya.",
+            "Toplam 1500 kg, genel kargo, tamamını peşin ödeyeceğim. Teslim alacak kişi Ayşe Kaya. Alternatif olarak ayrı araçla gönderirdim.",
             "Evet, onaylıyorum.",
             "Evet.",
         ])
