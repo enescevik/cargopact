@@ -15,6 +15,18 @@ _TIMEOUT = 8
 _MAX_CHARS = 12000
 
 
+class TracedToken(str):
+    """ID token + izleme bağlamı. Araçlar token'ı olduğu gibi geçirir; api_call başlıkları buradan ekler."""
+    correlation_id: str = ""
+    session_id: str = ""
+
+    def __new__(cls, token: str, correlation_id: str = "", session_id: str = ""):
+        obj = super().__new__(cls, token)
+        obj.correlation_id = correlation_id
+        obj.session_id = session_id
+        return obj
+
+
 def api_call(token: str, method: str, path: str, query: dict | None = None, body: dict | None = None) -> dict:
     url = API_URL + path
     if query:
@@ -22,6 +34,11 @@ def api_call(token: str, method: str, path: str, query: dict | None = None, body
         if q:
             url += "?" + urllib.parse.urlencode(q)
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    corr = getattr(token, "correlation_id", "")
+    sess = getattr(token, "session_id", "")
+    if corr and sess:
+        headers["x-correlation-id"] = corr
+        headers["x-agent-session"] = sess
     data = None
     if method in ("POST", "PUT", "PATCH"):
         headers["Content-Type"] = "application/json"

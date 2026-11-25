@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "./api";
 import type { Dashboard } from "./types";
 import { full, initials, place, num, time, tl } from "./format";
+import { TracesPanel } from "./Traces";
 import { Empty, ErrorBox, SkeletonCards, StatusBadge, useFetch } from "./ui";
 
 const COLORS = ["#2547E0", "#12A675", "#C98A06", "#7A5AF8", "#D6456B", "#0E8FB5", "#E2772B"];
@@ -110,6 +111,7 @@ export function DashboardView() {
           </table>
         )}
       </div>
+      <TracesPanel />
     </div>
   );
 }

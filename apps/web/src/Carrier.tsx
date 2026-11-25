@@ -1,26 +1,27 @@
 import { Notifications } from "./Notifications";
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, Truck, X,
+  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, X,
 } from "lucide-react";
 import { api, ApiError, sendChat } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
 import { dt, full, isoToLocal, localToIso, num, place, time, tl, day } from "./format";
 import { CapacityBars, Empty, ErrorBox, Field, Modal, SkeletonCards, StatusBadge, TripBarCompact, errText, useFetch, useToast } from "./ui";
 import { Chat } from "./Chat";
+import { TracesView } from "./Traces";
 import { DashboardView } from "./Dashboard";
 import { EditTripModal } from "./carrier/EditTrip";
 import { PodThumbs, TeslimModal } from "./carrier/Pod";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 
-type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" };
+type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
   const [view, setView] = useState<View>({ name: "trips" });
   const tab = view.name === "trip" ? "trips" : view.name;
   const nav: [string, string, React.ReactNode][] = [
     ["trips", "Seferler", <Truck size={18} />], ["new", "Aracım var, yük ekle", <PackagePlus size={18} />],
-    ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />],
+    ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />], ["traces", "Asistan işlem izi", <ScrollText size={18} />],
   ];
   return (
     <div className="shell">
@@ -41,6 +42,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
         {view.name === "trip" && <TripDetail id={view.id} onBack={() => setView({ name: "trips" })} />}
         {view.name === "new" && <NewTrip onCreated={(id) => setView({ name: "trip", id })} />}
         {view.name === "dash" && <DashboardView />}
+        {view.name === "traces" && <TracesView />}
         {view.name === "chat" && <Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} />}
       </div>
     </div>

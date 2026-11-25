@@ -4,7 +4,7 @@ import { Send, Sparkles } from "lucide-react";
 import { sendChat } from "./api";
 import { ErrorBox } from "./ui";
 
-interface Msg { role: "u" | "a"; text: string }
+interface Msg { role: "u" | "a"; text: string; trace?: string }
 
 export function Chat({ prompts }: { prompts: string[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -23,7 +23,7 @@ export function Chat({ prompts }: { prompts: string[] }) {
     try {
       const r = await sendChat({ message, sessionId: session.current });
       session.current = r.sessionId || session.current;
-      setMsgs((x) => [...x, { role: "a", text: r.reply }]);
+      setMsgs((x) => [...x, { role: "a", text: r.reply, trace: r.correlationId }]);
     } catch (e) {
       setErr(e as Error);
     } finally { setBusy(false); }
@@ -47,7 +47,7 @@ export function Chat({ prompts }: { prompts: string[] }) {
               </div>
             </div>
           )}
-          {msgs.map((m, i) => <div key={i} className={`msg ${m.role}`}>{m.text}</div>)}
+          {msgs.map((m, i) => <div key={i} className={`msg ${m.role}`}>{m.text}{m.trace && <div className="tiny muted" style={{ marginTop: 6 }} title={m.trace}>İz: {m.trace.slice(0, 8)}</div>}</div>)}
           {busy && <div className="msg a typing"><span /><span /><span /></div>}
           {err && <ErrorBox error={err} />}
           <div ref={end} />

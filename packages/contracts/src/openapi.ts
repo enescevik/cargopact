@@ -96,6 +96,8 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/notifications/{id}/read", summary: "Bildirimi okundu işaretle (idempotent)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], response: looseResponse },
   { method: "GET", path: "/carrier/integrations/status", summary: "Olay yayın durumu", tag: "Entegrasyon", roles: CARRIER_ALL, response: integrationStatusResponse },
   { method: "POST", path: "/carrier/integrations/events/flush", summary: "Bekleyen olayları şimdi yayınla", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], response: looseResponse , idempotent: true },
+  { method: "GET", path: "/carrier/agent-traces", summary: "Asistan işlem izi: sohbet turları, araç çağrıları ve correlationId ile eşleşen denetim kayıtları (taşıyıcı: kendi kiracısı; platform: tümü)", tag: "Asistan", roles: [...READ_CARRIER], query: z.object({ limit: z.string().optional() }), response: looseResponse },
+  { method: "POST", path: "/agent/turns/{correlationId}/complete", summary: "Sohbet turunu tamamla (gecikme, yanıt uzunluğu, başarı); yalnız çağıranın kendi turuna yazar", tag: "Asistan", roles: "any-authenticated", body: z.object({ latencyMs: z.number().int().min(0), replyChars: z.number().int().min(0), ok: z.boolean(), sessionId: z.string().optional() }), response: looseResponse },
 ];
 
 export function buildOpenApiDocument(serverUrl?: string) {
