@@ -42,7 +42,7 @@ function Login({ onDone }: { onDone: () => void }) {
         <div className="logo" style={{ color: "#fff" }}><div className="logo-mark"><img src="/logo-mark.svg" alt="" /></div>CargoPact</div>
         <div>
           <div className="kicker" style={{ color: "var(--m5)", marginBottom: 14 }}>Planlı transferlerde boş palet pazarı</div>
-          <h1>Boş kalan her palet, <em>doğru yüke</em> gitsin.</h1>
+          <h1>İşiniz hep <em>yolunda</em>.</h1>
           <div className="lane">{Array.from({ length: 8 }, (_, i) => <span key={i} className={i < 3 ? "" : i < 6 ? "c" : "f"} />)}</div>
           <div className="pt"><Boxes size={20} style={{ flexShrink: 0 }} /><span>Taşıyıcılar kapasiteyi yayınlar, müşteriler rotalarına uygun araçta anında fiyat alır.</span></div>
           <div className="pt"><Clock size={20} style={{ flexShrink: 0 }} /><span>T−3 rezervasyon, T−1 depo kabul sınırları sunucuda hesaplanır.</span></div>
