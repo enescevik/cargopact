@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { Image, Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -72,6 +72,7 @@ function Shell() {
         </Row>
       </View>
       <View style={{ flex: 1 }}>
+        <ScreenGuard key={tab}>
         {tab === "send" && <Send onDone={() => setTab("res")} />}
         {tab === "res" && <Reservations />}
         {tab === "track" && <TrackingScreen />}
@@ -81,6 +82,7 @@ function Shell() {
         {tab === "chat" && <Chat suggestions={isCustomer
           ? ["Gebze'den Ankara'ya 3 palet yüküm var, uygun sefer var mı?", "Rezervasyonlarımın durumu nedir?", "Fiyat nasıl hesaplanıyor?"]
           : ["Yarınki Gebze-Ankara seferinde kaç palet boş?", "Bekleyen talepleri öncelik sırasıyla özetle", "Gelmeme kaydı olan firmalar hangileri?"]} />}
+        </ScreenGuard>
       </View>
       <View style={{ flexDirection: "row", backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.line, paddingBottom: insets.bottom }}>
         {tabs.map((t) => {
@@ -97,6 +99,24 @@ function Shell() {
       </View>
     </View>
   );
+}
+
+/** Bir ekranda beklenmeyen hata olursa uygulama kapanmasın; ekran içinde uyarı + yeniden dene göster. */
+class ScreenGuard extends Component<{ children: ReactNode }, { err?: Error }> {
+  state: { err?: Error } = {};
+  static getDerivedStateFromError(err: Error) { return { err }; }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 10 }}>
+        <Text style={{ fontFamily: sansBold, fontSize: 18, color: c.ink900 }}>Bu ekran açılamadı</Text>
+        <Text style={{ color: c.ink500, textAlign: "center", fontSize: 13 }}>{this.state.err.message}</Text>
+        <Pressable onPress={() => this.setState({ err: undefined })} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 18, borderRadius: 12, backgroundColor: c.cobalt900 }}>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>Tekrar dene</Text>
+        </Pressable>
+      </View>
+    );
+  }
 }
 
 function useWebFonts() {
