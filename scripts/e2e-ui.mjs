@@ -115,10 +115,10 @@ try {
     await y.getByText(/28\s*\/\s*33/).first().waitFor({ timeout: 20000 });
   });
   await step(y, "juri-panosu-28", async () => {
-    await y.getByRole("button", { name: /Jüri panosu/ }).click();
     await y.getByText(/28\s*\/\s*33/).first().waitFor({ timeout: 20000 });
     await y.waitForTimeout(900);
-    await y.getByTestId("carbon-hero").waitFor({ timeout: 15000 });
+    await y.getByLabel("Sefer kârlılığı").waitFor({ timeout: 15000 });
+    await y.getByTestId("trip-carbon").waitFor({ timeout: 15000 });
     const cells = await y.locator(".truck-bed .cell").count();
     if (cells !== 33) throw new Error(`33 hücre bekleniyordu, ${cells}`);
     await y.locator("h1", { hasText: /Gebze\s*→\s*Ankara/ }).first().waitFor({ timeout: 5000 });
