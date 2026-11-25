@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans";
 import { api, signIn, signOut } from "./src/api";
 import { c, sansBold } from "./src/theme";
-import { ToastProvider, Row } from "./src/ui";
+import { ToastProvider, Row, useKeyboardHeight } from "./src/ui";
 import { NotificationBell } from "./src/Notifications";
 import { Login } from "./src/Login";
 import { Chat } from "./src/common";
@@ -30,6 +30,7 @@ function Shell() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [tab, setTab] = useState("");
+  const kb = useKeyboardHeight();
 
   const login = async (email: string, pw: string) => {
     setBusy(true); setError(undefined);
@@ -52,7 +53,7 @@ function Shell() {
   const tabs = isCustomer ? CUSTOMER_TABS : CARRIER_TABS;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.porcelain }}>
+    <View style={{ flex: 1, backgroundColor: c.porcelain, paddingBottom: kb }}>
       <View style={{ paddingTop: insets.top + 8, paddingBottom: 12, paddingHorizontal: 18, backgroundColor: c.cobalt900, borderBottomWidth: 1, borderBottomColor: "rgba(201,183,143,0.3)" }}>
         <Row style={{ justifyContent: "space-between" }}>
           <Row gap={10} style={{ flex: 1 }}>
@@ -84,7 +85,7 @@ function Shell() {
           : ["Yarınki Gebze-Ankara seferinde kaç palet boş?", "Bekleyen talepleri öncelik sırasıyla özetle", "Gelmeme kaydı olan firmalar hangileri?"]} />}
         </ScreenGuard>
       </View>
-      <View style={{ flexDirection: "row", backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.line, paddingBottom: insets.bottom }}>
+      {kb === 0 && <View style={{ flexDirection: "row", backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.line, paddingBottom: insets.bottom }}>
         {tabs.map((t) => {
           const on = tab === t.key;
           return (
@@ -96,7 +97,7 @@ function Shell() {
             </Pressable>
           );
         })}
-      </View>
+      </View>}
     </View>
   );
 }

@@ -3,7 +3,7 @@ import { Animated, Platform, Pressable, ScrollView, Text, View } from "react-nat
 import { api, ApiError, uuid } from "../api";
 import { c, sansBold, serif } from "../theme";
 import { dt, hm, money, num, place } from "../format";
-import { Btn, ErrorBox, KV, Row, Screen, Sheet, Skeletons, useLoad, useToast } from "../ui";
+import { Btn, ErrorBox, KV, Row, Screen, Sheet, Skeletons, useLoad, useScrollToFocused, useToast } from "../ui";
 import {
   CarbonBadge, ChipSelect, Eyebrow, Noir, NoirKV, OptionCard, PriceCalendar, RouteTitle, Segmented, Stepper, TruckMap,
   customerCells, dayNum, isoDay, today, weekday,
@@ -147,6 +147,7 @@ export function Send({ onDone }: { onDone: () => void }) {
 
   // adım geçiş animasyonu
   const fade = useRef(new Animated.Value(1)).current;
+  const stepScroll = useScrollToFocused();
   const go = (n: number) => {
     tap();
     fade.setValue(0);
@@ -180,7 +181,7 @@ export function Send({ onDone }: { onDone: () => void }) {
       </View>
 
       <Animated.View style={{ flex: 1, opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={stepScroll} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
           {step === 0 && (
             <>
               <Head eyebrow="Adım 1 · rota" title="Nereye gönderiyoruz?" />
