@@ -9,7 +9,10 @@ export const c = {
   success: "#12A675", warning: "#C98A06", danger: "#C8372D", info: "#2547E0", pending: "#7A5AF8",
 };
 
-export const serif = Platform.select({ web: "'Fraunces', Georgia, serif", ios: "Georgia", default: "serif" }) as string;
+/** Başlık yazı tipi: web ile aynı Plus Jakarta Sans (App.tsx'te yüklenir). Adı geçmişten "serif" kaldı. */
+export const serif = "PlusJakartaSans_800ExtraBold";
+export const sansBold = "PlusJakartaSans_700Bold";
+export const sansSemi = "PlusJakartaSans_600SemiBold";
 export const mono = Platform.select({ web: "ui-monospace, monospace", ios: "Menlo", default: "monospace" }) as string;
 
 export const shadow = Platform.select({

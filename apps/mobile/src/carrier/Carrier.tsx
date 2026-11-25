@@ -5,12 +5,13 @@ import { postEvent, useQueue, useQueueFlusher, setOfflineSim } from "../queue";
 import { Scanner } from "../scanner";
 import { PodSheet } from "./Pod";
 import { MeasureSheet, ReviewSheet } from "./Measure";
-import { c, mono, serif } from "../theme";
+import { c, mono, sansBold, serif } from "../theme";
 import { dt, num } from "../format";
 import { RouteHead } from "../common";
 import { BackBar, Badge, Bar, Btn, Card, Chip, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Title, useLoad, useToast } from "../ui";
 import type { CarrierReservation, CarrierTrip } from "../types";
-import { ChipSelect, Eyebrow, Noir, operatorCells, RouteTitle, TruckMap } from "../premium";
+import { addDays, ChipSelect, dayNum, Eyebrow, isoDay, Noir, operatorCells, RouteTitle, Segmented, today, TruckMap, weekday } from "../premium";
+import { NewTrip } from "./NewTrip";
 import { place } from "../format";
 
 const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı uygun değil", "Ağırlık sınırı aşılıyor", "Rota/zaman uyumsuz", "Müşteri geçmişi riskli"];
@@ -36,22 +37,57 @@ function CapBars({ t }: { t: CarrierTrip }) {
 
 export function Trips() {
   const [sel, setSel] = useState<string>();
+  const [creating, setCreating] = useState(false);
   const list = useLoad(() => api<{ items: CarrierTrip[] }>("GET", "/carrier/trips"), [], 8000);
+  if (creating) return <NewTrip onBack={() => setCreating(false)} onCreated={(id) => { setCreating(false); setSel(id); void list.reload(true); }} />;
   if (sel) return <TripDetail id={sel} onBack={() => { setSel(undefined); void list.reload(true); }} />;
+  // Önce yaklaşan seferler (yakından uzağa), sonra geçmiş (yeniden eskiye).
+  const now = new Date().toISOString();
+  const all = list.data?.items ?? [];
+  const items = [
+    ...all.filter((t) => t.departureAt >= now).sort((a, b) => a.departureAt.localeCompare(b.departureAt)),
+    ...all.filter((t) => t.departureAt < now).sort((a, b) => b.departureAt.localeCompare(a.departureAt)),
+  ];
+  const pending = items.reduce((n, t) => n + t.pendingCount, 0);
+  const planned = items.reduce((n, t) => n + t.capacity.plannedPallets, 0), total = items.reduce((n, t) => n + t.capacity.totalPositions, 0);
+  const groups = new Map<string, CarrierTrip[]>();
+  for (const t of items) { const d = isoDay(t.departureAt); groups.set(d, [...(groups.get(d) ?? []), t]); }
+  const dayTitle = (d: string) => d === today() ? "Bugün" : d === addDays(today(), 1) ? "Yarın" : `${weekday(d)} ${dayNum(d)}`;
   return (
     <Screen>
-      <Title sub="Planlı transferlerde boş palet alanınız.">Seferler</Title>
-      {list.loading && !list.data ? <Skeletons n={3} h={190} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
-        !list.data?.items.length ? <Empty title="Sefer yok" /> :
-          list.data.items.map((t) => (
-            <Card key={t.id} onPress={() => setSel(t.id)} style={{ gap: 12 }}>
-              <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                <View style={{ flex: 1 }}><RouteHead trip={t} size={22} /></View>
-                {t.pendingCount > 0 && <Badge tone="pending" label={`${t.pendingCount} bekleyen`} />}
-              </Row>
-              <Text style={{ color: c.ink500, fontSize: 13 }}>{dt(t.departureAt)} · {t.vehicle.plate} · {t.vehicleType.name}</Text>
-              <CapBars t={t} />
-            </Card>
+      <Noir>
+        <Row style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <View style={{ flex: 1 }}>
+            <Eyebrow light>Operasyon kokpiti</Eyebrow>
+            <Text style={{ fontFamily: serif, color: "#fff", fontSize: 26 }}>{items.length} sefer</Text>
+          </View>
+          <Pressable onPress={() => setCreating(true)} style={({ pressed }) => ({ minHeight: 44, paddingHorizontal: 14, borderRadius: 14, backgroundColor: c.mint500, justifyContent: "center", opacity: pressed ? 0.85 : 1 })}>
+            <Text style={{ fontFamily: sansBold, color: c.cobalt900 }}>+ Aracım var</Text>
+          </Pressable>
+        </Row>
+        <Text style={{ color: "#B9C3EF", fontSize: 12 }}>{planned}/{total} palet planlı · <Text style={{ color: pending ? c.champagne : "#B9C3EF", fontWeight: "800" }}>{pending} talep bekliyor</Text></Text>
+      </Noir>
+      {list.loading && !list.data ? <Skeletons n={3} h={80} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
+        !items.length ? <Empty title="Sefer yok" text="“Aracım var” ile ilk seferinizi açın." /> :
+          [...groups.entries()].map(([d, ts]) => (
+            <View key={d} style={{ gap: 8 }}>
+              <Eyebrow>{dayTitle(d)}</Eyebrow>
+              {ts.map((t) => {
+                const k = t.capacity, pct = k.totalPositions ? k.plannedPallets / k.totalPositions : 0;
+                return (
+                  <Pressable key={t.id} onPress={() => setSel(t.id)} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 18, backgroundColor: c.surface, borderWidth: 1, borderColor: t.pendingCount ? c.champagne : c.line, opacity: pressed ? 0.85 : 1 })}>
+                    <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 5, borderColor: pct >= 0.95 ? c.mint500 : pct >= 0.7 ? c.cobalt600 : c.cobalt100, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontFamily: sansBold, fontSize: 12, color: c.cobalt900 }}>%{Math.round(pct * 100)}</Text>
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={{ fontFamily: sansBold, fontSize: 15, color: c.cobalt900 }} numberOfLines={1}>{place(t.origin)} <Text style={{ color: c.champagneInk }}>→</Text> {place(t.destination)}</Text>
+                      <Text style={{ fontSize: 12, color: c.ink500 }} numberOfLines={1}>{dt(t.departureAt)} · {t.vehicle.plate} · {k.plannedPallets}/{k.totalPositions} palet</Text>
+                    </View>
+                    {t.pendingCount > 0 ? <Badge tone="pending" label={`${t.pendingCount}`} /> : <Text style={{ color: c.ink300, fontSize: 20 }}>›</Text>}
+                  </Pressable>
+                );
+              })}
+            </View>
           ))}
     </Screen>
   );
@@ -63,6 +99,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [busy, setBusy] = useState<string>();
   const [rejecting, setRejecting] = useState<CarrierReservation>();
   const [reason, setReason] = useState("");
+  const [tab, setTab] = useState<"req" | "ok">("req");
   const [historyFor, setHistoryFor] = useState<CarrierReservation>();
   const [historyReply, setHistoryReply] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -109,15 +146,26 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <TruckMap dark operator positions={k.totalPositions}
             cells={operatorCells(k.internalPallets, t.reservations.map((r) => ({ name: r.customer.name, pallets: r.pallets, status: r.status })))} />
         </Noir>
-        <Card>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: c.ink900 }}>{k.plannedPallets} / {k.totalPositions} <Text style={{ fontSize: 14, fontWeight: "500", color: c.ink500 }}>planlanan · fiili {k.actualPallets}/{k.totalPositions}</Text></Text>
-          {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 13, fontWeight: "600" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
-          <CapBars t={t} />
-          <Row gap={8}><Chip label="İç yük" /><Chip tone="cobalt" label="Onaylı" /><Chip tone="mint" label="Kalan" /></Row>
-        </Card>
-        <Label>Bekleyen talepler (öncelik sırasıyla)</Label>
-        {pending.length === 0 && <Empty title="Bekleyen talep yok" />}
-        {pending.map((r) => (
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {[
+            ["Palet", k.plannedPallets, k.totalPositions, ""],
+            ["Ağırlık (t)", Math.round(k.plannedGrossKg / 100) / 10, Math.round(k.maxGrossKg / 100) / 10, ""],
+            ["Hacim", Math.round((k.confirmed.m3 + k.held.m3) * 10) / 10, k.sellable.m3 || 1, " m³"],
+          ].map(([l, v, tot, u]) => {
+            const pct = Math.min(1, Number(v) / Math.max(1, Number(tot)));
+            return (
+              <View key={String(l)} style={{ flex: 1, padding: 10, borderRadius: 14, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, gap: 4 }}>
+                <Text style={{ fontSize: 10, fontWeight: "800", color: c.ink500, letterSpacing: 0.6 }}>{String(l).toLocaleUpperCase("tr-TR")}</Text>
+                <Text style={{ fontFamily: sansBold, fontSize: 14, color: c.cobalt900 }} numberOfLines={1}>{num(Number(v))}<Text style={{ fontSize: 10, color: c.ink500 }}>/{num(Number(tot))}{u}</Text></Text>
+                <View style={{ height: 5, borderRadius: 3, backgroundColor: "#EEE9DC", overflow: "hidden" }}><View style={{ width: `${pct * 100}%`, height: 5, backgroundColor: pct >= 0.95 ? c.mint500 : c.cobalt600 }} /></View>
+              </View>
+            );
+          })}
+        </View>
+        {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 12, fontWeight: "700" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
+        <Segmented value={tab} onChange={setTab} options={[{ value: "req", label: `Talepler ${pending.length}` }, { value: "ok", label: `Onaylı yükler ${others.length}` }]} />
+        {tab === "req" && pending.length === 0 && <Empty title="Bekleyen talep yok" />}
+        {tab === "req" && pending.map((r) => (
           <Card key={r.id} style={{ gap: 10 }}>
             <Row style={{ justifyContent: "space-between" }}>
               <Row gap={8}>
@@ -143,8 +191,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
             </Row>
           </Card>
         ))}
-        {others.length > 0 && <Label>Diğer rezervasyonlar</Label>}
-        {others.map((r) => (
+        {tab === "ok" && others.length === 0 && <Empty title="Henüz onaylı yük yok" />}
+        {tab === "ok" && others.map((r) => (
           <Card key={r.id}>
             <Row style={{ justifyContent: "space-between" }}>
               <Text style={{ fontWeight: "700", color: c.ink900, flex: 1 }}>{r.customer.name}</Text>

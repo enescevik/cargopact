@@ -1,48 +1,101 @@
-import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { c, serif } from "./theme";
-import { Btn, Field, Screen } from "./ui";
+import { Btn, Field } from "./ui";
+import { Eyebrow, TruckMap } from "./premium";
+import { tap } from "./haptics";
 
+const DEMO_PASSWORD = "Cargopact2026!";
+const DEMOS = [
+  { role: "Müşteri olarak gir", firm: "Anadolu Parsiyel · palet gönder, takip et", email: "mobil.musteri@cargopact.example.test", icon: "➤" },
+  { role: "Transfer merkezi olarak gir", firm: "Dinçer Lojistik · onay, depo, kokpit", email: "mobil.yonetici@cargopact.example.test", icon: "▦" },
+];
+
+/** Web girişinin mobil karşılığı: noir sahne + dolan tır + alttan yükselen rol kartları. */
 export function Login({ onLogin, busy, error }: { onLogin: (email: string, pw: string) => void; busy: boolean; error?: string }) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [manual, setManual] = useState(false);
+  const [which, setWhich] = useState<string>();
+  // 33 pozisyonlu araç: 25 iç yük, kalan 8 yer sırayla dolar
+  const [filled, setFilled] = useState(25);
+  useEffect(() => { const t = setInterval(() => setFilled((f) => (f >= 33 ? 25 : f + 1)), 900); return () => clearInterval(t); }, []);
+  const cells = Array.from({ length: 33 }, (_, i) => ({ state: (i < 25 ? "int" : i < filled ? "conf" : "empty") as "int" | "conf" | "empty" }));
+
+  const rise = useRef(new Animated.Value(0)).current;
+  useEffect(() => { Animated.timing(rise, { toValue: 1, duration: 650, useNativeDriver: Platform.OS !== "web" }).start(); }, [rise]);
+  const go = (e: string, p: string, key: string) => { tap(); setWhich(key); onLogin(e, p); };
+
   return (
-    <View style={{ flex: 1, backgroundColor: c.porcelain }}>
-      <View style={{ backgroundColor: c.cobalt900, paddingTop: 56, paddingBottom: 36, paddingHorizontal: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, gap: 10 }}>
+    <View style={{ flex: 1, backgroundColor: c.cobalt900 }}>
+      {/* sahne ışıkları */}
+      <View pointerEvents="none" style={{ position: "absolute", top: -120, left: -80, width: 360, height: 360, borderRadius: 180, backgroundColor: "#2A4BD8", opacity: 0.55 }} />
+      <View pointerEvents="none" style={{ position: "absolute", top: 220, right: -140, width: 320, height: 320, borderRadius: 160, backgroundColor: c.mint600, opacity: 0.16 }} />
+
+      <View style={{ flex: 1, paddingTop: insets.top + 14, paddingHorizontal: 24, gap: 10 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.mint500, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: c.cobalt900, fontWeight: "900", fontSize: 18 }}>C</Text>
+          <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+            <Image source={require("../assets/logo-mark.png")} style={{ width: 28, height: 18 }} resizeMode="contain" />
           </View>
-          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", letterSpacing: 0.5 }}>CargoPact</Text>
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", letterSpacing: 0.4 }}>CargoPact</Text>
         </View>
-        <Text style={{ fontFamily: serif, color: "#fff", fontSize: 34, lineHeight: 40, marginTop: 14 }}>Boş palet yeri,{"\n"}doğru yüke.</Text>
-        <Text style={{ color: "#B8C4F5", fontSize: 14 }}>Planlı depo-depo transferlerinde kapasite alın, verin, takip edin.</Text>
+        <Eyebrow style={{ color: c.mint500, marginTop: 4 }}>Planlı transferlerde boş palet pazarı</Eyebrow>
+        <Text style={{ fontFamily: serif, color: "#fff", fontSize: 36, lineHeight: 40, letterSpacing: -1 }}>
+          İşiniz hep{"\n"}<Text style={{ color: c.mint500 }}>yolunda</Text>.
+        </Text>
+        <Text style={{ color: "#B9C3EF", fontSize: 14, lineHeight: 20 }}>Boş palet yerini görün, seçin, ayırın. Araç dolarken siz izleyin.</Text>
+        <View style={{ gap: 6, marginTop: 4 }}>
+          <TruckMap dark operator legend={false} positions={33} cells={cells} />
+          <Text style={{ color: "#8F9BCF", fontSize: 12 }}><Text style={{ color: "#fff", fontWeight: "800" }}>{filled}</Text>/33 planlanan · canlı doluluk</Text>
+        </View>
+        <View style={{ flexDirection: "row", gap: 14, flexWrap: "wrap", display: "none" }}>
+          {["Palet · kg · m³ birlikte", "T−3 rezervasyon", "Firma verisi gizli"].map((x) => (
+            <Text key={x} style={{ color: "#B9C3EF", fontSize: 11 }}><Text style={{ color: c.mint500 }}>● </Text>{x}</Text>
+          ))}
+        </View>
       </View>
-      <Screen>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: c.ink900 }}>Giriş yap</Text>
-        <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="ad@firma.com" />
-        <Field label="Parola" value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" onSubmitEditing={() => onLogin(email.trim(), pw)} />
-        {!!error && <Text style={{ color: c.danger, fontSize: 14 }}>{error}</Text>}
-        <Btn title="Giriş yap" loading={busy} disabled={!email || !pw} onPress={() => onLogin(email.trim(), pw)} />
-        <Text style={{ fontSize: 11, fontWeight: "800", letterSpacing: 1.1, color: c.champagneInk, marginTop: 6 }}>TEK DOKUNUŞLA DEMO</Text>
-        {[
-          { t: "Müşteri olarak gir", s: "Anadolu Parsiyel · palet gönder, takip et", e: "mobil.musteri@cargopact.example.test", i: "➤" },
-          { t: "Transfer merkezi olarak gir", s: "Dinçer · talepleri onayla, depo işlemleri", e: "mobil.yonetici@cargopact.example.test", i: "▦" },
-        ].map((x) => (
-          <Pressable key={x.e} disabled={busy} onPress={() => { setEmail(x.e); setPw("Cargopact2026!"); onLogin(x.e, "Cargopact2026!"); }}
-            style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, backgroundColor: c.surface, borderWidth: 1, borderColor: c.line, opacity: busy ? 0.5 : pressed ? 0.8 : 1 })}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: c.cobalt900, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: c.mint500, fontSize: 18 }}>{x.i}</Text>
+
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <Animated.View style={{
+          backgroundColor: c.porcelain, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingTop: 20, paddingHorizontal: 22, paddingBottom: insets.bottom + 10,
+          transform: [{ translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }], opacity: rise,
+        }}>
+          <ScrollView bounces={false} keyboardShouldPersistTaps="handled" style={{ maxHeight: manual ? 420 : undefined }} contentContainerStyle={{ gap: 12 }}>
+            <View>
+              <Text style={{ fontFamily: serif, fontSize: 28, color: c.cobalt900, letterSpacing: -0.5 }}>Hoş geldiniz</Text>
+              <Text style={{ color: c.ink500, fontSize: 13, marginTop: 2 }}>Rolünüzü seçin, tek dokunuşla girin.</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: "800", color: c.ink900 }}>{x.t}</Text>
-              <Text style={{ fontSize: 12, color: c.ink500 }}>{x.s}</Text>
-            </View>
-            <Text style={{ color: c.champagneInk, fontSize: 20 }}>›</Text>
-          </Pressable>
-        ))}
-        <Text style={{ color: c.ink500, fontSize: 12 }}>Parola: Cargopact2026!</Text>
-      </Screen>
+            {DEMOS.map((d) => (
+              <Pressable key={d.email} disabled={busy} onPress={() => go(d.email, DEMO_PASSWORD, d.email)} accessibilityRole="button"
+                style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 18, backgroundColor: c.surface, borderWidth: 1, borderColor: pressed ? c.cobalt500 : c.line, opacity: busy && which !== d.email ? 0.5 : 1, transform: [{ scale: pressed ? 0.985 : 1 }], shadowColor: "#0E1222", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } })}>
+                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.cobalt900, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: c.mint500, fontSize: 18 }}>{d.icon}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: c.ink900 }}>{d.role}</Text>
+                  <Text style={{ fontSize: 12, color: c.ink500 }}>{d.firm}</Text>
+                </View>
+                {busy && which === d.email ? <ActivityIndicator color={c.cobalt600} /> : <Text style={{ color: c.champagneInk, fontSize: 22 }}>›</Text>}
+              </Pressable>
+            ))}
+            {!!error && <Text style={{ color: c.danger, fontSize: 13 }}>{error}</Text>}
+            {!manual ? (
+              <Pressable onPress={() => setManual(true)} style={{ minHeight: 40, justifyContent: "center", alignItems: "center" }}>
+                <Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 13 }}>E-posta ve parola ile giriş</Text>
+              </Pressable>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <Field label="E-posta" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="ad@firma.com" />
+                <Field label="Parola" value={pw} onChangeText={setPw} secureTextEntry placeholder="••••••••" onSubmitEditing={() => go(email.trim(), pw, "form")} />
+                <Btn title="Giriş yap" loading={busy && which === "form"} disabled={!email || !pw} onPress={() => go(email.trim(), pw, "form")} />
+              </View>
+            )}
+            <Text style={{ color: c.ink300, fontSize: 11, textAlign: "center" }}>Demo hesapları kurgusaldır · parola {DEMO_PASSWORD}</Text>
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

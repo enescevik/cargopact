@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useFonts, PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold } from "@expo-google-fonts/plus-jakarta-sans";
 import { api, signIn, signOut } from "./src/api";
 import { c } from "./src/theme";
 import { ToastProvider, Row } from "./src/ui";
@@ -104,14 +105,16 @@ function useWebFonts() {
     if (document.getElementById("cp-fonts")) return;
     const l = document.createElement("link");
     l.id = "cp-fonts"; l.rel = "stylesheet";
-    l.href = "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700;800&display=swap";
+    l.href = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";
     document.head.appendChild(l);
-    document.body.style.fontFamily = "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif";
+    document.body.style.fontFamily = "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif";
     document.body.style.backgroundColor = "#E9E4D6";
   }, []);
 }
 export default function App() {
   useWebFonts();
+  const [fontsReady, fontErr] = useFonts({ PlusJakartaSans_500Medium, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold, PlusJakartaSans_800ExtraBold });
+  if (!fontsReady && !fontErr) return <View style={{ flex: 1, backgroundColor: c.cobalt900 }} />;
   const web = Platform.OS === "web";
   return (
     <SafeAreaProvider>

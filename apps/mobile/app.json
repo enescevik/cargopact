@@ -17,7 +17,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.cargopact.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
@@ -33,6 +33,9 @@
         "backgroundColor": "#F7F5F0"
       }
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
