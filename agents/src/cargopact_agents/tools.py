@@ -147,7 +147,32 @@ def build_customer_tools(token: str) -> list:
     return [search_trips, quote, my_reservations, track]
 
 
-def build_carrier_tools(token: str) -> list:
+KB_ID = os.environ.get("KB_ID", "")
+_kb_client = None
+def retrieve_carrier_kb(carrier_id: str, question: str, top_k: int = 4) -> list[dict]:
+    """Bedrock KB Retrieve; carrierId süzgeci ZORUNLU ve /me'den gelen kiracıdır."""
+    global _kb_client
+    import boto3
+    if _kb_client is None:
+        _kb_client = boto3.client("bedrock-agent-runtime", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    r = _kb_client.retrieve(
+        knowledgeBaseId=KB_ID,
+        retrievalQuery={"text": question[:900]},
+        retrievalConfiguration={"vectorSearchConfiguration": {
+            "numberOfResults": top_k,
+            "filter": {"equals": {"key": "carrierId", "value": carrier_id}}}},
+    )
+    out = []
+    for x in r.get("retrievalResults", []):
+        md = x.get("metadata") or {}
+        if md.get("carrierId") != carrier_id:  # derinlemesine savunma
+            continue
+        uri = ((x.get("location") or {}).get("s3Location") or {}).get("uri", "")
+        out.append({"source": uri.rsplit("/", 1)[-1], "docType": md.get("docType"),
+                    "text": (x.get("content") or {}).get("text", "")[:2500],
+                    "score": round(x.get("score") or 0, 3)})
+    return out
+def build_carrier_tools(token: str, carrier_id: str | None = None) -> list:
     def _resolve(trip: str) -> str | None:
         r = api_call(token, "GET", "/carrier/trips")
         for t in r.get("items", []):
@@ -186,8 +211,15 @@ def build_carrier_tools(token: str) -> list:
         return _out(r)
 
     @tool
-    def carrier_rules() -> str:
-        """Gelmeme, öncelik ve zaman sınırı kuralları (taşıyıcı bilgi tabanı)."""
+    def carrier_knowledge(question: str) -> str:
+        """Çağıran taşıyıcının kendi bilgi tabanında ara: gelmeme kuralları, istisnalar, iptal/iade dilimleri, kapora, e-POD ve firma bazlı doğrulanmış olay özetleri. Soruyu Türkçe ve açık yaz."""
+        if KB_ID and carrier_id:
+            try:
+                hits = retrieve_carrier_kb(carrier_id, question)
+                note = "Bilgi tabanında kayıt olmaması kayıt yok demek değildir; güncel adetler trip_detail (verifiedNoShows) ile doğrulanmalı."
+                return _out({"source": "knowledge_base", "passages": hits, "note": note})
+            except Exception as e:
+                return CARRIER_RULES + f"\n(Bilgi tabanına ulaşılamadı: {type(e).__name__}; genel yedek kurallar gösteriliyor.)"
         return CARRIER_RULES
 
-    return [list_trips, trip_detail, dashboard, carrier_rules]
+    return [list_trips, trip_detail, dashboard, carrier_knowledge]

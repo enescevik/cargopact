@@ -4,7 +4,7 @@ import os
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
-from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_role
+from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_identity
 
 log = logging.getLogger("cargopact")
 app = BedrockAgentCoreApp()
@@ -35,21 +35,21 @@ def invoke(payload: dict, context) -> dict:
         return {"result": "Mesaj boş."}
     if not token:
         return {"result": "Oturum bilgisi eksik; lütfen yeniden giriş yapın."}
-    role, name = get_role(token)
+    role, name, tenant_id = get_identity(token)
     if role not in CUSTOMER_ROLES | CARRIER_ROLES:
         return {"result": "Kimliğiniz doğrulanamadı veya bu asistan için yetkiniz yok."}
     session_id = getattr(context, "session_id", None) or "default-session-0000000000000000000"
     actor_id = str(payload.get("userId") or "anonymous")
     sm = _session_manager(session_id, actor_id)
     try:
-        agent = build_orchestrator(token, role, name, sm)
+        agent = build_orchestrator(token, role, name, sm, tenant_id)
         return {"result": str(agent(prompt))}
     except Exception as e:
         log.warning("agent with memory failed: %s", type(e).__name__)
         if sm is None:
             return {"result": "Şu an yanıt üretemedim, lütfen tekrar deneyin."}
         try:
-            return {"result": str(build_orchestrator(token, role, name, None)(prompt))}
+            return {"result": str(build_orchestrator(token, role, name, None, tenant_id)(prompt))}
         except Exception:
             return {"result": "Şu an yanıt üretemedim, lütfen tekrar deneyin."}
 

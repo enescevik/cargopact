@@ -41,8 +41,8 @@ def build_customer_specialist(token: str):
     return customer_specialist
 
 
-def build_carrier_specialist(token: str):
-    tools = build_carrier_tools(token)
+def build_carrier_specialist(token: str, carrier_id: str | None = None):
+    tools = build_carrier_tools(token, carrier_id)
 
     @tool
     def carrier_specialist(request: str) -> str:
@@ -51,7 +51,7 @@ def build_carrier_specialist(token: str):
             model=model(SPECIALIST_MODEL_ID),
             system_prompt="Sen CargoPact taşıyıcı uzmanısın (planlamacılara yardım edersin). " + COMMON +
             " Bekleyen talepleri priorityRank sırasıyla, verifiedNoShows ve uygunluk (eligibility) bilgisiyle özetle; "
-            "önceliğin nedenini carrier_rules ile açıkla. Sefer referansıyla sorulursa trip_detail'i doğrudan referansla çağır.",
+            "önceliğin nedenini carrier_knowledge ile açıkla. Kural, istisna, iade dilimi, kapora, e-POD ve firma bazlı gelmeme geçmişi sorularında carrier_knowledge'ı çağır ve kaynak dosya adını belirt. Bilgi tabanında kayıt bulunmaması 'kayıt yok' demek değildir; güncel gelmeme sayısı için trip_detail'deki verifiedNoShows alanını kullan ve API değeriyle bilgi tabanını karşılaştır, çelişkide API esastır.  Sefer referansıyla sorulursa trip_detail'i doğrudan referansla çağır.",
             tools=tools,
             callback_handler=None,
         )

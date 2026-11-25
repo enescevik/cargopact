@@ -66,6 +66,15 @@ export class AgentsStack extends cdk.Stack {
     // DB erişimi: yalnızca bağlanma yetkisi; şema yetkileri DSQL içinde verilir.
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dsql:DbConnect"], resources: [props.dsqlClusterArn] }));
 
+    // Taşıyıcı bilgi tabanı (Bedrock KB + S3 Vectors; CLI ile kuruldu, bkz. docs/kb/README.md)
+    const kbId = this.node.tryGetContext("kbId") ?? "ATCPKGCFWE";
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["bedrock:Retrieve"],
+        resources: [`arn:aws:bedrock:${this.region}:${this.account}:knowledge-base/${kbId}`],
+      }),
+    );
+
     this.runtimeArnPattern = `arn:aws:bedrock-agentcore:${this.region}:${this.account}:runtime/*`;
 
     if (props.agentImageTag) {
@@ -82,6 +91,7 @@ export class AgentsStack extends cdk.Stack {
           DSQL_CLUSTER_ARN: props.dsqlClusterArn,
           MODEL_ID: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
           SPECIALIST_MODEL_ID: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          KB_ID: kbId,
           API_URL: this.node.tryGetContext("apiUrl") ?? "https://765h182ijf.execute-api.us-east-1.amazonaws.com",
         },
       });
