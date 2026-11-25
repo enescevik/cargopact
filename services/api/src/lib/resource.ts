@@ -30,7 +30,8 @@ export interface ResourceDef<I> {
 const SAFE_ID = /^[a-z_][a-z0-9_]*$/;
 const assertIdent = (s: string) => { if (!SAFE_ID.test(s)) throw new Error(`Geçersiz tanımlayıcı: ${s}`); return s; };
 
-const encodeCursor = (createdAt: Date, id: string) => Buffer.from(`${createdAt.toISOString()}|${id}`).toString("base64url");
+// Zaman PostgreSQL metniyle (mikrosaniye hassasiyetli) taşınır; JS Date milisaniyeye kırpacağı için kullanılmaz.
+const encodeCursor = (createdAtText: string, id: string) => Buffer.from(`${createdAtText}|${id}`).toString("base64url");
 const decodeCursor = (c: string) => {
   const [ts, id] = Buffer.from(c, "base64url").toString().split("|");
   if (!ts || !id || Number.isNaN(Date.parse(ts))) throw validation("Geçersiz cursor.");
@@ -50,10 +51,11 @@ export function resourceHandlers<I>(def: ResourceDef<I>, pool: pg.Pool) {
     if (req.query.status) { args.push(z.enum(["active", "inactive", "maintenance"]).parse(req.query.status)); where += ` and status = $${args.length}`; }
     if (q.cursor) { const c = decodeCursor(q.cursor); args.push(c.ts, c.id); where += ` and (created_at, id) > ($${args.length - 1}::timestamptz, $${args.length}::uuid)`; }
     args.push(q.limit + 1);
-    const { rows } = await pool.query(`select * from ${table} where ${where} order by created_at, id limit $${args.length}`, args);
+    const { rows } = await pool.query(`select *, created_at::text as _cursor_ts from ${table} where ${where} order by created_at, id limit $${args.length}`, args);
     const page = rows.slice(0, q.limit);
-    const next = rows.length > q.limit ? encodeCursor(page[page.length - 1].created_at, page[page.length - 1].id) : undefined;
-    return ok({ items: page.map(camelRow), nextCursor: next });
+    const last = page[page.length - 1];
+    const next = rows.length > q.limit ? encodeCursor(last._cursor_ts, last.id) : undefined;
+    return ok({ items: page.map(({ _cursor_ts, ...r }) => camelRow(r)), nextCursor: next });
   };
 
   const get = async (ctx: AuthContext, req: Req): Promise<Res> => {

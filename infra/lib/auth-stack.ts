@@ -17,7 +17,7 @@ export class AuthStack extends cdk.Stack {
     });
     // Web ve mobil için aynı public client (secret yok).
     this.webClient = this.userPool.addClient("AppClient", {
-      authFlows: { userSrp: true },
+      authFlows: { userSrp: true, userPassword: true }, // userPassword: seed/smoke testleri için
       generateSecret: false,
       preventUserExistenceErrors: true,
     });
