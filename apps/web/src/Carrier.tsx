@@ -15,6 +15,7 @@ import { PodThumbs, TeslimModal } from "./carrier/Pod";
 import { MeasureModal } from "./carrier/Measure";
 import { NewTripWizard } from "./carrier/NewTrip";
 import { CustomerManagement } from "./carrier/Customers";
+import { Markdown } from "./Markdown";
 import { ManifestView } from "./carrier/Manifest";
 import { KpiView } from "./Kpis";
 import { ExceptionsView } from "./Exceptions";
@@ -293,7 +294,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
         <Modal title={`${insight.r.customer.name} · geçmiş değerlendirmesi`} onClose={() => setInsight(null)}>
           <div className="alert warn" style={{ marginBottom: 14 }}><AlertTriangle size={18} /><span><b>{insight.r.customerHistory.historicalReservationCount}</b> sonuçlanmış talebin <b>{insight.r.customerHistory.verifiedNoShows}</b> tanesinde onaylı yük zamanında getirilmedi.</span></div>
           <div className="tiny" style={{ marginBottom: 10 }}>Sayılar işlem API’sinden, kural yorumu taşıyıcıya özel Bedrock Knowledge Base’den gelir. Bu panel karar desteğidir; otomatik onay veya ret vermez.</div>
-          {insight.busy ? <SkeletonCards n={1} h={120} /> : insight.err ? <ErrorBox error={insight.err} /> : <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{insight.text}</div>}
+          {insight.busy ? <SkeletonCards n={1} h={120} /> : insight.err ? <ErrorBox error={insight.err} /> : <Markdown text={insight.text} />}
         </Modal>
       )}
       {reject && <ReasonModal title={`${reject.customer.name} talebini reddet`} cta="Reddet" required presets={REJECT_REASONS} onClose={() => setReject(null)}

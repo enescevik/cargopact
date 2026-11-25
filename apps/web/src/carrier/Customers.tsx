@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, CheckCircle2, Eye, Search, Sparkles } from "l
 import { api, sendChat } from "../api";
 import { dt } from "../format";
 import { Empty, ErrorBox, Modal, SkeletonCards, useFetch } from "../ui";
+import { Markdown } from "../Markdown";
 
 export type CustomerRiskCategory = "UYGUN" | "IZLENMELI" | "RISKLI";
 export type CustomerManagementItem = {
@@ -102,6 +103,6 @@ function CustomerAnalysis({ customer, onClose }: { customer: CustomerManagementI
     <hr className="hr" />
     <div className="row between wrap"><div><b>Knowledge Base değerlendirmesi</b><div className="tiny">Dinçer'e özel kural dokümanından açıklama getirir.</div></div><button className="btn primary" disabled={busy} onClick={askKnowledgeBase}><Sparkles size={15} />{busy ? "Yorum hazırlanıyor…" : "KB yorumunu getir"}</button></div>
     {error && <div style={{ marginTop: 12 }}><ErrorBox error={error} /></div>}
-    {reply && <div className="alert info" style={{ marginTop: 14, whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{reply}</div>}
+    {reply && <div className="alert info" style={{ marginTop: 14, display: "block" }}><Markdown text={reply} /></div>}
   </Modal>;
 }
