@@ -1,6 +1,6 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "./zod";
-import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
+import { cancelInput, decisionInput, itemsResponse, looseResponse, podUploadInput, podUploadResponse, quoteInput, recipientsInput, reviewInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput } from "./demo";
 import type { Role } from "./common";
 import { integrationStatusResponse, tmsTripInput, wmsPalletEventInput } from "./integrations";
 import {
@@ -52,6 +52,16 @@ const readOnly = (base: string, tag: string, item: z.ZodTypeAny, q = catalogQuer
   { method: "GET", path: `${base}/{id}`, summary: `${tag} katalog kaydı`, tag, roles: READ_ALL, response: item },
 ];
 
+const customerManagementItem = z.object({
+  id: z.string().uuid(), name: z.string(), tenantStatus: z.string(),
+  totalReservations: z.number().int().min(0), delivered: z.number().int().min(0), verifiedNoShows: z.number().int().min(0),
+  cancelled: z.number().int().min(0), rejected: z.number().int().min(0), damaged: z.number().int().min(0), pending: z.number().int().min(0), active: z.number().int().min(0),
+  score: z.number().int().min(0).max(100), category: z.enum(["UYGUN", "IZLENMELI", "RISKLI"]), evidenceCount: z.number().int().min(0), scoreExplanation: z.string(),
+  lastReservationAt: z.string().datetime(),
+  recentEvents: z.array(z.object({ type: z.string(), label: z.string(), at: z.string().datetime(), reservationReference: z.string() })).max(5),
+});
+const customerManagementResponse = z.object({ items: z.array(customerManagementItem) });
+
 /** Tek kaynak: API yönlendiricisi bu listeyle karşılaştırılarak test edilir. */
 export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/health", summary: "Sağlık kontrolü", tag: "Sistem", roles: "public", response: health },
@@ -62,6 +72,7 @@ export const API_OPERATIONS: Operation[] = [
   ...crud("/carrier/vehicle-types", "Araç tipi", vehicleType, vehicleTypeInput, READ_CARRIER, ["carrier_admin"]),
   ...crud("/carrier/vehicles", "Araç", vehicle, vehicleInput, READ_CARRIER, ["carrier_admin"]),
   ...crud("/carrier/packaging-types", "Ambalaj tipi", packagingType, packagingTypeInput, READ_CARRIER, ["carrier_admin"]),
+  { method: "GET", path: "/carrier/customers", summary: "Taşıyıcının müşteri yönetimi ve operasyonel güven skorları", tag: "Müşteri yönetimi", roles: ["carrier_admin", "carrier_planner"], response: customerManagementResponse },
   { method: "GET", path: "/carrier/product-classes", summary: "Kabul edilen ürün sınıfları", tag: "Ürün sınıfı", roles: READ_ALL, response: z.object({ items: z.array(carrierProductClass) }) },
   { method: "PUT", path: "/carrier/product-classes", summary: "Ürün sınıfı kabul listesini güncelle", tag: "Ürün sınıfı", roles: ["carrier_admin"], body: carrierProductClassesInput, response: updatedCount, idempotent: true },
   ...readOnly("/catalog/vehicle-types", "Araç tipi", vehicleType),
@@ -79,6 +90,7 @@ export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/customer/reservations/{id}", summary: "Rezervasyon ayrıntı", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "GET", path: "/customer/reservations/{id}/cancel-preview", summary: "İptal önizleme", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "POST", path: "/customer/reservations/{id}/cancel", summary: "Rezervasyon iptal", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: cancelInput, response: looseResponse, idempotent: true },
+  { method: "PUT", path: "/customer/reservations/{id}/recipients", summary: "Yetkili alıcıları güncelle (en çok 3, TESLIM'e kadar)", tag: "Müşteri rezervasyon", roles: ["customer_user"], body: recipientsInput, response: looseResponse, idempotent: true },
   { method: "GET", path: "/customer/orders/{orderNumber}/tracking", summary: "Sipariş takibi", tag: "Müşteri rezervasyon", roles: ["customer_user"], response: looseResponse },
   { method: "GET", path: "/carrier/trips", summary: "Seferler", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ status: z.string().optional() }), response: itemsResponse },
   { method: "POST", path: "/carrier/trips", summary: "Sefer oluştur (aracım var, yük ekle)", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripCreateInput, response: looseResponse, status: 201, idempotent: true },
@@ -86,13 +98,23 @@ export const API_OPERATIONS: Operation[] = [
   { method: "POST", path: "/carrier/trips/{id}/status", summary: "Sefer yayınla/kapat/iptal", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripStatusInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/decision", summary: "Talebi onayla/reddet", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: decisionInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/events", summary: "Depo/sefer olayı", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reservationEventInput, response: looseResponse, idempotent: true },
+  { method: "POST", path: "/carrier/reservations/{id}/review", summary: "Ölçüm farkı incelemesi: kısmi kabul (accept_partial + acceptedPallets) veya depoda ret (reject)", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: reviewInput, response: looseResponse, idempotent: true },
   { method: "POST", path: "/carrier/reservations/{id}/pod-upload-url", summary: "e-POD fotoğraf/imza için S3 yükleme URL'si", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, body: podUploadInput, response: podUploadResponse, idempotent: true },
   { method: "PUT", path: "/carrier/trips/{id}", summary: "Seferi düzenle (araç/kapasite) ve bekleyen talepleri yeniden değerlendir; If-Match: sürüm", tag: "Taşıyıcı sefer", roles: ["carrier_admin", "carrier_planner"], body: tripUpdateInput, response: looseResponse, idempotent: true, ifMatch: true },
   { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
   { method: "POST", path: "/carrier/integrations/tms/trips", summary: "TMS sefer yayını (taslak sefer oluşturur; externalTripNo ile idempotent)", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], body: tmsTripInput, response: looseResponse, status: 201, idempotent: true },
   { method: "POST", path: "/warehouse/integrations/wms/pallet-events", summary: "WMS palet olayı (tüm paletler bildirilince rezervasyon olayı uygulanır)", tag: "Entegrasyon", roles: CARRIER_ALL, body: wmsPalletEventInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/notifications", summary: "Uygulama içi bildirimler (kiracı ve role göre)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], query: z.object({ unread: z.enum(["true", "false", "1", "0"]).optional() }), response: looseResponse },
+  { method: "POST", path: "/notifications/read-all", summary: "Tüm bildirimleri okundu işaretle (idempotent)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], response: looseResponse },
+  { method: "POST", path: "/notifications/{id}/read", summary: "Bildirimi okundu işaretle (idempotent)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], response: looseResponse },
   { method: "GET", path: "/carrier/integrations/status", summary: "Olay yayın durumu", tag: "Entegrasyon", roles: CARRIER_ALL, response: integrationStatusResponse },
   { method: "POST", path: "/carrier/integrations/events/flush", summary: "Bekleyen olayları şimdi yayınla", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], response: looseResponse , idempotent: true },
+  { method: "GET", path: "/carrier/agent-traces", summary: "Asistan işlem izi: sohbet turları, araç çağrıları ve correlationId ile eşleşen denetim kayıtları (taşıyıcı: kendi kiracısı; platform: tümü)", tag: "Asistan", roles: [...READ_CARRIER], query: z.object({ limit: z.string().optional() }), response: looseResponse },
+  { method: "POST", path: "/agent/turns/{correlationId}/complete", summary: "Sohbet turunu tamamla (gecikme, yanıt uzunluğu, başarı); yalnız çağıranın kendi turuna yazar", tag: "Asistan", roles: "any-authenticated", body: z.object({ latencyMs: z.number().int().min(0), replyChars: z.number().int().min(0), ok: z.boolean(), sessionId: z.string().optional() }), response: looseResponse },
+  { method: "GET", path: "/carrier/exceptions", summary: "İstisna iş kuyruğu (gelmeme, hasar, geç bırakma, ölçüm farkı, teslim alınmama...)", tag: "İstisnalar", roles: CARRIER_ALL, query: z.object({ status: z.enum(["open", "resolved"]).optional(), tripId: z.string().uuid().optional() }), response: looseResponse },
+  { method: "POST", path: "/carrier/exceptions/{id}/resolve", summary: "İstisnayı çözüldü işaretle (idempotent, denetim kaydı)", tag: "İstisnalar", roles: CARRIER_ALL, body: z.object({ note: z.string().min(1).max(500) }), response: looseResponse },
+  { method: "GET", path: "/carrier/trips/{id}/manifest", summary: "Sefer manifestosu (onaylı+ rezervasyonlar, palet kodları, alıcılar)", tag: "İstisnalar", roles: CARRIER_ALL, response: looseResponse },
+  { method: "GET", path: "/carrier/kpis", summary: "KPI panosu: huni, karar süresi, zamanında bırakma/teslim, hasar, gelmeme, doluluk (palet/kg/m³), gelir-katkı; her metrik {value, numerator, denominator, formula}", tag: "KPI", roles: [...READ_CARRIER], query: z.object({ from: z.string().optional(), to: z.string().optional() }), response: looseResponse },
 ];
 
 export function buildOpenApiDocument(serverUrl?: string) {

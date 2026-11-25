@@ -13,10 +13,11 @@ export const STATUS_LABELS: Record<string, string> = {
   YUKLENDI: "Araca yüklendi", VARISTA: "Varışta teslime hazır", TESLIM: "Teslim edildi", SURESI_DOLDU: "Süresi doldu",
   RET: "Reddedildi", IPTAL: "İptal edildi", EKSIK_HASAR: "Eksik / hasar", GELMEDI: "Yük getirilmedi",
   YENIDEN_DEGERLENDIRME: "Araç/kapasite değişti, yeniden değerlendirme gerekli",
+  INCELEME: "İncelemede – ölçüm farkı", RET_DEPO: "Depoda reddedildi",
 };
 export const CONFIRMED_STATES = ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 export const LOADED_STATES = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
-export const FLOW = ["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI", "RET", "IPTAL", "SURESI_DOLDU"];
+export const FLOW = ["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI", "RET", "IPTAL", "SURESI_DOLDU", "INCELEME", "RET_DEPO"];
 export const COST_PER_PALLET_MINOR = 20000;
 export const HOLD_MS = 2 * 3_600_000;
 
@@ -191,6 +192,12 @@ export function paymentView(res: Row, entries: Row[]) {
   };
 }
 
+export const measurementView = (m?: Row) => m ? {
+  declared: { pallets: m.declared_pallets, kg: m.declared_kg },
+  measured: { pallets: m.measured_pallets, kg: m.measured_kg, heightMm: m.measured_height_mm ?? null },
+  diff: { pallets: m.diff_pallets, kg: m.diff_kg }, outcome: m.outcome as string, note: m.note ?? null, at: iso(m.created_at),
+} : null;
+
 export interface ViewOpts { carrierView?: boolean }
 
 /** Rezervasyon satırlarını sözleşme biçimine çevirir (toplu sorgularla). */
@@ -198,14 +205,17 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const tripIds = [...new Set(rows.map((r) => r.trip_id))];
-  const [trips, evs, led, att] = await Promise.all([
+  const [trips, evs, led, att, wm] = await Promise.all([
     loadTrips(q, "where t.id = any($1::uuid[])", [tripIds]),
     q.query("select reservation_id, type, note, created_at from reservation_events where reservation_id = any($1::uuid[])", [ids]),
     q.query("select reservation_id, type, amount_minor, reason, created_at from ledger_entries where reservation_id = any($1::uuid[])", [ids]),
     uploadsBucket()
       ? q.query("select reservation_id, kind, s3_key from reservation_attachments where reservation_id = any($1::uuid[]) and attached = true order by created_at", [ids])
       : Promise.resolve({ rows: [] as Row[] }),
+    q.query("select * from warehouse_measurements where reservation_id = any($1::uuid[]) order by created_at", [ids]),
   ]);
+  const measurements = new Map<string, Row>();
+  for (const m of wm.rows) measurements.set(m.reservation_id, m); // sıralı: sonuncu kayıt kazanır
   const attUrls = new Map<string, { kind: string; url: string }[]>();
   for (const a of att.rows) {
     const list = attUrls.get(a.reservation_id) ?? [];
@@ -264,6 +274,7 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       paymentPlan: r.payment_plan, depositPercent: r.deposit_percent,
       payment: paymentView(r, led.rows.filter((e) => e.reservation_id === r.id)),
       holdExpiresAt: r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.hold_expires_at ? iso(r.hold_expires_at) : null,
+      measurement: measurementView(measurements.get(r.id)),
       decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[], pod, pickup,
     };
     if (!opts.carrierView) return base;

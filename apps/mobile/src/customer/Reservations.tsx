@@ -3,9 +3,9 @@ import { Text, View } from "react-native";
 import { api } from "../api";
 import { c, mono, serif } from "../theme";
 import { dt, money, place } from "../format";
-import { RouteHead } from "../common";
+import { RouteHead, WarehouseGuide } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
-import type { Reservation, Tracking } from "../types";
+import type { Recipient, Reservation, Tracking } from "../types";
 import { QrTile } from "../qr";
 
 export function Reservations() {
@@ -43,6 +43,50 @@ const FLOW_LABEL: Record<string, string> = {
   YUKLENDI: "Araca yüklendi", VARISTA: "Varışta teslime hazır", TESLIM: "Teslim edildi",
 };
 
+/** Teslim kodu + yetkili alıcılar (müşteri). Kod yalnız müşteri yanıtında gelir. */
+function PickupCard({ r, onSaved }: { r: Reservation; onSaved: (r: Reservation) => void }) {
+  const toast = useToast();
+  const [list, setList] = useState<Recipient[]>(r.pickup?.recipients ?? []);
+  const [busy, setBusy] = useState(false);
+  if (["RET", "IPTAL", "SURESI_DOLDU", "GELMEDI"].includes(r.status)) return null;
+  const editable = r.status !== "TESLIM";
+  const set = (i: number, p: Partial<Recipient>) => setList((l) => l.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const save = async () => {
+    setBusy(true);
+    try {
+      const clean = list.map((x) => ({ name: x.name.trim(), ...(x.phone?.trim() ? { phone: x.phone.trim() } : {}) })).filter((x) => x.name);
+      onSaved(await api<Reservation>("PUT", `/customer/reservations/${r.id}/recipients`, { recipients: clean }));
+      toast("Yetkili alıcılar kaydedildi");
+    } catch (e) { toast((e as Error).message, "err"); } finally { setBusy(false); }
+  };
+  return (
+    <Card style={{ gap: 10 }}>
+      <Label>Teslim kodu</Label>
+      {r.pickup?.code ? (
+        <>
+          <Text style={{ fontFamily: mono, fontSize: 34, letterSpacing: 6, fontWeight: "800", color: c.ink900 }}>{r.pickup.code}</Text>
+          <Text style={{ color: c.ink500, fontSize: 12 }}>Varış merkezinde yetkili alıcı bu kodu söylemelidir. Yalnız yetkili alıcıyla paylaşın.</Text>
+        </>
+      ) : <Text style={{ color: c.ink500 }}>{r.status === "TESLIM" ? "Teslim tamamlandı." : "Kod taşıyıcı onayından sonra görünür."}</Text>}
+      {r.pickup?.locked && <Text style={{ color: c.warning, fontWeight: "700" }}>Çok sayıda hatalı deneme: teslim kilitlendi. Taşıyıcıyla iletişime geçin.</Text>}
+      <Label>Yetkili alıcılar (en çok 3)</Label>
+      {list.length === 0 && <Text style={{ color: c.ink500 }}>Henüz yetkili alıcı yok; alıcı eklemeden teslim yapılamaz.</Text>}
+      {list.map((x, i) => (
+        <View key={i} style={{ gap: 6 }}>
+          <Field label={`Alıcı ${i + 1}`} value={x.name} editable={editable} onChangeText={(t) => set(i, { name: t })} placeholder="Ad Soyad" />
+          <Field label="Telefon (ops.)" value={x.phone ?? ""} editable={editable} onChangeText={(t) => set(i, { phone: t })} keyboardType="phone-pad" />
+          {editable && <Btn kind="ghost" small title="Alıcıyı sil" onPress={() => setList((l) => l.filter((_, j) => j !== i))} />}
+        </View>
+      ))}
+      {editable && (
+        <>
+          {list.length < 3 && <Btn kind="outline" small title="Alıcı ekle" onPress={() => setList((l) => [...l, { name: "" }])} />}
+          <Btn title="Alıcıları kaydet" loading={busy} onPress={save} />
+        </>
+      )}
+    </Card>
+  );
+}
 function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; onBack: () => void }) {
   const toast = useToast();
   const { data, error, reload, setData } = useLoad(() => api<Reservation>("GET", `/customer/reservations/${id}`), [id], 6000);
@@ -87,11 +131,17 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
         <Card>
           <KV k="Kalkış" v={dt(r.trip.departureAt)} />
           <KV k="Yük" v={`${r.pallets} palet · ${r.grossKg} kg · ${r.productClass.name}`} />
+          {r.measurement && <KV k="Depo ölçümü" v={`Beyan ${r.measurement.declared.pallets} palet / ${r.measurement.declared.kg} kg · ölçülen ${r.measurement.measured.pallets} palet / ${r.measurement.measured.kg} kg · ${({ ok: "kabul", review: "inceleniyor", partial: "kısmi kabul", rejected: "reddedildi" } as Record<string, string>)[r.measurement.outcome]}`} />}
           <KV k="Tutar" v={money(r.totalPriceMinor)} bold />
           {r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.holdExpiresAt && <KV k="Blokaj bitişi" v={dt(r.holdExpiresAt)} />}
           {!!r.decisionReason && <KV k="Taşıyıcı notu" v={r.decisionReason} />}
         </Card>
         <Card><Label>Durum</Label><Timeline steps={steps} /></Card>
+        <PickupCard key={r.id + (r.pickup?.code ?? "")} r={r} onSaved={setData} />
+        {["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL"].includes(r.status) && (
+          <WarehouseGuide title="Depoya nasıl giderim?" facility={r.trip.origin} intakeCutoffAt={r.trip.intakeCutoffAt} />
+        )}
+        {r.status === "VARISTA" && <WarehouseGuide title="Teslim alma adresi" facility={r.trip.destination} />}
         <Card style={{ gap: 12 }}>
           <Label>Palet kodları</Label>
           {r.orderNumber && (

@@ -67,6 +67,7 @@ export class ApiStack extends cdk.Stack {
         DSQL_ENDPOINT: `${props.dsqlIdentifier}.dsql.${this.region}.on.aws`,
         DSQL_USER: "cargopact_app",
         UPLOADS_BUCKET: props.uploadsBucket.bucketName,
+        ...(process.env.PICKUP_CODE_SECRET ? { PICKUP_CODE_SECRET: process.env.PICKUP_CODE_SECRET } : {}),
         STAGE: this.node.tryGetContext("stage") ?? "dev",
       },
       bundling: { minify: true, sourceMap: true, target: "node22", externalModules: ["pg-native"] },

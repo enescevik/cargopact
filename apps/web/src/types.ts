@@ -2,6 +2,8 @@ export type Dim = { pallets: number; kg: number; m3: number };
 export type Facility = {
   id: string; code: string; name: string; city: string; district: string | null; address: string;
   kind?: string;
+  latitude?: number | null; longitude?: number | null; contactPhone?: string | null;
+  openingHours?: Partial<Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", [string, string][]>> | null;
   intakeWindow: { from: string; to: string } | null; pickupWindow: { from: string; to: string } | null;
 };
 export type Price = {
@@ -26,6 +28,12 @@ export type CarrierTrip = TripCard & {
   status: string; vehicle: { id: string; plate: string }; capacity: Capacity; pendingCount: number;
 };
 export type LedgerEntry = { type: string; amountMinor: number; at: string; reason: string };
+export type Recipient = { name: string; phone?: string };
+export type Pickup = { recipients: Recipient[]; hint: string | null; locked: boolean; code?: string | null };
+export type Measurement = {
+  declared: { pallets: number; kg: number }; measured: { pallets: number; kg: number; heightMm: number | null };
+  diff: { pallets: number; kg: number }; outcome: "ok" | "review" | "partial" | "rejected"; note: string | null; at: string;
+};
 export type Reservation = {
   id: string; reference: string; orderNumber: string | null; status: string; statusLabel: string;
   trip: TripCard; customer: { id: string; name: string };
@@ -38,6 +46,10 @@ export type Reservation = {
   holdExpiresAt: string | null; decisionReason: string | null; createdAt: string;
   events: { type: string; label: string; at: string; note: string | null }[];
   palletCodes: string[];
+  /** Depo ölçümü (beyandan ayrı saklanır). */
+  measurement?: Measurement | null;
+  /** Teslim yetkisi: düz `code` yalnız müşteri yanıtında gelir. */
+  pickup?: Pickup;
 };
 export type Reason = { code: string; message: string };
 export type CarrierReservation = Reservation & {

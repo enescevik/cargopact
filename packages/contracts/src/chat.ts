@@ -8,6 +8,8 @@ export interface ChatRequest {
 export interface ChatResponse {
   sessionId: string;
   reply: string;
+  /** Bu sohbet turunun izleme kimliği (iş API'sindeki denetim/araç izleriyle eşleşir). */
+  correlationId?: string;
 }
 
 export const MAX_MESSAGE_LENGTH = 4000;

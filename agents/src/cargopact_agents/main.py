@@ -4,6 +4,7 @@ import os
 
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
+from .tools import TracedToken
 from .orchestrator import CARRIER_ROLES, CUSTOMER_ROLES, build_orchestrator, get_identity
 
 log = logging.getLogger("cargopact")
@@ -35,10 +36,12 @@ def invoke(payload: dict, context) -> dict:
         return {"result": "Mesaj boş."}
     if not token:
         return {"result": "Oturum bilgisi eksik; lütfen yeniden giriş yapın."}
+    session_id = str(getattr(context, "session_id", None) or payload.get("sessionId") or "default-session-0000000000000000000")
+    token = TracedToken(token, str(payload.get("correlationId") or ""), session_id)
+    log.info("turn correlationId=%s session=%s", token.correlation_id, session_id)
     role, name, tenant_id = get_identity(token)
     if role not in CUSTOMER_ROLES | CARRIER_ROLES:
         return {"result": "Kimliğiniz doğrulanamadı veya bu asistan için yetkiniz yok."}
-    session_id = getattr(context, "session_id", None) or "default-session-0000000000000000000"
     actor_id = str(payload.get("userId") or "anonymous")
     sm = _session_manager(session_id, actor_id)
     try:

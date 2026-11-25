@@ -60,6 +60,12 @@ type CarrierReservation = Reservation & {
     verifiedNoShows: number;                // ONAYLI olup T−1'e kadar getirilmeyen yükler
   };
   eligibility: { eligible: boolean; reasons: { code: string; message: string }[] } };
+type CustomerManagementItem = {
+  id: string; name: string; tenantStatus: string;
+  totalReservations: number; delivered: number; verifiedNoShows: number; cancelled: number; rejected: number; damaged: number; pending: number; active: number;
+  score: number; category: "UYGUN"|"IZLENMELI"|"RISKLI"; evidenceCount: number; scoreExplanation: string;
+  lastReservationAt: string; recentEvents: { type: string; label: string; at: string; reservationReference: string }[];
+};
 ```
 
 ## Müşteri uçları (rol: customer_user, firma aktif)
@@ -68,6 +74,7 @@ type CarrierReservation = Reservation & {
 | GET | `/customer/trips` | `?originCity=&destinationCity=&date=YYYY-MM-DD&pallets=` (hepsi opsiyonel) | `{ items: TripCard[] }` yalnız published ve T−3 geçmemiş |
 | GET | `/customer/trips/{id}` | `?pallets=` | `TripCard` |
 | POST | `/customer/trips/{id}/quote` | `{ pallets, grossKg, volumeM3?, productClassCode }` | `{ eligible, reasons[{code,message}], price: Price, bookingCutoffAt, intakeCutoffAt, quoteExpiresAt, paymentPlans: [{code:"full",label,dueNowMinor},{code:"deposit",label,depositPercent,dueNowMinor,remainingMinor}], cancellationPolicy: [{label, refundPercent}] }` — **hiçbir şey yazmaz** |
+| PUT | `/customer/reservations/{id}/recipients` | `{ recipients: [{ name, phone? }] }` (en çok 3) | `Reservation`. TESLIM'e kadar düzenlenebilir. `Reservation.pickup = { code (yalnız müşteri; onaydan sonra), recipients[], hint (son 2 hane), locked }`; taşıyıcı yanıtında `code` yoktur |
 | POST | `/customer/reservations` | `{ tripId, pallets, grossKg, volumeM3?, productClassCode, paymentPlan, recipientName?, card: { holder, number, expiry, cvc } }` | 201 `Reservation` (durum `TASIYICI_ONAYI_BEKLIYOR`, kapasite bloke, ödeme provizyon). Kart `4000000000000002` → 402 benzeri `VALIDATION_ERROR` + `details.reason=PAYMENT_DECLINED`. Kapasite yoksa 409 `CAPACITY_EXCEEDED`, uygunsuzsa 400 + reasons |
 | GET | `/customer/reservations` | | `{ items: Reservation[] }` (yeni→eski) |
 | GET | `/customer/reservations/{id}` | | `Reservation` |
@@ -79,12 +86,13 @@ type CarrierReservation = Reservation & {
 ## Transfer merkezi uçları (rol: carrier_admin, carrier_planner; olaylar için carrier_warehouse da)
 | Yöntem | Yol | Gövde | Yanıt |
 |---|---|---|---|
+| GET | `/carrier/customers` | | `{ items: CustomerManagementItem[] }`. Yalnız taşıyıcı admin/planlamacı; metrikler aynı taşıyıcıyla rezervasyon geçmişinden, skor deterministik hesaplanır. KB skoru üretmez. |
 | GET | `/carrier/trips` | `?status=` | `{ items: CarrierTrip[] }` (kalkışa göre) |
 | POST | `/carrier/trips` | `{ originFacilityId, destinationFacilityId, vehicleId, departureAt, arrivalEta, internalPallets, internalKg, maxGrossKg, sellablePallets, sellableKg, sellableM3, basePriceMinor, publish: boolean }` | 201 `CarrierTrip` ("Aracım var, yük ekle") |
 | GET | `/carrier/trips/{id}` | | `CarrierTrip & { reservations: CarrierReservation[] }` (bekleyenler öncelik sırasıyla) |
 | POST | `/carrier/trips/{id}/status` | `{ action: "publish"|"close"|"cancel" }` | `CarrierTrip` |
 | POST | `/carrier/reservations/{id}/decision` | `{ decision: "approve"|"reject", reason? }` (ret için reason zorunlu) | `CarrierReservation`. Onay: uygunluk yeniden kontrol, sipariş no + palet kodları, ödeme tahsil (full: tamamı, deposit: %30). Ret: kapasite iade, provizyon serbest. Tekrar → aynı sonuç |
-| POST | `/carrier/reservations/{id}/events` | `{ type: "DEPO_KABUL"|"YUKLENDI"|"VARISTA"|"TESLIM"|"EKSIK_HASAR"|"GELMEDI", note? }` | `CarrierReservation`. Sıra: ONAYLI→DEPO_KABUL (T−1'e kadar)→YUKLENDI (loaded sayacı artar)→VARISTA→TESLIM. GELMEDI yalnız ONAYLI'dan, T−1 sonrası; kapasite iade, iptal ücreti tutulur |
+| POST | `/carrier/reservations/{id}/events` | `{ type: "DEPO_KABUL"|"YUKLENDI"|"VARISTA"|"TESLIM"|"EKSIK_HASAR"|"GELMEDI", note?, recipientName?, pickupCode?, podKeys? }` — **TESLIM için `recipientName` (yetkili alıcılardan biri; büyük/küçük harf ve aksan duyarsız) + `pickupCode` (6 hane) zorunlu**; yanlışsa 403 `details.reason=UNAUTHORIZED_RECIPIENT` (+`remainingAttempts`) ve denetim kaydı "Yetkisiz teslim denemesi"; 5 hatalı denemeden sonra 409 `PICKUP_LOCKED`; müşteri alıcı tanımlamamışsa 409 `NO_AUTHORIZED_RECIPIENT` | `CarrierReservation`. Sıra: ONAYLI→DEPO_KABUL (T−1'e kadar)→YUKLENDI (loaded sayacı artar)→VARISTA→TESLIM. GELMEDI yalnız ONAYLI'dan, T−1 sonrası; kapasite iade, iptal ücreti tutulur |
 | GET | `/carrier/dashboard` | `?tripId=` (yoksa en yakın demo seferi) | `{ trip: CarrierTrip, grossRevenueMinor, variableCostMinor, contributionMinor, costPerPalletMinor: 20000, customers: [{ name, pallets, kg, totalMinor, status, statusLabel }], timeline: [{ at, label }] }` |
 | GET | `/carrier/facilities`, `/carrier/vehicles` | | mevcut (`{items}`) |
 
@@ -104,3 +112,15 @@ TASIYICI_ONAYI_BEKLIYOR "Taşıyıcı onayı bekliyor" · ONAYLI "Onaylandı" ·
 | Mobil | Müşteri | mobil.musteri@cargopact.example.test | Anadolu Parsiyel |
 | Mobil | Transfer merkezi yöneticisi | mobil.yonetici@cargopact.example.test | Dinçer Lojistik |
 | (yedek) | Müşteri | user@baskent.example.test | Başkent Nakliye |
+
+## Depo ölçümü ve inceleme
+- `POST /carrier/reservations/{id}/events` `{type:"DEPO_KABUL", measurement:{measuredPallets, measuredKg, measuredHeightMm?, note?}}`. Ölçüm `warehouse_measurements` tablosunda beyandan ayrı saklanır; yanıtta `measurement {declared, measured, diff, outcome}`.
+- Kural: palet eşit ve kg farkı ≤ %3 → `ok` (kapasite değişmez). Beyandan az → `ok`, fark kapasiteden iade edilir. Beyandan fazla → uygunluk ölçülen değerle yeniden çalışır: uygunsa `ok` ve onaylı kapasite güncellenir; değilse durum `INCELEME` ("İncelemede – ölçüm farkı").
+- Fiyat: kilitli birim fiyat korunur; toplam = birim × palet, yalnız palet adedi değişirse değişir (fazla ödeme tahsil, eksik palet iade edilir). Kg farkı fiyatı değiştirmez.
+- `POST /carrier/reservations/{id}/review` `{decision:"accept_partial", acceptedPallets}` → `DEPO_KABUL` (kabul edilmeyen paletler için iade iptal politikasına göre, defter nedeni "Kısmi kabul…", palletCodes kırpılır, kapasite bir kez düşer) veya `{decision:"reject"}` → `RET_DEPO` ("Depoda reddedildi"; kapasite bir kez iade, iade politikaya göre).
+
+## İstisnalar ve manifest (taşıyıcı)
+- `GET /carrier/exceptions?status=open|resolved&tripId=` — mevcut verilerden hesaplanan iş kuyruğu (GELMEDI, EKSIK_HASAR, LATE_DROPOFF, NOT_PICKED_UP, NEEDS_REVIEW, MEASUREMENT_DIFF, EXPIRED_HOLD). `id = TÜR:rezervasyonId`.
+- `POST /carrier/exceptions/{id}/resolve` `{note}` — idempotent; ilk not korunur, denetim kaydı yazılır.
+- `GET /carrier/trips/{id}/manifest` — onaylı+ rezervasyonlar, palet kodları, alıcılar. Web: sefer detayında "Manifest" (yazdır).
+- Smoke: `node scripts/smoke-exceptions.mjs`

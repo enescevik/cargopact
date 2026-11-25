@@ -3,6 +3,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda
 import { getPool } from "@cargopact/db";
 import { toErrorResponse, type Req } from "./lib/http";
 import { buildRouter } from "./router";
+import { recordToolCall } from "./routes/traces";
 
 let router: ReturnType<typeof buildRouter> | undefined;
 
@@ -32,6 +33,13 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
     status = res.status;
     return json(res.status, res.body, correlationId);
   } finally {
+    // Ajan araç çağrısı izi (yanıt sonrası, en iyi çaba; istekleri asla bozmaz).
+    if (headers["x-agent-session"]) {
+      await recordToolCall(getPool(), {
+        correlationId, sessionId: headers["x-agent-session"], sub: String(claims.sub ?? ""), tenantHint: headers["x-tenant-id"],
+        method: event.requestContext?.http?.method ?? "", path: event.rawPath, status, ms: Date.now() - started,
+      });
+    }
     console.log(JSON.stringify({ level: "info", correlationId, method: event.requestContext?.http?.method, path: event.rawPath, status, ms: Date.now() - started }));
   }
 };

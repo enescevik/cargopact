@@ -23,7 +23,7 @@ const LOADED = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
 async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknown[]) {
   const sub = `select id from reservations where ${where}`;
-  for (const t of ["notifications", "ledger_entries", "reservation_events", "reservation_attachments"]) {
+  for (const t of ["notifications", "warehouse_measurements", "ledger_entries", "reservation_events", "reservation_attachments"]) {
     await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id in (${sub})`, params));
   }
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
@@ -49,6 +49,9 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     { ref: "DNC-KMP-KNY", carrier: "dincer", origin: "DNC-KMP-TM", dest: "DNC-KNY-DM", plate: "41DNC102", dep: istanbulAt(now, 2, 17), hours: 9, status: "published", base: 180000, tir: true },
     { ref: "DNC-GEB-ADN", carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-ADN-DM", plate: "41DNC301", dep: new Date(now.getTime() + 5 * HOUR), hours: 10, status: "published", base: 220000 },
     { ref: "DNC-PAST-GEB-ANK", carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-ANK-DM", plate: "41DNC102", dep: istanbulAt(now, -1, 18), hours: 8, status: "completed", base: 110000, tir: true },
+    { ref: "DNC-PAST-2-GEB-ANK", carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-ANK-DM", plate: "41DNC101", dep: istanbulAt(now, -7, 18), hours: 8, status: "completed", base: 108000, tir: true },
+    { ref: "DNC-PAST-3-KMP-KNY", carrier: "dincer", origin: "DNC-KMP-TM", dest: "DNC-KNY-DM", plate: "41DNC102", dep: istanbulAt(now, -14, 17), hours: 9, status: "completed", base: 115000, tir: true },
+    { ref: "DNC-PAST-4-GEB-BRS", carrier: "dincer", origin: "DNC-GEB-TM", dest: "DNC-BRS-DM", plate: "41DNC101", dep: istanbulAt(now, -21, 20), hours: 3, status: "completed", base: 95000, tir: true },
     { ref: "SVA-CRK-IZM", carrier: "siva", origin: "SVA-CRK-TM", dest: "SVA-IZM-DM", plate: "59SVA101", dep: istanbulAt(now, 1, 19), hours: 7, status: "published", base: 90000, tir: true },
     { ref: "SVA-MRS-GZT", carrier: "siva", origin: "SVA-MRS-TM", dest: "SVA-GZT-DM", plate: "59SVA301", dep: istanbulAt(now, 1, 16), hours: 5, status: "published", base: 130000 },
   ];
@@ -58,6 +61,8 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
   const carriers = [tenantId("dincer"), tenantId("siva")];
   const allRes = "trip_id in (select id from trips where carrier_id = any($1::uuid[]))";
   await withTx(pool, (c) => c.query(`delete from wms_pallet_events where reservation_id in (select id from reservations where ${allRes})`, [carriers]));
+  await withTx(pool, (c) => c.query("delete from exception_resolutions where carrier_id = any($1::uuid[])", [carriers]));
+  await withTx(pool, (c) => c.query("delete from quote_requests where carrier_id = any($1::uuid[])", [carriers]));
   await deleteReservationsOf(pool, allRes, [carriers]);
   const extraTrips = (await pool.query("select id, reference from trips where carrier_id = any($1::uuid[]) and not (id = any($2::uuid[]))", [carriers, seedTripIds])).rows;
   if (extraTrips.length) {
@@ -76,17 +81,18 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     const v = veh.get(t.plate);
     if (!v) throw new Error(`Araç bulunamadı: ${t.plate} (önce seed L1)`);
     const demoShape = t.tir && v.pos === 33;
-    const internalPallets = demoShape ? 25 : Math.floor(v.pos * 0.6);
-    const sellablePallets = demoShape ? 8 : Math.min(v.pos - internalPallets, Math.max(3, Math.floor(v.pos * 0.3)));
+    const pastShape = demoShape && t.ref === "DNC-PAST-GEB-ANK"; // geçmiş sefer 9 palet taşıdı: satılabilir kapasite buna yetmeli (iç rezerv ihlali yok)
+    const internalPallets = pastShape ? 20 : demoShape ? 25 : Math.floor(v.pos * 0.6);
+    const sellablePallets = pastShape ? 13 : demoShape ? 8 : Math.min(v.pos - internalPallets, Math.max(3, Math.floor(v.pos * 0.3)));
     const maxGross = demoShape ? 22000 : v.payload;
-    const internalKg = demoShape ? 17000 : Math.round(v.payload * 0.6);
-    const sellableKg = demoShape ? 5000 : Math.round(v.payload * 0.25);
+    const internalKg = pastShape ? 16000 : demoShape ? 17000 : Math.round(v.payload * 0.6);
+    const sellableKg = pastShape ? 6000 : demoShape ? 5000 : Math.round(v.payload * 0.25);
     return {
       id: demoId("trips", t.ref), carrier_id: tenantId(t.carrier), reference: t.ref,
       origin_facility_id: demoId("facilities", t.origin), destination_facility_id: demoId("facilities", t.dest), vehicle_id: v.id,
       departure_at: t.dep, arrival_eta: new Date(t.dep.getTime() + t.hours * HOUR), booking_cutoff_at: new Date(t.dep.getTime() - 3 * HOUR), intake_cutoff_at: new Date(t.dep.getTime() - HOUR),
       status: t.status, total_positions: v.pos, internal_pallets: internalPallets, internal_kg: internalKg, max_gross_kg: maxGross,
-      sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
+      sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: pastShape ? 16 : demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
       base_price_minor: t.base, pricing_tiers: t.ref === DEMO_TRIP_REF ? { demandTiers: [{ minUtilization: 0, multiplier: 1 }], timeTiers: [] } : null,
       floor_ratio: 0.8, ceiling_ratio: 1.5, capacity_version: 1, is_demo: true, updated_at: now,
     };
@@ -103,6 +109,17 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
   // 3) Geçmiş / geçmiş-durum rezervasyonları (deterministik).
   const pcId = (await pool.query("select id from product_classes where code = 'GENEL' and tenant_id = '00000000-0000-4000-8000-000000000001'")).rows[0].id;
   interface ResSeed { key: string; customer: string; trip: string; status: string; pallets: number; kg: number; order: number | null; events: [string, number][]; plan?: "full" | "deposit"; createdHoursBeforeDep: number }
+  const managementDelivered = [
+    ["ege", "DNC-PAST-2-GEB-ANK"], ["karadeniz", "DNC-PAST-2-GEB-ANK"], ["bogazici", "DNC-PAST-2-GEB-ANK"], ["icanadolu", "DNC-PAST-2-GEB-ANK"],
+    ["kuzeyege", "DNC-PAST-2-GEB-ANK"], ["akdeniz", "DNC-PAST-2-GEB-ANK"], ["sakarya", "DNC-PAST-2-GEB-ANK"], ["bursapalet", "DNC-PAST-2-GEB-ANK"],
+    ["toros", "DNC-PAST-3-KMP-KNY"], ["cukurova", "DNC-PAST-3-KMP-KNY"], ["batikaradeniz", "DNC-PAST-3-KMP-KNY"], ["kapadokya", "DNC-PAST-3-KMP-KNY"],
+    ["dogumarmara", "DNC-PAST-3-KMP-KNY"], ["ankarabolge", "DNC-PAST-3-KMP-KNY"], ["izmirhat", "DNC-PAST-3-KMP-KNY"], ["anadolu", "DNC-PAST-3-KMP-KNY"],
+  ] as const;
+  const managementNoShows = [
+    ["ege", "DNC-PAST-4-GEB-BRS"],
+    ["guney", "DNC-PAST-4-GEB-BRS"], ["guney", "DNC-PAST-4-GEB-BRS"],
+    ["trakya", "DNC-PAST-4-GEB-BRS"], ["trakya", "DNC-PAST-4-GEB-BRS"], ["trakya", "DNC-PAST-4-GEB-BRS"],
+  ] as const;
   const resSeeds: ResSeed[] = [
     { key: "past-baskent-gelmedi", customer: "baskent", trip: "DNC-PAST-GEB-ANK", status: "GELMEDI", pallets: 2, kg: 1200, order: 3, createdHoursBeforeDep: 60,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 60], ["ONAYLI", 58], ["GELMEDI", 0]] },
@@ -119,10 +136,23 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       order: 11 + i, createdHoursBeforeDep: 56 - i,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 56 - i], ["ONAYLI", 54 - i], ["GELMEDI", 0]],
     })),
+    ...managementDelivered.map(([customer, trip], i): ResSeed => ({
+      key: `management-${customer}-teslim`, customer, trip, status: "TESLIM", pallets: 1, kg: 420 + (i % 5) * 40,
+      order: 14 + i, createdHoursBeforeDep: 72 - (i % 6),
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 72 - (i % 6)], ["ONAYLI", 68 - (i % 6)], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -4], ["TESLIM", -6]],
+    })),
+    ...managementNoShows.map(([customer, trip], i): ResSeed => ({
+      key: `management-${customer}-gelmedi-${i + 1}`, customer, trip, status: "GELMEDI", pallets: 1, kg: 500,
+      order: 30 + i, createdHoursBeforeDep: 60 - i,
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 60 - i], ["ONAYLI", 55 - i], ["GELMEDI", 0]],
+    })),
     { key: "hist-marmara-brs", customer: "marmara", trip: "DNC-GEB-BRS", status: "ONAYLI", pallets: 2, kg: 800, order: 2, createdHoursBeforeDep: 20,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 20], ["ONAYLI", 19]] },
     { key: "hist-anadolu-kny", customer: "anadolu", trip: "DNC-KMP-KNY", status: "TASIYICI_ONAYI_BEKLIYOR", pallets: 1, kg: 500, order: null, createdHoursBeforeDep: 30,
       events: [["TASIYICI_ONAYI_BEKLIYOR", 30]] },
+    // İstisna kuyruğu demosu: varışta eksik/hasar bildirilen sevkiyat (geçmiş sefer; kapasite satırı aşağıda yeniden kurulur).
+    { key: "past-anadolu-eksik-hasar", customer: "anadolu", trip: "DNC-PAST-4-GEB-BRS", status: "EKSIK_HASAR", pallets: 1, kg: 480, order: 13, createdHoursBeforeDep: 50,
+      events: [["TASIYICI_ONAYI_BEKLIYOR", 50], ["ONAYLI", 48], ["DEPO_KABUL", 4], ["YUKLENDI", 2], ["VARISTA", -6], ["EKSIK_HASAR", -7]] },
   ];
   const resRows: Row[] = [], ledgerRows: Row[] = [], eventRows: Row[] = [];
   for (const s of resSeeds) {
@@ -148,9 +178,20 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     await upsert(pool, "reservations", resRows, ["id"], log);
   await upsert(pool, "reservation_events", eventRows.map((e) => ({ id: demoId("reservation_events", `${e.reservation_id}:${e.type}`), ...e })), ["id"], log);
   await upsert(pool, "ledger_entries", ledgerRows.map((e) => ({ id: demoId("ledger_entries", e.idempotency_key), ...e })), ["id"], log);
-  // Tüm canlı siparişler silindiği için sayaç en yüksek seed numarasına (12) döner.
+  // KPI hunisi: her seed rezervasyonu için uygun teklif + dönüşmeyen birkaç teklif (tutarlı, is_demo).
+  const quoteRows: Row[] = resRows.map((r) => ({ id: demoId("quote_requests", `q:${r.id}`), carrier_id: r.carrier_id, customer_id: r.customer_id, trip_id: r.trip_id, pallets: r.pallets, gross_kg: r.gross_kg, eligible: true, unit_price_minor: r.unit_price_minor, created_at: new Date(r.created_at.getTime() - HOUR), is_demo: true }));
+  const extraQ: [string, string, number, number, boolean][] = [
+    ["marmara", "DNC-GEB-BRS", 2, 900, true], ["anadolu", "DNC-GEB-BRS", 1, 500, true], ["baskent", "DNC-KMP-KNY", 3, 1500, true], ["marmara", "DNC-PAST-GEB-ANK", 2, 1000, true],
+    ["anadolu", "DNC-PAST-GEB-ANK", 4, 2000, true], ["baskent", "DNC-GEB-BRS", 20, 30000, false], ["marmara", "DNC-KMP-KNY", 25, 26000, false],
+  ];
+  extraQ.forEach(([cu, tr, p, kg, el], i) => {
+    const t = tripBy.get(tr)!;
+    quoteRows.push({ id: demoId("quote_requests", `x${i}`), carrier_id: t.carrier_id, customer_id: tenantId(cu), trip_id: t.id, pallets: p, gross_kg: kg, eligible: el, unit_price_minor: t.base_price_minor, created_at: new Date(t.departure_at.getTime() - (40 + i * 3) * HOUR), is_demo: true });
+  });
+  await upsert(pool, "quote_requests", quoteRows, ["id"], log);
+  // Tüm canlı siparişler silindiği için sayaç en yüksek seed numarasına (35) döner.
   await withTx(pool, async (c) => {
-    await c.query("insert into order_counters (year, last_value) values ($1, 12) on conflict (year) do update set last_value = 12", [year]);
+    await c.query("insert into order_counters (year, last_value) values ($1, 35) on conflict (year) do update set last_value = 35", [year]);
   });
 
   // 4) Kapasite satırlarını rezervasyon toplamlarından yeniden kur (tüm seed seferleri).

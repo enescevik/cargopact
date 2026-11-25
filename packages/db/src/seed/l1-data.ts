@@ -8,10 +8,24 @@ export const carriers = [
 export const customers = [
   { key: "marmara", name: "Marmara Ambar", status: "active" },
   { key: "anadolu", name: "Anadolu Parsiyel", status: "active" },
-  { key: "baskent", name: "Başkent Nakliye", status: "active" }, // L4'te doğrulanmış gelmeme geçmişi
+  { key: "baskent", name: "Başkent Nakliye", status: "active" },
   { key: "ege", name: "Ege Depo Hizmetleri", status: "active" },
   { key: "karadeniz", name: "Karadeniz Parsiyel", status: "active" },
   { key: "guney", name: "Güney Lojistik Pazarlama", status: "pending" }, // onaysız firma senaryosu
+  { key: "trakya", name: "Trakya Dağıtım", status: "active" },
+  { key: "bogazici", name: "Boğaziçi Depolama", status: "active" },
+  { key: "icanadolu", name: "İç Anadolu Kargo", status: "active" },
+  { key: "kuzeyege", name: "Kuzey Ege Lojistik", status: "active" },
+  { key: "akdeniz", name: "Akdeniz Ambar", status: "active" },
+  { key: "sakarya", name: "Sakarya Transfer", status: "active" },
+  { key: "bursapalet", name: "Bursa Palet Dağıtım", status: "active" },
+  { key: "toros", name: "Toros Bölge Lojistik", status: "active" },
+  { key: "cukurova", name: "Çukurova Sevkiyat", status: "active" },
+  { key: "batikaradeniz", name: "Batı Karadeniz Ambar", status: "active" },
+  { key: "kapadokya", name: "Kapadokya Lojistik", status: "active" },
+  { key: "dogumarmara", name: "Doğu Marmara Depo", status: "active" },
+  { key: "ankarabolge", name: "Ankara Bölge Nakliyat", status: "active" },
+  { key: "izmirhat", name: "İzmir Hat Taşımacılık", status: "active" },
 ] as const;
 
 const weekday: [string, string][] = [["07:00", "21:00"]];

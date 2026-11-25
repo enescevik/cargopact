@@ -25,7 +25,7 @@ Kaynak: `.kiro/specs/*/tasks.md` (madde bazlı [x]/[ ]) ve git geçmişi. Spec'l
 Stack'ler: CargoPact-Auth, -Data, -Api, -Agents, -Web. Demo hesapları ve sözleşme: `docs/DEMO_API.md` (parola `.env.seed` / DEMO_API). Sunum akışı: `docs/DEMO_SCRIPT.md`.
 
 ## Uygulananlar (özet)
-- **Taban:** monorepo, Cognito JWT, DSQL (IAM, OCC yeniden deneme, idempotency, audit), ana veri CRUD, seed L1 (9 kiracı, 12 tesis, 10 araç, 14 kullanıcı), OpenAPI zod'dan (yönlendirici=belge testi).
+- **Taban:** monorepo, Cognito JWT, DSQL (IAM, OCC yeniden deneme, idempotency, audit), ana veri CRUD, seed L1 (23 kiracı, 12 tesis, 10 araç, 32 kullanıcı), OpenAPI zod'dan (yönlendirici=belge testi).
 - **Çekirdek iş akışı** (`routes/demo.ts`): sefer yayını ("Aracım var, yük ekle"), müşteri arama ve dinamik fiyat dökümü, teklif (yazmaz), blokaj (`trip_capacity` tek satır, taşma korumalı UPDATE), taşıyıcı onay/ret (sipariş no `CP-YYYY-NNNNNN`, palet kodları), öncelik (gelmeme sona), tembel süre aşımı, müşteri iptali + önizleme, sefer iptali, depo olayları (`DEPO_KABUL`→`YUKLENDI`→`VARISTA`→`TESLIM`, `EKSIK_HASAR`, `GELMEDI`), takip, taşıyıcı panosu (gelir/maliyet/katkı).
 - **Ödeme (simüle):** talepte provizyon, onayda tahsilat (kapora %30 ise kalan depo kabulünde), iade/ücret/serbest bırakma yalnız-ekleme defterde; kart `4000000000000002` reddedilir.
 - **İstemciler:** web (müşteri, taşıyıcı, pano, sohbet), mobil Expo (müşteri ve depo; QR üretimi, kamera okuyucu, çevrimdışı olay kuyruğu, e-POD ekranı – commit `0b13a02`), ikisi de `/chat`'e bağlı.

@@ -1,3 +1,4 @@
+import { Notifications } from "./Notifications";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowRight, CalendarClock, Check, CreditCard, LogOut, MessageSquare, PackageSearch, Search, Truck, Warehouse, Ban,
@@ -9,6 +10,8 @@ import {
   Empty, ErrorBox, Field, MiniBars, Modal, PricePop, QrVisual, SkeletonCards, StatusBadge, errText, useFetch, useToast, Skeleton,
 } from "./ui";
 import { Chat } from "./Chat";
+import { PickupCard } from "./PickupCard";
+import { WarehouseGuide } from "./WarehouseGuide";
 
 type View =
   | { name: "search" } | { name: "trip"; id: string; pallets: number } | { name: "done"; r: Reservation }
@@ -34,6 +37,7 @@ export function CustomerPortal({ displayName, tenant, onLogout }: { displayName:
           <div className="small" style={{ textAlign: "right" }}>
             <b>{displayName}</b>{tenant && <div className="tiny">{tenant}</div>}
           </div>
+          <Notifications onOpen={(n) => n.reservationId && setView({ name: "res", id: n.reservationId })} />
           <button className="btn sm" onClick={onLogout}><LogOut size={14} />Çıkış</button>
         </div>
       </header>
@@ -198,6 +202,7 @@ function TripDetail({ id, initialPallets, onBack, onDone }: { id: string; initia
                 <span className="chip"><Truck size={13} />{t.vehicleType.name}</span>
               </div>
             </div>
+            <WarehouseGuide title="Depoya nasıl giderim?" facility={t.origin} intakeCutoffAt={t.intakeCutoffAt} />
             <div className="card">
               <h3 className="serif" style={{ fontSize: 22, marginBottom: 14 }}>Boş kapasite</h3>
               <MiniBars remaining={t.remaining} sellable={t.sellable} />
@@ -398,6 +403,14 @@ function ResDetail({ id, onBack, onTrack }: { id: string; onBack: () => void; on
                 ))}
               </div>
             </div>
+            <PickupCard key={r.id + (r.pickup?.code ?? "")} r={r} onSaved={reload} />
+            {["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL"].includes(r.status) && <WarehouseGuide title="Depoya nasıl giderim?" facility={r.trip.origin} intakeCutoffAt={r.trip.intakeCutoffAt} />}
+            {r.status === "VARISTA" && <WarehouseGuide title="Teslim alma adresi" facility={r.trip.destination} />}
+            {r.measurement && (
+              <div className={`alert ${r.measurement.outcome === "ok" ? "" : "warn"}`} data-testid="measurement-card">
+                <span><b>Depo ölçümü:</b> beyan {r.measurement.declared.pallets} palet / {r.measurement.declared.kg} kg · ölçülen {r.measurement.measured.pallets} palet / {r.measurement.measured.kg} kg (fark {r.measurement.diff.pallets >= 0 ? "+" : ""}{r.measurement.diff.pallets} palet, {r.measurement.diff.kg >= 0 ? "+" : ""}{r.measurement.diff.kg} kg) · {({ ok: "kabul", review: "inceleniyor", partial: "kısmi kabul", rejected: "depoda reddedildi" } as Record<string, string>)[r.measurement.outcome]}</span>
+              </div>
+            )}
             {r.palletCodes.length > 0 && (
               <div className="card">
                 <h3 className="serif" style={{ fontSize: 22, marginBottom: 14 }}>Palet QR kodları</h3>

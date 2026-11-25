@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { z } from "zod";
 import {
-  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, recipientsInput, type Role,
+  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, recipientsInput, reviewInput, type Role,
 } from "@cargopact/contracts";
 import { hashPickupCode, normalizeName, PICKUP_MAX_ATTEMPTS, pickupFields, withTx } from "@cargopact/db";
 import { notify } from "../lib/notify";
 import {
   CANCELLATION_POLICY_TABLE, cancellationRefund, checkEligibility, defaultVolume, isWithinCutoff,
+  adjustedTotalMinor, classifyMeasurement, nonAcceptedShareMinor, proportionalKg,
 } from "@cargopact/domain";
 import { audit } from "../lib/audit";
 import { requireRole, type AuthContext } from "../lib/auth";
@@ -116,6 +117,119 @@ export function demoRoutes(pool: pg.Pool): Route[] {
     return done();
   }
 
+  // ---------------- Depo ölçümü (DEPO_KABUL) ----------------
+  type Meas = NonNullable<z.infer<typeof reservationEventInput>["measurement"]>;
+  /** Ölçülen değerlerle uygunluğu yeniden çalıştırır; rezervasyonun kendi onaylı payı yerine ölçülen konur. */
+  async function recheck(c: pg.PoolClient, r: Record<string, any>, pallets: number, kg: number, volume: number, now: Date) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const t = (await loadTrips(c, "where t.id = $1", [r.trip_id]))[0];
+    const cap = capacityOf(t);
+    return checkEligibility(
+      { status: "published", bookingCutoffAt: t.departure_at, internalKg: t.internal_kg, maxGrossKg: t.max_gross_kg, sellablePallets: t.sellable_pallets, sellableKg: t.sellable_kg, sellableM3: Number(t.sellable_m3) },
+      { heldPallets: cap.held.pallets, heldKg: cap.held.kg, heldM3: cap.held.m3, confirmedPallets: cap.confirmed.pallets - r.pallets, confirmedKg: cap.confirmed.kg - r.gross_kg, confirmedM3: cap.confirmed.m3 - Number(r.volume_m3) },
+      { pallets, grossKg: kg, volumeM3: volume, productClassAccepted: true },
+      { now },
+    );
+  }
+  const volumeFor = (r: Record<string, any>, pallets: number) => (pallets === r.pallets ? Number(r.volume_m3) : defaultVolume(pallets)); // eslint-disable-line @typescript-eslint/no-explicit-any
+  const codesFor = (r: Record<string, any>, pallets: number): string[] => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const cur = (r.pallet_codes ?? []) as string[];
+    return Array.from({ length: pallets }, (_, i) => cur[i] ?? `${r.order_number}-P${i + 1}`);
+  };
+  async function addMeasurement(c: pg.PoolClient, r: Record<string, any>, declared: { pallets: number; kg: number }, m: { pallets: number; kg: number; heightMm?: number | null }, outcome: string, note: string | null | undefined, userId: string, now: Date) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    await c.query(
+      `insert into warehouse_measurements (reservation_id, declared_pallets, declared_kg, measured_pallets, measured_kg, measured_height_mm, diff_kg, diff_pallets, outcome, note, actor_user_id, is_demo, created_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [r.id, declared.pallets, declared.kg, m.pallets, m.kg, m.heightMm ?? null, m.kg - declared.kg, m.pallets - declared.pallets, outcome, note ?? null, userId, r.is_demo, now]);
+  }
+  /**
+   * DEPO_KABUL ölçümü. Fiyat kuralı: kilitli birim fiyat korunur; toplam = birim × palet, yalnız palet adedi değişirse değişir.
+   * Dönüş: review=true ise rezervasyon INCELEME'ye alındı (olay işlendi); aksi halde `extra` doldurulur ve yeni toplam döner.
+   */
+  async function applyMeasurement(c: pg.PoolClient, ctx: AuthContext, r: Record<string, any>, m: Meas, now: Date, extra: Record<string, unknown>): Promise<{ review: boolean; total: number }> { // eslint-disable-line @typescript-eslint/no-explicit-any
+    const declared = { pallets: r.pallets as number, kg: r.gross_kg as number };
+    const meas = { pallets: m.measuredPallets, kg: m.measuredKg, heightMm: m.measuredHeightMm ?? null };
+    const dec = classifyMeasurement({ pallets: declared.pallets, grossKg: declared.kg }, { pallets: meas.pallets, grossKg: meas.kg });
+    let total = Number(r.total_price_minor);
+    if (dec.needsEligibility) {
+      const elig = await recheck(c, r, meas.pallets, meas.kg, volumeFor(r, meas.pallets), now);
+      if (!elig.eligible) {
+        await addMeasurement(c, r, declared, meas, "review", m.note, ctx.userId, now);
+        const note = `Ölçüm farkı: beyan ${declared.pallets} palet / ${declared.kg} kg, ölçülen ${meas.pallets} palet / ${meas.kg} kg. ${elig.reasons.map((x) => x.message).join(" ")}`.slice(0, 300);
+        await setStatus(c, r.id, "INCELEME", now, null);
+        await addEvent(c, r.id, "INCELEME", note, ctx.userId, now, r.is_demo);
+        await audit(c, ctx, { action: "reservation.measurement.review", entityType: "reservation", entityId: r.id, before: { status: r.status, declared }, after: { status: "INCELEME", measured: meas, reasons: elig.reasons.map((x) => x.code) } });
+        await notify(c, r.id, "customer", "RESERVATION_INCELEME", "Depo ölçümünde fark bulundu · {order}", "Taşıyıcı inceliyor; kısmi kabul veya ret kararı bildirilecek.");
+        return { review: true, total };
+      }
+    }
+    if (!dec.withinTolerance) {
+      const volume = volumeFor(r, meas.pallets);
+      await adjustCap(c, r.trip_id, { confP: meas.pallets - declared.pallets, confKg: meas.kg - declared.kg, confM3: volume - Number(r.volume_m3) });
+      Object.assign(extra, { pallets: meas.pallets, gross_kg: meas.kg, volume_m3: volume });
+      if (meas.pallets !== declared.pallets) {
+        total = adjustedTotalMinor(Number(r.unit_price_minor), meas.pallets);
+        Object.assign(extra, { total_price_minor: total, pallet_codes: JSON.stringify(codesFor(r, meas.pallets)) });
+      }
+    }
+    await addMeasurement(c, r, declared, meas, "ok", m.note, ctx.userId, now);
+    await audit(c, ctx, { action: "reservation.measurement.ok", entityType: "reservation", entityId: r.id, after: { declared, measured: meas, withinTolerance: dec.withinTolerance, totalPriceMinor: total } });
+    return { review: false, total };
+  }
+
+  async function review(c: pg.PoolClient, ctx: AuthContext, id: string, input: z.infer<typeof reviewInput>) {
+    const now = new Date();
+    const r = (await fetchRes(c, "where r.id = $1 and r.carrier_id = $2", [uid(id), ctx.tenantId]))[0];
+    if (!r) throw notFound("Rezervasyon");
+    const done = async () => ok(await oneView(c, id, now, true));
+    const target = input.decision === "reject" ? "RET_DEPO" : "DEPO_KABUL";
+    if (r.status === target && input.decision === "reject") return done();
+    if (r.status !== "INCELEME") {
+      if (input.decision === "accept_partial" && ["DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM"].includes(r.status) && r.pallets === input.acceptedPallets) return done();
+      throw conflict(`Bu talep ${STATUS_LABELS[r.status] ?? r.status} durumunda; ölçüm incelemesi yapılamaz.`, "INVALID_TRANSITION");
+    }
+    const m = (await c.query("select * from warehouse_measurements where reservation_id = $1 order by created_at desc limit 1", [id])).rows[0];
+    if (!m) throw conflict("İnceleme için ölçüm kaydı bulunamadı.", "INVALID_TRANSITION");
+    const dep = (await c.query("select departure_at from trips where id = $1", [r.trip_id])).rows[0].departure_at as Date;
+    const led = (await c.query("select type, amount_minor from ledger_entries where reservation_id = $1", [id])).rows;
+    const captured = sumOf(led, "CAPTURED");
+    const pct = cancellationRefund(dep, now, { approved: true }).refundPercent;
+    const declared = { pallets: m.declared_pallets as number, kg: m.declared_kg as number };
+    const meas = { pallets: m.measured_pallets as number, kg: m.measured_kg as number, heightMm: m.measured_height_mm as number | null };
+    if (input.decision === "reject") {
+      const reason = input.reason?.trim() || "Ölçüm farkı nedeniyle depoda reddedildi";
+      await adjustCap(c, r.trip_id, { confP: -r.pallets, confKg: -r.gross_kg, confM3: -Number(r.volume_m3) });
+      const refund = Math.floor((captured * pct) / 100);
+      if (refund > 0) await addLedger(c, id, "REFUNDED", refund, `Depoda reddedildi: %${pct} iade`, `${id}:REFUNDED:reject`, now, r.is_demo);
+      if (captured - refund > 0) await addLedger(c, id, "RETAINED", captured - refund, "Depoda reddedildi: ücret tutuldu (politika)", `${id}:RETAINED:reject`, now, r.is_demo);
+      await addMeasurement(c, r, declared, meas, "rejected", reason, ctx.userId, now);
+      await setStatus(c, id, "RET_DEPO", now, reason);
+      await addEvent(c, id, "RET_DEPO", reason, ctx.userId, now, r.is_demo);
+      await audit(c, ctx, { action: "reservation.measurement.reject", entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: "RET_DEPO", refundPercent: pct }, reason });
+      await notify(c, id, "customer", "RESERVATION_RET_DEPO", "Yükünüz depoda reddedildi · {order}", "Gerekçe: {reason}", { reason });
+      return done();
+    }
+    const accepted = input.acceptedPallets;
+    if (accepted > meas.pallets) throw validation("Kabul edilen palet sayısı ölçülen palet sayısını aşamaz.", { field: "acceptedPallets", measuredPallets: meas.pallets });
+    const acceptedKg = proportionalKg(meas.kg, meas.pallets, accepted);
+    const volume = volumeFor(r, accepted);
+    const elig = await recheck(c, r, accepted, acceptedKg, volume, now);
+    if (!elig.eligible) throw conflict("Kabul edilmek istenen miktar için kapasite yeterli değil.", "NOT_ELIGIBLE", { reasons: elig.reasons });
+    await adjustCap(c, r.trip_id, { confP: accepted - r.pallets, confKg: acceptedKg - r.gross_kg, confM3: volume - Number(r.volume_m3) });
+    const share = nonAcceptedShareMinor(captured, r.pallets, accepted);
+    const refund = Math.floor((share * pct) / 100);
+    if (refund > 0) await addLedger(c, id, "REFUNDED", refund, `Kısmi kabul: ${r.pallets - accepted} palet iadesi (%${pct})`, `${id}:REFUNDED:partial`, now, r.is_demo);
+    if (share - refund > 0) await addLedger(c, id, "RETAINED", share - refund, "Kısmi kabul: kabul edilmeyen palet ücreti tutuldu (politika)", `${id}:RETAINED:partial`, now, r.is_demo);
+    const total = adjustedTotalMinor(Number(r.unit_price_minor), accepted);
+    const rest = total - (captured - share);
+    if (rest > 0) await addLedger(c, id, "CAPTURED", rest, "Depo kabulünde kalan tutar tahsilatı", `${id}:CAPTURED:intake`, now, r.is_demo);
+    await addMeasurement(c, r, declared, meas, "partial", input.note ?? `Kısmi kabul: ${accepted}/${meas.pallets} palet`, ctx.userId, now);
+    await setStatus(c, id, "DEPO_KABUL", now, null, { pallets: accepted, gross_kg: acceptedKg, volume_m3: volume, total_price_minor: total, pallet_codes: JSON.stringify(codesFor(r, accepted)) });
+    await addEvent(c, id, "DEPO_KABUL", `Kısmi kabul: ${accepted}/${meas.pallets} palet`, ctx.userId, now, r.is_demo);
+    await audit(c, ctx, { action: "reservation.measurement.accept_partial", entityType: "reservation", entityId: id, before: { status: r.status, pallets: r.pallets, grossKg: r.gross_kg }, after: { status: "DEPO_KABUL", pallets: accepted, grossKg: acceptedKg, refundMinor: refund } });
+    await notify(c, id, "customer", "RESERVATION_KISMI_KABUL", "Yükünüz kısmen kabul edildi · {order}", `${accepted} / ${meas.pallets} palet kabul edildi; kalan paletler için iade politikası uygulandı.`);
+    return done();
+  }
+
   const TRANSITIONS: Record<string, string[]> = {
     DEPO_KABUL: ["ONAYLI"], YUKLENDI: ["DEPO_KABUL"], VARISTA: ["YUKLENDI"], TESLIM: ["VARISTA"], EKSIK_HASAR: ["YUKLENDI", "VARISTA"], GELMEDI: ["ONAYLI"],
   };
@@ -167,8 +281,15 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       }
       case "DEPO_KABUL": {
         if (!isWithinCutoff(now, t.intake_cutoff_at)) throw conflict("Çıkış deposu kabul süresi (kalkıştan 1 saat önce) geçti.", "INVALID_TRANSITION");
-        const rest = Number(r.total_price_minor) - captured;
+        let total = Number(r.total_price_minor);
+        if (input.measurement) {
+          const mr = await applyMeasurement(c, ctx, r, input.measurement, now, extra);
+          if (mr.review) return done();
+          total = mr.total;
+        }
+        const rest = total - captured;
         if (rest > 0) await addLedger(c, id, "CAPTURED", rest, "Depo kabulünde kalan tutar tahsilatı", `${id}:CAPTURED:intake`, now, r.is_demo);
+        if (rest < 0) await addLedger(c, id, "REFUNDED", -rest, "Ölçüm: palet farkı iadesi", `${id}:REFUNDED:measure`, now, r.is_demo);
         break;
       }
       case "YUKLENDI":
@@ -211,6 +332,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       case "TASIYICI_ONAYI_BEKLIYOR": return "Taşıyıcı onayı bekleniyor.";
       case "ONAYLI": return `Yükünüzü ${t.origin.name} merkezine en geç ${istanbulTime(new Date(t.intakeCutoffAt))} (İstanbul) tarihine kadar getirin.`;
       case "DEPO_KABUL": return "Paletleriniz araca yüklenecek.";
+      case "INCELEME": return "Depo ölçümünde fark bulundu; taşıyıcı inceliyor.";
       case "YUKLENDI": return `Araç yolda; ${t.destination.name} merkezine varışı bekleniyor.`;
       case "VARISTA": return `Yükünüzü ${t.destination.name} merkezinden teslim alın.`;
       case "TESLIM": return "Teslimat tamamlandı.";
@@ -273,6 +395,8 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const price = toPrice(quoteFor(t, input.pallets, now, await contractFor(pool, t, ctx.tenantId, now)));
         const total = price.totalPriceMinor;
         const dep = dueNow(total, "deposit");
+        await pool.query("insert into quote_requests (carrier_id, customer_id, trip_id, pallets, gross_kg, eligible, unit_price_minor) values ($1,$2,$3,$4,$5,$6,$7)",
+          [t.carrier_id, ctx.tenantId, t.id, input.pallets, input.grossKg, elig.eligible, price.unitPriceMinor]).catch(() => undefined); // KPI hunisi; teklifi bozmaz
         return ok({
           eligible: elig.eligible, reasons: elig.reasons, price, bookingCutoffAt: iso(t.booking_cutoff_at), intakeCutoffAt: iso(t.intake_cutoff_at),
           quoteExpiresAt: new Date(Math.min(now.getTime() + QUOTE_TTL_MS, t.booking_cutoff_at.getTime())).toISOString(),
@@ -529,7 +653,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             if (from === "cancelled") to = from;
             else if (!["draft", "published", "closed"].includes(from)) throw conflict(`${from} durumundaki sefer iptal edilemez.`, "INVALID_TRANSITION");
             else {
-              const active = await fetchRes(c, "where r.trip_id = $1 and r.status in ('TASIYICI_ONAYI_BEKLIYOR','ONAYLI','DEPO_KABUL','YUKLENDI','VARISTA')", [id]);
+              const active = await fetchRes(c, "where r.trip_id = $1 and r.status in ('TASIYICI_ONAYI_BEKLIYOR','ONAYLI','INCELEME','DEPO_KABUL','YUKLENDI','VARISTA')", [id]);
               if (active.some((r) => ["YUKLENDI", "VARISTA"].includes(r.status))) throw conflict("Yüklenmiş palet olan sefer iptal edilemez.", "INVALID_TRANSITION");
               for (const r of active) await cancelCore(c, r, now, { full: true, reason: "Taşıyıcı seferi iptal etti", userId: ctx.userId });
               await adjustCap(c, id, {});
@@ -563,6 +687,15 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const input = reservationEventInput.parse(req.body);
         const id = uid(req.params.id);
         return idempotent(pool, ctx, "reservation.event", req.headers["idempotency-key"], { id, ...input }, (c) => recordEvent(c, ctx, id, input));
+      },
+    },
+    {
+      method: "POST", pattern: "/carrier/reservations/{id}/review",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CARRIER_ALL);
+        const input = reviewInput.parse(req.body);
+        const id = uid(req.params.id);
+        return idempotent(pool, ctx, "reservation.review", req.headers["idempotency-key"], { id, ...input }, (c) => review(c, ctx, id, input));
       },
     },
     {
