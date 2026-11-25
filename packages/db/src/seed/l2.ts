@@ -78,17 +78,18 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
     const v = veh.get(t.plate);
     if (!v) throw new Error(`Araç bulunamadı: ${t.plate} (önce seed L1)`);
     const demoShape = t.tir && v.pos === 33;
-    const internalPallets = demoShape ? 25 : Math.floor(v.pos * 0.6);
-    const sellablePallets = demoShape ? 8 : Math.min(v.pos - internalPallets, Math.max(3, Math.floor(v.pos * 0.3)));
+    const pastShape = demoShape && t.ref === "DNC-PAST-GEB-ANK"; // geçmiş sefer 9 palet taşıdı: satılabilir kapasite buna yetmeli (iç rezerv ihlali yok)
+    const internalPallets = pastShape ? 20 : demoShape ? 25 : Math.floor(v.pos * 0.6);
+    const sellablePallets = pastShape ? 13 : demoShape ? 8 : Math.min(v.pos - internalPallets, Math.max(3, Math.floor(v.pos * 0.3)));
     const maxGross = demoShape ? 22000 : v.payload;
-    const internalKg = demoShape ? 17000 : Math.round(v.payload * 0.6);
-    const sellableKg = demoShape ? 5000 : Math.round(v.payload * 0.25);
+    const internalKg = pastShape ? 16000 : demoShape ? 17000 : Math.round(v.payload * 0.6);
+    const sellableKg = pastShape ? 6000 : demoShape ? 5000 : Math.round(v.payload * 0.25);
     return {
       id: demoId("trips", t.ref), carrier_id: tenantId(t.carrier), reference: t.ref,
       origin_facility_id: demoId("facilities", t.origin), destination_facility_id: demoId("facilities", t.dest), vehicle_id: v.id,
       departure_at: t.dep, arrival_eta: new Date(t.dep.getTime() + t.hours * HOUR), booking_cutoff_at: new Date(t.dep.getTime() - 3 * HOUR), intake_cutoff_at: new Date(t.dep.getTime() - HOUR),
       status: t.status, total_positions: v.pos, internal_pallets: internalPallets, internal_kg: internalKg, max_gross_kg: maxGross,
-      sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
+      sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: pastShape ? 16 : demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
       base_price_minor: t.base, pricing_tiers: t.ref === DEMO_TRIP_REF ? { demandTiers: [{ minUtilization: 0, multiplier: 1 }], timeTiers: [] } : null,
       floor_ratio: 0.8, ceiling_ratio: 1.5, capacity_version: 1, is_demo: true, updated_at: now,
     };
