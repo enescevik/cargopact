@@ -127,7 +127,7 @@ function TripDetail({ id, initialPallets, onBack, onDone }: { id: string; initia
   const [cls, setCls] = useState("GENEL");
   const [plan, setPlan] = useState<"full" | "deposit">("full");
   const [recipient, setRecipient] = useState("");
-  const [card, setCard] = useState({ holder: "Marmara Ambar", number: "4242 4242 4242 4242", expiry: "12/30", cvc: "123" });
+  const [card, setCard] = useState({ holder: "Marmara Ambar", number: "4000 0566 5566 5556", expiry: "09/28", cvc: "314" });
   const [quote, setQuote] = useState<Quote | null>(null);
   const [qErr, setQErr] = useState<ApiError | null>(null);
   const [qBusy, setQBusy] = useState(false);
@@ -264,7 +264,7 @@ function TripDetail({ id, initialPallets, onBack, onDone }: { id: string; initia
                         <input className="input" placeholder="AA/YY" value={card.expiry} onChange={(e) => setCard({ ...card, expiry: e.target.value })} />
                         <input className="input" placeholder="CVC" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value })} />
                       </div>
-                      <div className="tiny">Demo: 4242 4242 4242 4242 başarılı, 4000 0000 0000 0002 reddedilir.</div>
+                      <div className="tiny">Demo: 4000 0566 5566 5556 başarılı, 4000 0000 0000 0002 reddedilir.</div>
                     </div>
                   </>
                 )}

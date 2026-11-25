@@ -18,7 +18,7 @@ Parola hepsinde: `Cargopact2026!` (giriş ekranlarında hızlı doldurma düğme
 
 1. Demo verisini sıfırla (aşağıdaki §Sıfırlama). 25/33 görünmeli.
 2. Tüm hesaplara önceden giriş yap, sayfaları açık bırak (Cognito token süresi dolmasın diye sunumdan hemen önce yenile).
-3. Kart numarası hazır: simüle sağlayıcı. `4000000000000002` reddedilir; başka geçerli test numarası kullan (ör. `4242424242424242`, son kullanma gelecekte, CVC 123). ⚠️ Kabul edilen numarayı provada doğrula.
+3. Kart numarası hazır: simüle sağlayıcı. `4000000000000002` reddedilir; başka geçerli test numarası kullan (ör. `4000056655665556`, son kullanma 09/28, CVC 314). ⚠️ Kabul edilen numarayı provada doğrula.
 4. Ekranı tek dizüstüne çıkar: sekme A büyük, B ve C hızlı geçiş.
 
 ## Sıfırlama (her prova ve sunumdan önce)

@@ -160,9 +160,9 @@ function OfferStep({ trip, quote, body, onBack, onDone }: {
   const [plan, setPlan] = useState<"full" | "deposit">("full");
   const [why, setWhy] = useState(false);
   const [holder, setHolder] = useState("ANADOLU PARSIYEL");
-  const [number, setNumber] = useState("4242 4242 4242 4242");
-  const [expiry, setExpiry] = useState("12/30");
-  const [cvc, setCvc] = useState("123");
+  const [number, setNumber] = useState("4000 0566 5566 5556");
+  const [expiry, setExpiry] = useState("09/28");
+  const [cvc, setCvc] = useState("314");
   const [recipient, setRecipient] = useState("");
   const [busy, setBusy] = useState(false);
   const [key, setKey] = useState(uuid);
