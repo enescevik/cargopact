@@ -1,7 +1,7 @@
 import { Notifications } from "./Notifications";
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, X,
+  AlertTriangle, BarChart3, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, ScrollText, LogOut, MessageSquare, PackagePlus, Truck, X,
 } from "lucide-react";
 import { api, ApiError, sendChat } from "./api";
 import type { CarrierReservation, CarrierTrip, Facility } from "./types";
@@ -12,16 +12,20 @@ import { TracesView } from "./Traces";
 import { DashboardView } from "./Dashboard";
 import { EditTripModal } from "./carrier/EditTrip";
 import { PodThumbs, TeslimModal } from "./carrier/Pod";
+import { KpiView } from "./Kpis";
+import { ExceptionsView } from "./Exceptions";
+import { ManifestView } from "./carrier/Manifest";
+import { MeasureModal } from "./carrier/Measure";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 
-type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" };
+type View = { name: "trips" } | { name: "trip"; id: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
   const [view, setView] = useState<View>({ name: "trips" });
-  const tab = view.name === "trip" ? "trips" : view.name;
+  const tab = view.name === "trip" || view.name === "manifest" ? "trips" : view.name;
   const nav: [string, string, React.ReactNode][] = [
     ["trips", "Seferler", <Truck size={18} />], ["new", "Aracım var, yük ekle", <PackagePlus size={18} />],
-    ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />], ["traces", "Asistan işlem izi", <ScrollText size={18} />],
+    ["dash", "Jüri panosu", <LayoutDashboard size={18} />], ["chat", "Asistan", <MessageSquare size={18} />], ["traces", "Asistan işlem izi", <ScrollText size={18} />], ["exceptions", "İstisnalar", <AlertTriangle size={18} />], ["kpis", "Performans (KPI)", <BarChart3 size={18} />],
   ];
   return (
     <div className="shell">
@@ -39,10 +43,13 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
       </aside>
       <div className="main">
         {view.name === "trips" && <TripList onOpen={(id) => setView({ name: "trip", id })} onNew={() => setView({ name: "new" })} />}
-        {view.name === "trip" && <TripDetail id={view.id} onBack={() => setView({ name: "trips" })} />}
+        {view.name === "trip" && <TripDetail id={view.id} onBack={() => setView({ name: "trips" })} onManifest={() => setView({ name: "manifest", id: view.id })} />}
+        {view.name === "manifest" && <ManifestView tripId={view.id} onBack={() => setView({ name: "trip", id: view.id })} />}
+        {view.name === "exceptions" && <ExceptionsView onOpenTrip={(id) => setView({ name: "trip", id })} />}
         {view.name === "new" && <NewTrip onCreated={(id) => setView({ name: "trip", id })} />}
         {view.name === "dash" && <DashboardView />}
         {view.name === "traces" && <TracesView />}
+        {view.name === "kpis" && <KpiView />}
         {view.name === "chat" && <Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} />}
       </div>
     </div>
@@ -88,12 +95,13 @@ const NEXT: Record<string, { type: string; label: string }> = {
   YUKLENDI: { type: "VARISTA", label: "Varışta" }, VARISTA: { type: "TESLIM", label: "Teslim" },
 };
 
-function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
+function TripDetail({ id, onBack, onManifest }: { id: string; onBack: () => void; onManifest?: () => void }) {
   const toast = useToast();
   const { data: t, error, loading, reload } = useFetch((s) => api<TripFull>("GET", `/carrier/trips/${id}`, undefined, { signal: s }), [id], 5000);
   const [busy, setBusy] = useState<string | null>(null);
   const [reject, setReject] = useState<CarrierRes | null>(null);
   const [teslim, setTeslim] = useState<CarrierRes | null>(null);
+  const [measure, setMeasure] = useState<CarrierRes | null>(null);
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState<{ r: CarrierRes; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
   const [historyFor, setHistoryFor] = useState<CarrierRes | null>(null);
@@ -105,7 +113,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
     const rs = t?.reservations ?? [];
     return {
       pending: rs.filter((r) => r.status === "TASIYICI_ONAYI_BEKLIYOR").sort((a, b) => a.priorityRank - b.priorityRank),
-      active: rs.filter((r) => ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"].includes(r.status)),
+      active: rs.filter((r) => ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR", "GELMEDI"].includes(r.status)),
     };
   }, [t]);
 
@@ -139,7 +147,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           <div className="row between wrap">
             <div>
               <div className="row"><span className="kicker">{t.reference} · {t.vehicle.plate}</span><StatusBadge status={t.status} /><span className="row tiny"><span className="live" /> canlı</span>
-                {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Seferi düzenle</button>}</div>
+                {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Seferi düzenle</button>}
+                {onManifest && <button className="btn sm" onClick={onManifest}>Manifest</button>}</div>
               <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{place(t.origin)} → {place(t.destination)}</h1>
               <div className="muted" style={{ marginTop: 6 }}>{t.origin.name} → {t.destination.name}</div>
             </div>
@@ -205,7 +214,8 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
                         <td className="small">{num(r.pallets)} palet · {num(r.grossKg)} kg</td>
                         <td><StatusBadge status={r.status} label={r.statusLabel} /></td>
                         <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                          {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => (n.type === "TESLIM" ? setTeslim(r) : act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`))}>{n.label} <ArrowRight size={13} /></button>}{" "}
+                          {r.status === "INCELEME" && <button className="btn sm primary" onClick={() => setMeasure(r)}>İncele <ArrowRight size={13} /></button>}
+                          {n && <button className="btn sm primary" disabled={busy === r.id} onClick={() => (n.type === "TESLIM" ? setTeslim(r) : n.type === "DEPO_KABUL" ? setMeasure(r) : act(r.id, `/carrier/reservations/${r.id}/events`, { type: n.type }, `${n.label}: ${r.customer.name}`))}>{n.label} <ArrowRight size={13} /></button>}{" "}
                           {["ONAYLI", "DEPO_KABUL", "YUKLENDI"].includes(r.status) && (
                             <>
                               {r.status === "ONAYLI" && <button className="btn sm" onClick={() => setProblem({ r, type: "GELMEDI" })}>Gelmedi</button>}{" "}
@@ -222,6 +232,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
           </div>
         </div>
       )}
+      {measure && <MeasureModal r={measure} onClose={() => setMeasure(null)} onDone={(msg) => { toast(msg, "ok"); setMeasure(null); reload(); }} />}
       {teslim && <TeslimModal r={teslim} onClose={() => setTeslim(null)} onDone={() => { toast(`Teslim kaydedildi: ${teslim.customer.name}`, "ok"); setTeslim(null); reload(); }} />}
       {editing && t && <EditTripModal trip={t} onClose={() => setEditing(false)}
         onSaved={(r: TripUpdateResult) => {

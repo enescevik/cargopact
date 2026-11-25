@@ -31,8 +31,8 @@ export function statusTone(s: string): "success" | "pending" | "danger" | "warni
   switch (s) {
     case "ONAYLI": case "TESLIM": return "success";
     case "TASIYICI_ONAYI_BEKLIYOR": return "pending";
-    case "RET": case "IPTAL": case "GELMEDI": return "danger";
-    case "SURESI_DOLDU": case "EKSIK_HASAR": return "warning";
+    case "RET": case "IPTAL": case "GELMEDI": case "RET_DEPO": return "danger";
+    case "SURESI_DOLDU": case "EKSIK_HASAR": case "INCELEME": return "warning";
     case "DEPO_KABUL": case "YUKLENDI": case "VARISTA": return "info";
     default: return "neutral";
   }

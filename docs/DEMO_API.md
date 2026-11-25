@@ -105,3 +105,9 @@ TASIYICI_ONAYI_BEKLIYOR "Taşıyıcı onayı bekliyor" · ONAYLI "Onaylandı" ·
 | Mobil | Müşteri | mobil.musteri@cargopact.example.test | Anadolu Parsiyel |
 | Mobil | Transfer merkezi yöneticisi | mobil.yonetici@cargopact.example.test | Dinçer Lojistik |
 | (yedek) | Müşteri | user@baskent.example.test | Başkent Nakliye |
+
+## Depo ölçümü ve inceleme
+- `POST /carrier/reservations/{id}/events` `{type:"DEPO_KABUL", measurement:{measuredPallets, measuredKg, measuredHeightMm?, note?}}`. Ölçüm `warehouse_measurements` tablosunda beyandan ayrı saklanır; yanıtta `measurement {declared, measured, diff, outcome}`.
+- Kural: palet eşit ve kg farkı ≤ %3 → `ok` (kapasite değişmez). Beyandan az → `ok`, fark kapasiteden iade edilir. Beyandan fazla → uygunluk ölçülen değerle yeniden çalışır: uygunsa `ok` ve onaylı kapasite güncellenir; değilse durum `INCELEME` ("İncelemede – ölçüm farkı").
+- Fiyat: kilitli birim fiyat korunur; toplam = birim × palet, yalnız palet adedi değişirse değişir (fazla ödeme tahsil, eksik palet iade edilir). Kg farkı fiyatı değiştirmez.
+- `POST /carrier/reservations/{id}/review` `{decision:"accept_partial", acceptedPallets}` → `DEPO_KABUL` (kabul edilmeyen paletler için iade iptal politikasına göre, defter nedeni "Kısmi kabul…", palletCodes kırpılır, kapasite bir kez düşer) veya `{decision:"reject"}` → `RET_DEPO` ("Depoda reddedildi"; kapasite bir kez iade, iade politikaya göre).

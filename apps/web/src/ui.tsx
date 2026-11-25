@@ -108,7 +108,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 const STATUS_TONE: Record<string, string> = {
   TASIYICI_ONAYI_BEKLIYOR: "pending", ONAYLI: "ok", DEPO_KABUL: "info", YUKLENDI: "info", VARISTA: "ok", TESLIM: "ok",
-  SURESI_DOLDU: "warn", RET: "bad", IPTAL: "bad", EKSIK_HASAR: "warn", GELMEDI: "bad",
+  SURESI_DOLDU: "warn", RET: "bad", IPTAL: "bad", EKSIK_HASAR: "warn", GELMEDI: "bad", INCELEME: "warn", RET_DEPO: "bad",
   published: "ok", draft: "", closed: "warn", departed: "info", completed: "ok", cancelled: "bad",
 };
 export const TRIP_LABEL: Record<string, string> = {
