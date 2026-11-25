@@ -29,7 +29,7 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGateway
     const req: Req = {
       method: event.requestContext.http.method.toUpperCase(),
       path: event.rawPath, params: {}, query: (event.queryStringParameters ?? {}) as Record<string, string>,
-      headers, body, claims, correlationId,
+      headers, body, claims, correlationId, sourceIp: event.requestContext?.http?.sourceIp,
     };
     router ??= buildRouter(getPool());
     const res = await router(req);

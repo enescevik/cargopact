@@ -1,6 +1,8 @@
 import type pg from "pg";
 import { requireRole } from "../lib/auth";
 import { ok, validation } from "../lib/http";
+import { carbonOf, loadTrips } from "../lib/trips";
+import { CARBON_METHOD } from "@cargopact/domain";
 import type { Route } from "./master-data";
 const DAY = 86_400_000;
 const CONFIRMED = ["ONAYLI", "DEPO_KABUL", "YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
@@ -47,7 +49,7 @@ export function kpiRoutes(pool: pg.Pool): Route[] {
       const sc = [all, ctx.tenantId, from, to];
       const [qr, resQ, evQ, ledQ, tripQ] = await Promise.all([
         pool.query(`select count(*) filter (where eligible) eligible, count(*) total from quote_requests where ($1::boolean or carrier_id = $2) and created_at >= $3 and created_at < $4`, sc),
-        pool.query(`select r.id, r.status, r.pallets, r.created_at, r.trip_id, t.intake_cutoff_at, t.arrival_eta, d.pickup_window, d.timezone
+        pool.query(`select r.id, r.status, r.pallets, r.created_at, r.trip_id, r.alternative_scenario, t.intake_cutoff_at, t.arrival_eta, d.pickup_window, d.timezone
                       from reservations r join trips t on t.id = r.trip_id join facilities d on d.id = t.destination_facility_id
                      where ($1::boolean or r.carrier_id = $2) and r.created_at >= $3 and r.created_at < $4`, sc),
         pool.query(`select e.reservation_id, e.type, e.created_at from reservation_events e join reservations r on r.id = e.reservation_id
@@ -93,6 +95,16 @@ export function kpiRoutes(pool: pg.Pool): Route[] {
       const costPallets = rs.filter((r) => CONFIRMED.includes(r.status)).reduce((a, r) => a + num(r.pallets), 0);
       const cost = costPallets * VARIABLE_COST_PER_PALLET_MINOR;
 
+      const confRes = rs.filter((r) => CONFIRMED.includes(r.status));
+      const carbonTrips = confRes.length ? new Map((await loadTrips(pool, "where t.id = any($1::uuid[])", [[...new Set(confRes.map((r) => r.trip_id as string))]])).map((t) => [t.id, t])) : new Map<string, Row>();
+      let cAlloc = 0, cSaved = 0, cScen = 0, cPallets = 0;
+      for (const r of confRes) {
+        const c = carbonOf(carbonTrips.get(r.trip_id)!, num(r.pallets), r.alternative_scenario);
+        cAlloc += c.allocatedKg; cPallets += num(r.pallets);
+        if (c.savedKg !== null) { cSaved += c.savedKg; cScen++; }
+      }
+      const r1 = (n: number) => Math.round(n * 10) / 10;
+      const carbon = { allocatedKg: r1(cAlloc), declaredSavedKg: r1(cSaved), perPalletAllocatedKg: cPallets > 0 ? r1(cAlloc / cPallets) : 0, reservationsWithScenario: cScen, reservationsTotal: confRes.length, method: CARBON_METHOD, isDemoFactors: true as const };
       const trips = tripQ.rows.map((t) => {
         const rw = rawBy.get(t.id);
         const cap = { heldP: num(t.held_pallets), heldKg: num(t.held_kg), heldM3: num(t.held_m3), confP: num(t.confirmed_pallets), confKg: num(t.confirmed_kg), confM3: num(t.confirmed_m3) };
@@ -129,7 +141,7 @@ export function kpiRoutes(pool: pg.Pool): Route[] {
         variableCostMinor: { value: cost, numerator: costPallets, denominator: 1, formula: `Onaylı palet adedi × ${VARIABLE_COST_PER_PALLET_MINOR / 100} TL/palet değişken maliyet`, unit: "minor" } as Metric,
         contributionMinor: { value: revenue - cost, numerator: revenue, denominator: cost, formula: "Brüt gelir − değişken maliyet, kuruş", unit: "minor" } as Metric,
       };
-      return ok({ from: from.toISOString(), to: to.toISOString(), scope: all ? "all-carriers" : "carrier", generatedAt: now.toISOString(), counts: { quotes: num(qr.rows[0].total), eligibleQuotes, reservations: rs.length, trips: trips.length }, metrics, trips });
+      return ok({ from: from.toISOString(), to: to.toISOString(), scope: all ? "all-carriers" : "carrier", generatedAt: now.toISOString(), counts: { quotes: num(qr.rows[0].total), eligibleQuotes, reservations: rs.length, trips: trips.length }, metrics, carbon, trips });
     },
   }];
 }

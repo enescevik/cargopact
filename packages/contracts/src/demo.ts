@@ -5,6 +5,15 @@ export const quoteInput = z.object({
   grossKg: z.number().int().min(1).max(40000),
   volumeM3: z.number().min(0).max(200).optional(),
   productClassCode: z.string().min(1).max(40),
+  /** Karbon: müşterinin seçtiği alternatif senaryo (yoksa tasarruf iddiası yapılmaz). */
+  alternativeScenario: z.enum(["dedicated", "groupage"]).optional(),
+});
+/** Sözleşme kabulü. Zorunluluk işleyicide denetlenir (CONTRACT_NOT_ACCEPTED). */
+export const contractAcceptInput = z.object({
+  version: z.string().min(1).max(40),
+  renderedHash: z.string().min(1).max(100),
+  signerName: z.string().trim().min(2).max(120),
+  accepted: z.boolean(),
 });
 export const cardInput = z.object({
   holder: z.string().min(2).max(80),
@@ -19,6 +28,12 @@ export const reservationInput = quoteInput.extend({
   /** Yetkili alıcılar (en çok 3). Verilmezse recipientName tek alıcı sayılır. */
   recipients: z.array(z.object({ name: z.string().trim().min(2).max(120), phone: z.string().trim().max(30).optional() })).max(3).optional(),
   card: cardInput,
+  /** ZORUNLU: contract-preview yanıtındaki sürüm ve renderedHash ile kabul. Eksik/uyuşmaz → 400 CONTRACT_NOT_ACCEPTED. */
+  contract: contractAcceptInput.optional(),
+});
+export const contractPreviewInput = quoteInput.extend({
+  paymentPlan: z.enum(["full", "deposit"]),
+  recipientName: z.string().max(120).optional(),
 });
 export const cancelInput = z.object({ reason: z.string().max(300).optional() });
 export const tripCreateInput = z.object({

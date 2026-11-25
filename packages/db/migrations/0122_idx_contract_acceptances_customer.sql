@@ -1,0 +1,1 @@
+create index async idx_contract_acceptances_customer on contract_acceptances (customer_id)

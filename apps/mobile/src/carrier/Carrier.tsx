@@ -9,6 +9,7 @@ import { c, mono, sansBold, serif } from "../theme";
 import { dt, num } from "../format";
 import { RouteHead } from "../common";
 import { BackBar, Badge, Bar, Btn, Card, Chip, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Title, useLoad, useToast } from "../ui";
+import { ContractViewer, TripCarbonLine } from "../contract";
 import type { CarrierReservation, CarrierTrip } from "../types";
 import { addDays, ChipSelect, dayNum, Eyebrow, isoDay, Noir, operatorCells, RouteTitle, Segmented, today, TruckMap, weekday } from "../premium";
 import { NewTrip } from "./NewTrip";
@@ -16,6 +17,18 @@ import { place } from "../format";
 
 const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı uygun değil", "Ağırlık sınırı aşılıyor", "Rota/zaman uyumsuz", "Müşteri geçmişi riskli"];
 
+function ContractLine({ r }: { r: CarrierReservation }) {
+  const [open, setOpen] = useState(false);
+  if (!r.contract) return null;
+  return (
+    <>
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="button">
+        <Text style={{ color: c.success, fontWeight: "700", fontSize: 13 }}>Sözleşme ✓ {r.contract.version} · {r.contract.signerName} <Text style={{ color: c.cobalt700, textDecorationLine: "underline" }}>Görüntüle</Text></Text>
+      </Pressable>
+      {open && <ContractViewer path={`/carrier/reservations/${r.id}/contract`} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
 type TripFull = CarrierTrip & { reservations: CarrierReservation[] };
 
 function CapBars({ t }: { t: CarrierTrip }) {
@@ -139,6 +152,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
     <View style={{ flex: 1 }}>
       <BackBar title="Seferler" onBack={onBack} />
       <Screen>
+<<<<<<< Updated upstream
         <Noir>
           <Eyebrow light>Operasyon kokpiti · {t.vehicle.plate}</Eyebrow>
           <RouteTitle from={place(t.origin)} to={place(t.destination)} size={26} light />
@@ -166,6 +180,20 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <Segmented value={tab} onChange={setTab} options={[{ value: "req", label: `Talepler ${pending.length}` }, { value: "ok", label: `Onaylı yükler ${others.length}` }]} />
         {tab === "req" && pending.length === 0 && <Empty title="Bekleyen talep yok" />}
         {tab === "req" && pending.map((r) => (
+=======
+        <RouteHead trip={t} size={30} />
+        <Text style={{ color: c.ink500 }}>{dt(t.departureAt)} · {t.vehicle.plate}</Text>
+        <Card>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: c.ink900 }}>{k.plannedPallets} / {k.totalPositions} <Text style={{ fontSize: 14, fontWeight: "500", color: c.ink500 }}>planlanan · fiili {k.actualPallets}/{k.totalPositions}</Text></Text>
+          {k.heldPallets > 0 && <Text style={{ color: c.pending, fontSize: 13, fontWeight: "600" }}>{k.heldPallets} palet bloke (onay bekliyor)</Text>}
+          <CapBars t={t} />
+          <Row gap={8}><Chip label="İç yük" /><Chip tone="cobalt" label="Onaylı" /><Chip tone="mint" label="Kalan" /></Row>
+        </Card>
+        <TripCarbonLine carbon={t.carbon} />
+        <Label>Bekleyen talepler (öncelik sırasıyla)</Label>
+        {pending.length === 0 && <Empty title="Bekleyen talep yok" />}
+        {pending.map((r) => (
+>>>>>>> Stashed changes
           <Card key={r.id} style={{ gap: 10 }}>
             <Row style={{ justifyContent: "space-between" }}>
               <Row gap={8}>
@@ -183,6 +211,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
               </View>
             )}
             <Text style={{ color: c.ink700 }}>{r.pallets} palet · {num(r.grossKg)} kg · {r.productClass.name}</Text>
+            <ContractLine r={r} />
             <Badge tone={r.eligibility.eligible ? "success" : "danger"} label={r.eligibility.eligible ? "Uygun" : "Uygun değil"} />
             {r.eligibility.reasons.map((x, i) => <Text key={i} style={{ fontSize: 13, color: r.eligibility.eligible ? c.ink500 : c.danger }}>• {x.message}</Text>)}
             <Row>
@@ -199,6 +228,7 @@ function TripDetail({ id, onBack }: { id: string; onBack: () => void }) {
               <StatusBadge status={r.status} label={r.statusLabel} />
             </Row>
             <Text style={{ color: c.ink500, fontSize: 13 }}>{r.pallets} palet · {num(r.grossKg)} kg · <Text style={{ fontFamily: mono }}>{r.orderNumber ?? r.reference}</Text></Text>
+            <ContractLine r={r} />
           </Card>
         ))}
       </Screen>
@@ -304,6 +334,7 @@ export function Warehouse() {
         </Row>
         <Text style={{ color: c.ink700 }}>{r.pallets} palet · {num(r.grossKg)} kg</Text>
         <Text style={{ fontFamily: mono, fontSize: 12, color: c.ink500 }}>{r.orderNumber}</Text>
+        <ContractLine r={r} />
         {r.palletCodes.length > 0 && <Text style={{ fontFamily: mono, fontSize: 11, color: c.ink300 }}>{r.palletCodes.join("  ")}</Text>}
         {pending.map((q) => <Badge key={q.idempotencyKey} tone="warning" label={`Bekliyor – sunucu teyidi yok (${q.type})`} />)}
         {nx && !pend && <Btn title={nx.label} loading={busy === r.id + nx.type} onPress={() => (nx.type === "TESLIM" ? setPod(r) : nx.type === "DEPO_KABUL" ? setMeas(r) : fire(r, nx.type))} style={{ minHeight: 60 }} />}

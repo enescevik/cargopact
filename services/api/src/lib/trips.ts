@@ -3,7 +3,8 @@ import { randomBytes } from "node:crypto";
 import type pg from "pg";
 import { derivePickupCode, PICKUP_MAX_ATTEMPTS, withTx } from "@cargopact/db";
 import { presignGet, uploadsBucket } from "./s3";
-import { defaultPolicy, priceQuote, checkEligibility, withTierOverride, type ContractTariff, type PriceQuote } from "@cargopact/domain";
+import { defaultPolicy, priceQuote, checkEligibility, withTierOverride, loadCarbon, tripCarbon, routeDistanceKm, type AlternativeScenario, type ContractTariff, type PriceQuote } from "@cargopact/domain";
+import { contractView, loadAcceptances } from "./contract";
 
 export type Q = pg.Pool | pg.PoolClient;
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -81,6 +82,11 @@ export const toPrice = (p: PriceQuote) => {
   return { unitPriceMinor: p.unitPriceMinor, totalPriceMinor: p.totalPriceMinor, currency: "TRY" as const, breakdown: bd };
 };
 
+export const distanceOf = (r: Row): number =>
+  routeDistanceKm({ lat: r.o_lat == null ? null : Number(r.o_lat), lng: r.o_lng == null ? null : Number(r.o_lng) }, { lat: r.d_lat == null ? null : Number(r.d_lat), lng: r.d_lng == null ? null : Number(r.d_lng) });
+export const carbonOf = (r: Row, pallets: number, scenario?: AlternativeScenario | null) =>
+  loadCarbon({ distanceKm: distanceOf(r), vehiclePalletPositions: Number(r.vt_positions), pallets, scenario });
+
 export function tripCard(r: Row, pallets: number, now: Date, locked?: { unitPriceMinor: number; totalPriceMinor: number; breakdown: Row }, contract?: ContractTariff | null) {
   const cap = capacityOf(r);
   const price = locked ? { unitPriceMinor: locked.unitPriceMinor, totalPriceMinor: locked.totalPriceMinor, currency: "TRY" as const, breakdown: locked.breakdown } : toPrice(quoteFor(r, pallets, now, contract));
@@ -89,7 +95,7 @@ export function tripCard(r: Row, pallets: number, now: Date, locked?: { unitPric
     origin: facility(r, "o"), destination: facility(r, "d"),
     vehicleType: { code: r.vt_code, name: r.vt_name, palletPositions: r.vt_positions },
     departureAt: iso(r.departure_at), arrivalEta: iso(r.arrival_eta), bookingCutoffAt: iso(r.booking_cutoff_at), intakeCutoffAt: iso(r.intake_cutoff_at),
-    sellable: cap.sellable, remaining: cap.remaining, price,
+    sellable: cap.sellable, remaining: cap.remaining, price, carbon: carbonOf(r, pallets),
   };
 }
 
@@ -99,8 +105,16 @@ export async function pendingCounts(q: Q, tripIds: string[]): Promise<Map<string
   return new Map(rows.map((x) => [x.trip_id, Number(x.n)]));
 }
 
-export const carrierTrip = (r: Row, now: Date, pending: number) => ({
-  ...tripCard(r, 1, now), status: r.status, vehicle: { id: r.vehicle_id, plate: r.plate }, capacity: capacityOf(r), pendingCount: pending,
+/** Onaylı+ dış rezervasyonlar (sefer karbonu için). */
+export async function confirmedLoads(q: Q, tripIds: string[]): Promise<Map<string, { pallets: number; scenario: AlternativeScenario | null }[]>> {
+  const m = new Map<string, { pallets: number; scenario: AlternativeScenario | null }[]>();
+  if (tripIds.length === 0) return m;
+  const { rows } = await q.query("select trip_id, pallets, alternative_scenario from reservations where trip_id = any($1::uuid[]) and status = any($2::text[])", [tripIds, CONFIRMED_STATES]);
+  for (const x of rows) { const l = m.get(x.trip_id) ?? []; l.push({ pallets: Number(x.pallets), scenario: (x.alternative_scenario ?? null) as AlternativeScenario | null }); m.set(x.trip_id, l); }
+  return m;
+}
+export const carrierTrip = (r: Row, now: Date, pending: number, loads: { pallets: number; scenario: AlternativeScenario | null }[] = []) => ({
+  ...tripCard(r, 1, now), carbon: tripCarbon({ distanceKm: distanceOf(r), vehiclePalletPositions: Number(r.vt_positions), confirmed: loads }), status: r.status, vehicle: { id: r.vehicle_id, plate: r.plate }, capacity: capacityOf(r), pendingCount: pending,
   version: Number(r.trip_version), capacityVersion: Number(r.capacity_version ?? 1),
 });
 
@@ -205,6 +219,7 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const tripIds = [...new Set(rows.map((r) => r.trip_id))];
+  const acceptances = await loadAcceptances(q, ids);
   const [trips, evs, led, att, wm] = await Promise.all([
     loadTrips(q, "where t.id = any($1::uuid[])", [tripIds]),
     q.query("select reservation_id, type, note, created_at from reservation_events where reservation_id = any($1::uuid[])", [ids]),
@@ -275,6 +290,7 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       payment: paymentView(r, led.rows.filter((e) => e.reservation_id === r.id)),
       holdExpiresAt: r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.hold_expires_at ? iso(r.hold_expires_at) : null,
       measurement: measurementView(measurements.get(r.id)),
+      contract: contractView(acceptances.get(r.id)), carbon: carbonOf(t, r.pallets, r.alternative_scenario),
       decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[], pod, pickup,
     };
     if (!opts.carrierView) return base;

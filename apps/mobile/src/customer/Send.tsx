@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { api, ApiError, uuid } from "../api";
+<<<<<<< Updated upstream
 import { c, sansBold, serif } from "../theme";
 import { dt, hm, money, num, place } from "../format";
 import { Btn, ErrorBox, KV, Row, Screen, Sheet, Skeletons, useLoad, useScrollToFocused, useToast } from "../ui";
@@ -11,6 +12,14 @@ import {
 import { loadAlarms, loadRecipients, rememberRecipient, saveAlarms, type Alarm } from "../alarms";
 import { success, tap } from "../haptics";
 import type { Quote, Reservation, TripCard } from "../types";
+=======
+import { c, serif } from "../theme";
+import { dt, money, num, place } from "../format";
+import { CutoffChips, RouteHead, TripSummary, WarehouseGuide } from "../common";
+import { BackBar, Badge, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Skeletons, StickyBar, Title, useLoad, useToast } from "../ui";
+import { CarbonCard, ContractSheet, type ContractAcceptBody } from "../contract";
+import type { AlternativeScenario, Quote, Reservation, TripCard } from "../types";
+>>>>>>> Stashed changes
 
 type PC = { code: string; name: string };
 type Pk = { id: string; name: string; kind: string };
@@ -32,6 +41,7 @@ const nativeDriver = Platform.OS !== "web";
  * Altta canlı "bilet" çubuğu: seçim özeti + anlık fiyat + ilerle düğmesi.
  */
 export function Send({ onDone }: { onDone: () => void }) {
+<<<<<<< Updated upstream
   const toast = useToast();
   const all = useLoad(() => api<{ items: TripCard[] }>("GET", "/customer/trips"), [], 30000);
   const trips = all.data?.items ?? [];
@@ -66,13 +76,177 @@ export function Send({ onDone }: { onDone: () => void }) {
   const [m3Override, setM3Override] = useState<number | null>(null);
   const [pc, setPc] = useState("GENEL");
   // ödeme
+=======
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [trip, setTrip] = useState<TripCard>();
+  const [pallets, setPallets] = useState("3");
+  const [kg, setKg] = useState("1500");
+  const [m3, setM3] = useState("");
+  const [pc, setPc] = useState("GENEL");
+  const [quote, setQuote] = useState<Quote>();
+  const [alt, setAlt] = useState<AlternativeScenario | null>(null);
+  const [done, setDone] = useState<Reservation>();
+
+  if (step === 4 && done) return <Success r={done} onDone={onDone} />;
+
+  if (step === 1) {
+    return <Search pallets={pallets} setPallets={setPallets} onPick={(t) => { setTrip(t); setStep(2); }} />;
+  }
+  if (step === 2 && trip) {
+    return (
+      <LoadStep trip={trip} pallets={pallets} setPallets={setPallets} kg={kg} setKg={setKg} m3={m3} setM3={setM3} pc={pc} setPc={setPc} alt={alt} setAlt={setAlt}
+        onBack={() => setStep(1)} onNext={(q) => { setQuote(q); setStep(3); }} />
+    );
+  }
+  if (step === 3 && trip && quote) {
+    return (
+      <OfferStep trip={trip} quote={quote} body={{ pallets: Number(pallets), grossKg: Number(kg), volumeM3: m3 ? Number(m3) : undefined, productClassCode: pc, alternativeScenario: alt }}
+        onBack={() => setStep(2)} onDone={(r) => { setDone(r); setStep(4); }} />
+    );
+  }
+  return null;
+}
+
+function Steps({ n }: { n: number }) {
+  return (
+    <Row gap={6}>
+      {["Sefer", "Yük", "Teklif"].map((l, i) => (
+        <View key={l} style={{ flex: 1, gap: 4 }}>
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: i < n ? c.cobalt600 : c.line }} />
+          <Text style={{ fontSize: 11, fontWeight: "700", color: i < n ? c.cobalt700 : c.ink300 }}>{i + 1}. {l}</Text>
+        </View>
+      ))}
+    </Row>
+  );
+}
+
+function Search({ pallets, setPallets, onPick }: { pallets: string; setPallets: (v: string) => void; onPick: (t: TripCard) => void }) {
+  const [o, setO] = useState("");
+  const [d, setD] = useState("");
+  const [date, setDate] = useState("");
+  const [q, setQ] = useState({ o: "", d: "", date: "", p: "" });
+  const { data, error, loading, reload } = useLoad(() => {
+    const p = new URLSearchParams();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.date)) p.set("date", q.date);
+    if (Number(q.p) > 0) p.set("pallets", q.p);
+    // Şehir/ilçe/tesis adı eşleşmesi istemcide (API yalnız il adıyla eşleşir; kullanıcı "Gebze" yazar).
+    const norm = (x: string) => x.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const hit = (term: string, f: TripCard["origin"]) => !term.trim() || [f.city, f.district ?? "", f.name].some((v) => norm(v).includes(norm(term)));
+    return api<{ items: TripCard[] }>("GET", `/customer/trips?${p}`).then((r) => ({ items: r.items.filter((t) => hit(q.o, t.origin) && hit(q.d, t.destination)) }));
+  }, [q]);
+  return (
+    <Screen>
+      <Steps n={1} />
+      <Title sub="Rotanıza uygun, boş palet yeri olan seferleri bulun.">Sefer ara</Title>
+      <Card>
+        <Row><Field label="Çıkış şehri" value={o} onChangeText={setO} placeholder="Gebze" /><Field label="Varış şehri" value={d} onChangeText={setD} placeholder="Ankara" /></Row>
+        <Row>
+          <Field label="Tarih (YYYY-AA-GG)" value={date} onChangeText={setDate} placeholder="2026-11-26" autoCapitalize="none" />
+          <Field label="Palet" value={pallets} onChangeText={setPallets} keyboardType="number-pad" />
+        </Row>
+        <Btn title="Sefer ara" onPress={() => setQ({ o, d, date, p: pallets })} />
+      </Card>
+      {loading ? <Skeletons n={3} h={150} /> : error ? <ErrorBox message={error} onRetry={() => reload()} /> :
+        !data?.items.length ? <Empty title="Uygun sefer bulunamadı" text="Şehir veya tarih filtresini değiştirmeyi deneyin." /> :
+          data.items.map((t) => <TripSummary key={t.id} trip={t} onPress={() => onPick(t)} />)}
+    </Screen>
+  );
+}
+
+function LoadStep(p: {
+  trip: TripCard; pallets: string; setPallets: (v: string) => void; kg: string; setKg: (v: string) => void; m3: string; setM3: (v: string) => void;
+  pc: string; setPc: (v: string) => void; alt: AlternativeScenario | null; setAlt: (v: AlternativeScenario | null) => void; onBack: () => void; onNext: (q: Quote) => void;
+}) {
+  const classes = useLoad(() => api<{ items: PC[] }>("GET", "/catalog/product-classes"), []);
+  const [quote, setQuote] = useState<Quote>();
+  const [err, setErr] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const pal = Number(p.pallets), kgN = Number(p.kg);
+  const valid = pal > 0 && kgN > 0;
+
+  useEffect(() => {
+    if (!valid) { setQuote(undefined); return; }
+    let alive = true;
+    setBusy(true);
+    const h = setTimeout(async () => {
+      try {
+        const r = await api<Quote>("POST", `/customer/trips/${p.trip.id}/quote`, {
+          pallets: pal, grossKg: kgN, volumeM3: p.m3 ? Number(p.m3) : undefined, productClassCode: p.pc, alternativeScenario: p.alt,
+        });
+        if (alive) { setQuote(r); setErr(undefined); }
+      } catch (e) { if (alive) { setErr((e as Error).message); setQuote(undefined); } }
+      finally { if (alive) setBusy(false); }
+    }, 450);
+    return () => { alive = false; clearTimeout(h); };
+  }, [p.trip.id, pal, kgN, p.m3, p.pc, p.alt, valid]);
+
+  const items = classes.data?.items ?? [];
+  return (
+    <View style={{ flex: 1 }}>
+      <BackBar title="Seferler" onBack={p.onBack} />
+      <Screen>
+        <Steps n={2} />
+        <RouteHead trip={p.trip} size={28} />
+        <Title sub="Yükünüzü beyan edin. Teklif anlık hesaplanır.">Yük bilgisi</Title>
+        <Card>
+          <Row><Field label="Palet" value={p.pallets} onChangeText={p.setPallets} keyboardType="number-pad" />
+            <Field label="Brüt kg" value={p.kg} onChangeText={p.setKg} keyboardType="number-pad" />
+            <Field label="m³ (ops.)" value={p.m3} onChangeText={p.setM3} keyboardType="decimal-pad" /></Row>
+          <Label>Ürün sınıfı</Label>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {(items.length ? items : [{ code: "GENEL", name: "Genel" }]).map((i) => (
+              <Chip key={i.code} label={i.name} active={p.pc === i.code} onPress={() => p.setPc(i.code)} />
+            ))}
+          </View>
+        </Card>
+        <Card>
+          <Label>CargoPact olmasaydı nasıl gönderirdiniz? (ops.)</Label>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            <Chip label="Ayrı araçla" active={p.alt === "dedicated"} onPress={() => p.setAlt("dedicated")} />
+            <Chip label="Parsiyel / ambar" active={p.alt === "groupage"} onPress={() => p.setAlt("groupage")} />
+            <Chip label="Belirtmek istemiyorum" active={p.alt === null} onPress={() => p.setAlt(null)} />
+          </View>
+        </Card>
+        <Card style={{ gap: 12 }}>
+          <Row style={{ justifyContent: "space-between" }}><Label>Anlık uygunluk</Label>{busy && <Text style={{ color: c.ink500, fontSize: 12 }}>hesaplanıyor…</Text>}</Row>
+          {!valid ? <Text style={{ color: c.ink500 }}>Palet ve kg girin.</Text> : err ? <Text style={{ color: c.danger }}>{err}</Text> : !quote ? <Skeletons n={1} h={60} /> : (
+            <>
+              <Badge label={quote.eligible ? "Bu sefer yükünüze uygun" : "Bu yük bu sefere uygun değil"} tone={quote.eligible ? "success" : "danger"} />
+              {quote.reasons.map((r, i) => (
+                <Text key={i} style={{ color: quote.eligible ? c.ink500 : c.danger, fontSize: 14 }}>• {r.message}</Text>
+              ))}
+              <Divider />
+              <KV k="Toplam fiyat" v={money(quote.price.totalPriceMinor)} bold />
+              <KV k="Palet başı" v={money(quote.price.unitPriceMinor)} />
+            </>
+          )}
+        </Card>
+        <CarbonCard carbon={quote?.carbon} />
+        <WarehouseGuide title="Depoya nasıl giderim?" facility={p.trip.origin} intakeCutoffAt={p.trip.intakeCutoffAt} />
+      </Screen>
+      <StickyBar>
+        <Btn title="Teklifi gör" disabled={!quote?.eligible} onPress={() => quote && p.onNext(quote)} />
+      </StickyBar>
+    </View>
+  );
+}
+
+function OfferStep({ trip, quote, body, onBack, onDone }: {
+  trip: TripCard; quote: Quote; body: { pallets: number; grossKg: number; volumeM3?: number; productClassCode: string; alternativeScenario: AlternativeScenario | null };
+  onBack: () => void; onDone: (r: Reservation) => void;
+}) {
+  const toast = useToast();
+>>>>>>> Stashed changes
   const [plan, setPlan] = useState<"full" | "deposit">("full");
   const [cardId, setCardId] = useState<(typeof CARDS)[number]["id"]>("ok");
   const [recips, setRecips] = useState<string[]>([]);
   const [recipient, setRecipient] = useState("");
+<<<<<<< Updated upstream
   const [quote, setQuote] = useState<Quote>();
   const [qErr, setQErr] = useState<string>();
   const [busy, setBusy] = useState(false);
+=======
+>>>>>>> Stashed changes
   const [key, setKey] = useState(uuid);
   const [why, setWhy] = useState(false);
 
@@ -126,6 +300,7 @@ export function Send({ onDone }: { onDone: () => void }) {
   };
   const clearAlarm = async (id: string) => { const next = alarms.filter((a) => a.id !== id); setAlarms(next); await saveAlarms(next); };
 
+<<<<<<< Updated upstream
   const submit = async () => {
     if (!quote || !trip) return;
     const card = CARDS.find((x) => x.id === cardId)!;
@@ -163,6 +338,23 @@ export function Send({ onDone }: { onDone: () => void }) {
   const pp = quote?.paymentPlans.find((x) => x.code === plan);
   const canNext = step === 0 ? !!route : step === 1 ? !!trip && trip.remaining.pallets >= pallets : step === 2 ? !!quote?.eligible : !!quote?.eligible;
 
+=======
+  const [contractOpen, setContractOpen] = useState(false);
+  const reqBody = { tripId: trip.id, ...body, paymentPlan: plan, recipientName: recipient.trim() || undefined };
+  const accept = async (contract: ContractAcceptBody) => {
+    try {
+      const r = await api<Reservation>("POST", "/customer/reservations", {
+        ...reqBody, card: { holder, number: number.replace(/\s/g, ""), expiry, cvc }, contract,
+      }, key);
+      setContractOpen(false);
+      toast("Teklifiniz taşıyıcıya iletildi");
+      onDone(r);
+    } catch (e) {
+      setKey(uuid()); // başarısız denemeden sonra yeni eylem
+      throw e;
+    }
+  };
+>>>>>>> Stashed changes
   return (
     <View style={{ flex: 1 }}>
       {/* adım çubuğu */}
@@ -218,6 +410,7 @@ export function Send({ onDone }: { onDone: () => void }) {
               </Noir>
             </>
           )}
+<<<<<<< Updated upstream
 
           {step === 1 && (
             <>
@@ -351,6 +544,45 @@ export function Send({ onDone }: { onDone: () => void }) {
           ))}
           <Btn kind="ghost" title="Kapat" onPress={() => setAlarmsOpen(false)} />
         </Sheet>
+=======
+        </Card>
+        <CarbonCard carbon={quote.carbon} />
+        <Card>
+          <Label>Ödeme planı</Label>
+          {quote.paymentPlans.map((pl) => (
+            <Card key={pl.code} onPress={() => setPlan(pl.code)} style={{ borderColor: plan === pl.code ? c.cobalt600 : c.line, borderWidth: plan === pl.code ? 2 : 1, backgroundColor: plan === pl.code ? c.cobalt50 : c.surface, shadowOpacity: 0 }}>
+              <Row style={{ justifyContent: "space-between" }}>
+                <Text style={{ fontWeight: "700", color: c.ink900, flex: 1 }}>{pl.label}</Text>
+                <Text style={{ fontWeight: "800", color: c.cobalt700 }}>{money(pl.dueNowMinor)}</Text>
+              </Row>
+              {pl.code === "deposit" && pl.remainingMinor != null && <Text style={{ color: c.ink500, fontSize: 13 }}>Kalan {money(pl.remainingMinor)} kalkıştan önce</Text>}
+            </Card>
+          ))}
+        </Card>
+        <Card>
+          <Row style={{ justifyContent: "space-between" }}><Label>Kart (simüle)</Label><Badge label="Demo ödeme" tone="info" /></Row>
+          <Field label="Kart sahibi" value={holder} onChangeText={setHolder} autoCapitalize="characters" />
+          <Field label="Kart numarası" value={number} onChangeText={setNumber} keyboardType="number-pad" />
+          <Row><Field label="SKT" value={expiry} onChangeText={setExpiry} /><Field label="CVC" value={cvc} onChangeText={setCvc} keyboardType="number-pad" /></Row>
+          <Field label="Yetkili alıcı (ops.)" value={recipient} onChangeText={setRecipient} placeholder="Teslim alacak kişi" />
+        </Card>
+        <Card>
+          <Label>İptal koşulları</Label>
+          {quote.cancellationPolicy.map((x, i) => <KV key={i} k={x.label} v={`%${x.refundPercent} iade`} />)}
+          <Text style={{ color: c.ink500, fontSize: 12 }}>Teklif geçerlilik: {dt(quote.quoteExpiresAt)}</Text>
+        </Card>
+      </Screen>
+      <StickyBar>
+        <Row style={{ justifyContent: "space-between" }}>
+          <View><Text style={{ fontSize: 12, color: c.ink500 }}>Şimdi ödenecek</Text><Text style={{ fontSize: 22, fontWeight: "800", color: c.ink900 }}>{money(pp?.dueNowMinor ?? quote.price.totalPriceMinor)}</Text></View>
+          <Text style={{ color: c.ink500, fontSize: 12 }}>Toplam {money(quote.price.totalPriceMinor)}</Text>
+        </Row>
+        <Btn kind="mint" title="Teklifi kabul et" onPress={() => setContractOpen(true)} />
+      </StickyBar>
+      {contractOpen && (
+        <ContractSheet previewPath={`/customer/trips/${trip.id}/contract-preview`} previewBody={{ ...body, paymentPlan: plan, recipientName: recipient.trim() || undefined }}
+          onClose={() => setContractOpen(false)} onAccept={accept} />
+>>>>>>> Stashed changes
       )}
     </View>
   );

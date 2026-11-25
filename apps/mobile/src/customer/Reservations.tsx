@@ -7,12 +7,17 @@ import { RouteHead, WarehouseGuide } from "../common";
 import { BackBar, Btn, Card, Chip, Divider, Empty, ErrorBox, Field, KV, Label, Row, Screen, Sheet, Skeletons, StatusBadge, Timeline, Title, useLoad, useToast } from "../ui";
 import type { Recipient, Reservation, Tracking } from "../types";
 import { QrTile } from "../qr";
+<<<<<<< Updated upstream
 import { CarbonBadge, customerCells, Eyebrow, Segmented, TruckMap, WalletCard } from "../premium";
+=======
+import { CarbonCard, ContractViewer } from "../contract";
+>>>>>>> Stashed changes
 
 export function Reservations() {
   const [sel, setSel] = useState<string>();
   const [seg, setSeg] = useState<keyof typeof GROUPS>("active");
   const list = useLoad(() => api<{ items: Reservation[] }>("GET", "/customer/reservations"), [], 8000);
+  const summary = useLoad(() => api<{ allocatedKg: number; declaredSavedKg: number; reservations: number }>("GET", "/customer/carbon/summary").catch(() => null), []);
   if (sel) {
     const r = list.data?.items.find((x) => x.id === sel);
     return <Detail id={sel} initial={r} onBack={() => { setSel(undefined); void list.reload(true); }} />;
@@ -21,8 +26,20 @@ export function Reservations() {
   const count = (k: keyof typeof GROUPS) => (list.data?.items ?? []).filter((r) => GROUPS[k].includes(r.status)).length;
   return (
     <Screen>
+<<<<<<< Updated upstream
       <Title sub="Teklifleriniz, siparişleriniz ve teslim kartlarınız.">Yüklerim</Title>
       <Segmented value={seg} onChange={setSeg} options={[{ value: "active", label: `Aktif ${count("active")}` }, { value: "pending", label: `Onay bekliyor ${count("pending")}` }, { value: "past", label: `Geçmiş ${count("past")}` }]} />
+=======
+      <Title sub="Tüm tekliflerin ve siparişlerin.">Rezervasyonlarım</Title>
+      {summary.data && summary.data.reservations > 0 && (
+        <Card style={{ backgroundColor: c.mint100, borderColor: c.mint200, gap: 4 }}>
+          <Label>Karbon özeti</Label>
+          <Text style={{ color: c.ink900, fontWeight: "700" }}>Toplam payınıza düşen emisyon ≈ {Math.round(summary.data.allocatedKg * 10) / 10} kg CO₂e · {summary.data.reservations} rezervasyon</Text>
+          {summary.data.declaredSavedKg > 0 && <Text style={{ color: c.mint600, fontWeight: "800" }}>Beyan ettiğiniz alternatiflere göre ≈ {Math.round(summary.data.declaredSavedKg * 10) / 10} kg daha az</Text>}
+          <Text style={{ color: c.ink500, fontSize: 12 }}>demo katsayıları · tahmini</Text>
+        </Card>
+      )}
+>>>>>>> Stashed changes
       {list.loading && !list.data ? <Skeletons n={3} h={110} /> : list.error && !list.data ? <ErrorBox message={list.error} onRetry={() => list.reload()} /> :
         !items.length ? <Empty title="Bu grupta yük yok" text="“Gönder” sekmesinden bir sefer seçin." /> :
           items.map((r) => (
@@ -156,6 +173,8 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
           {!!r.decisionReason && <KV k="Taşıyıcı notu" v={r.decisionReason} />}
         </Card>
         <Card><Label>Durum</Label><Timeline steps={steps} /></Card>
+        <ContractCard r={r} />
+        <CarbonCard carbon={r.carbon} />
         <PickupCard key={r.id + (r.pickup?.code ?? "")} r={r} onSaved={setData} />
         {["TASIYICI_ONAYI_BEKLIYOR", "ONAYLI", "DEPO_KABUL"].includes(r.status) && (
           <WarehouseGuide title="Depoya nasıl giderim?" facility={r.trip.origin} intakeCutoffAt={r.trip.intakeCutoffAt} />
@@ -213,6 +232,25 @@ function Detail({ id, initial, onBack }: { id: string; initial?: Reservation; on
   );
 }
 
+function ContractCard({ r }: { r: Reservation }) {
+  const [open, setOpen] = useState(false);
+  const k = r.contract;
+  return (
+    <Card style={{ gap: 6 }}>
+      <Label>Sözleşme</Label>
+      {!k ? <Text style={{ color: c.ink500 }}>Sözleşme kaydı yok.</Text> : (
+        <>
+          <Text style={{ color: c.success, fontWeight: "800" }}>Sözleşme ✓ {k.version}</Text>
+          <KV k="İmzalayan" v={k.signerName} />
+          <KV k="Kabul zamanı" v={dt(k.acceptedAt)} />
+          <KV k="Özet (hash)" v={k.renderedHash.slice(0, 12)} />
+          <Btn kind="outline" small title="Görüntüle" onPress={() => setOpen(true)} />
+        </>
+      )}
+      {open && <ContractViewer path={`/customer/reservations/${r.id}/contract`} onClose={() => setOpen(false)} />}
+    </Card>
+  );
+}
 function payLabel(s: string) {
   return ({ authorized: "Provizyon alındı", captured: "Tahsil edildi", partially_captured: "Kısmen tahsil edildi", refunded: "İade edildi", released: "Provizyon serbest", failed: "Başarısız" } as Record<string, string>)[s] ?? s;
 }

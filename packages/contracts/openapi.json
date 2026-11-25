@@ -5,7 +5,11 @@
     "version": "0.1.0",
     "description": "Hatalar `Error` şemasıyla döner. Zamanlar ISO 8601 UTC, para kuruş tamsayı."
   },
-  "servers": [],
+  "servers": [
+    {
+      "url": "https://765h182ijf.execute-api.us-east-1.amazonaws.com"
+    }
+  ],
   "components": {
     "securitySchemes": {
       "cognitoJwt": {
@@ -8119,6 +8123,13 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 40
+                  },
+                  "alternativeScenario": {
+                    "type": "string",
+                    "enum": [
+                      "dedicated",
+                      "groupage"
+                    ]
                   }
                 },
                 "required": [
@@ -8273,6 +8284,13 @@
                     "minLength": 1,
                     "maxLength": 40
                   },
+                  "alternativeScenario": {
+                    "type": "string",
+                    "enum": [
+                      "dedicated",
+                      "groupage"
+                    ]
+                  },
                   "tripId": {
                     "type": "string",
                     "format": "uuid"
@@ -8335,6 +8353,35 @@
                       "number",
                       "expiry",
                       "cvc"
+                    ]
+                  },
+                  "contract": {
+                    "type": "object",
+                    "properties": {
+                      "version": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "renderedHash": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "signerName": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      },
+                      "accepted": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "renderedHash",
+                      "signerName",
+                      "accepted"
                     ]
                   }
                 },
@@ -8533,6 +8580,463 @@
         "description": "Roller: customer_user",
         "tags": [
           "Müşteri rezervasyon"
+        ],
+        "security": [
+          {
+            "cognitoJwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Birden fazla üyelikte seçilen kiracı"
+            },
+            "required": false,
+            "name": "x-tenant-id",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kimlik doğrulanamadı. Token yok/geçersizse API Gateway `{message}` döner, aksi halde Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GatewayUnauthorized"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetki yok veya firma onaysız",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customer/trips/{id}/contract-preview": {
+      "post": {
+        "summary": "Taşıma sözleşmesi önizleme (yazmaz): { contractCode, version, isDraft, title, renderedMarkdown, renderedHash }",
+        "description": "Roller: customer_user",
+        "tags": [
+          "Müşteri rezervasyon"
+        ],
+        "security": [
+          {
+            "cognitoJwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "description": "Aynı anahtar aynı yanıtı döner; farklı gövde 422"
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Birden fazla üyelikte seçilen kiracı"
+            },
+            "required": false,
+            "name": "x-tenant-id",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pallets": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "grossKg": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 40000
+                  },
+                  "volumeM3": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 200
+                  },
+                  "productClassCode": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "alternativeScenario": {
+                    "type": "string",
+                    "enum": [
+                      "dedicated",
+                      "groupage"
+                    ]
+                  },
+                  "paymentPlan": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "deposit"
+                    ]
+                  },
+                  "recipientName": {
+                    "type": "string",
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "pallets",
+                  "grossKg",
+                  "productClassCode",
+                  "paymentPlan"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kimlik doğrulanamadı. Token yok/geçersizse API Gateway `{message}` döner, aksi halde Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GatewayUnauthorized"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetki yok veya firma onaysız",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Çakışma: tekillik veya sürüm",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Idempotency-Key farklı istekle kullanılmış",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customer/reservations/{id}/contract": {
+      "get": {
+        "summary": "Kabul edilmiş sözleşme (imza bölümü dolu) + kabul kaydı",
+        "description": "Roller: customer_user",
+        "tags": [
+          "Müşteri rezervasyon"
+        ],
+        "security": [
+          {
+            "cognitoJwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Birden fazla üyelikte seçilen kiracı"
+            },
+            "required": false,
+            "name": "x-tenant-id",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kimlik doğrulanamadı. Token yok/geçersizse API Gateway `{message}` döner, aksi halde Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GatewayUnauthorized"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetki yok veya firma onaysız",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/customer/carbon/summary": {
+      "get": {
+        "summary": "Karbon özeti (kendi firma): { allocatedKg, declaredSavedKg, reservations, method, isDemoFactors }",
+        "description": "Roller: customer_user",
+        "tags": [
+          "Müşteri rezervasyon"
+        ],
+        "security": [
+          {
+            "cognitoJwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Birden fazla üyelikte seçilen kiracı"
+            },
+            "required": false,
+            "name": "x-tenant-id",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Başarılı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Geçersiz istek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kimlik doğrulanamadı. Token yok/geçersizse API Gateway `{message}` döner, aksi halde Error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GatewayUnauthorized"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Yetki yok veya firma onaysız",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bulunamadı",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/carrier/reservations/{id}/contract": {
+      "get": {
+        "summary": "Kabul edilmiş sözleşme (taşıyıcı, kendi rezervasyonu)",
+        "description": "Roller: carrier_admin, carrier_planner, carrier_warehouse",
+        "tags": [
+          "Taşıyıcı sefer"
         ],
         "security": [
           {
