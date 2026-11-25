@@ -14,13 +14,14 @@ Kendi React sohbet arayüzü → `/chat` → AgentCore Runtime (Strands orkestra
 
 ### 2. Müşteri asistanı
 1. WHEN müşteri rota ve palet bilgisini söylerse THEN ajan eksik beyanı sorup uygun seferleri ve fiyat önizlemesini sunacak.
-2. WHEN müşteri yer ayırmak isterse THEN ajan yazma öncesi açık teyit isteyecek; teyit sonrası iş API'si çağrılacak.
+2. WHEN müşteri yer ayırmak isterse THEN ajan eksik zorunlu bilgileri soracak, sunucudan alınan önizlemeyi gösterip açık teyit isteyecek; teyit sonrası iş API'si çağrılacak. Teyit kodda zorunludur (önceki turda önizlenmiş aynı işlem + bu turdaki açık teyit).
+5. Ajan, uygulamada elle yapılabilen işleri (rezervasyon, iptal, yetkili alıcı; taşıyıcıda onay/ret, depo olayları, sefer açma, istisna kapatma) kullanıcı adına aynı teyit kuralıyla yapabilecek.
 3. WHEN müşteri sipariş numarası verirse THEN ajan yalnız kendi firmasının siparişinin son doğrulanmış durumunu verecek.
 4. Ajan başka firmaya ait veri veya gelmeme geçmişi açıklamayacak.
 
 ### 3. Taşıyıcı asistanı
 1. WHEN planlamacı bir sefer için öncelik sorarsa THEN ajan adayları kural sırasıyla verecek, gerekçeyi taşıyıcının Knowledge Base kuralı ve canlı API'nin doğruladığı geçmişle açıklayacak.
-2. Onay/ret ajan tarafından yalnız ayrı teyit formu sonrası işlenecek.
+2. Onay/ret ajan tarafından yalnız kullanıcının açık teyidinden sonra (önizleme → teyit) işlenecek; ret gerekçesi zorunlu.
 3. Geçmiş yoksa ajan "doğrulanmış gelmeme kaydı yok" diyecek; dizinde olmaması kaydın olmadığı anlamına gelmeyecek.
 
 ### 4. Araçlar ve yetki

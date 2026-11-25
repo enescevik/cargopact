@@ -15,3 +15,4 @@ inclusion: always
 | 8 | Mikro toplama / toplama | Müşteri yönetir; sistemde yok. Entegrasyon noktası ileride. |
 | 9 | Koli / paletlenmemiş yük | **KARAR (A):** Müşteri kolilerini kendi paletler. Sistem koli beyanından tahmini palet sayısı gösterir; kapasite, fiyat ve depo kabulü yalnız palet. Depo koli kabul etmez. Şema ambalaj tipi/palet eşdeğeri alanlarını taşır, taşıyıcı bazlı koli kabulü ileride eklenebilir. |
 | 10 | Ana veri sahipliği | Tesis/araç/araç tipi taşıyıcıya özel; ambalaj ve ürün sınıfı platform kataloğu + taşıyıcıya özel eklemeler. Seed verisi kurgusaldır. |
+| 11 | Asistanla yazma işlemleri | **KARAR:** Asistan elle yapılan işleri yapar. Teyit kodda zorunlu (writes.py `_gate`): önceki turda önizlenmiş aynı işlem + bu turdaki açık teyit; Idempotency-Key oturum+işlemden türetilir; kart bilgisi sohbette istenmez (simüle kayıtlı kart). Yönlendirme rol bazlı kodla, uzman ajan sohbet geçmişini taşır. |

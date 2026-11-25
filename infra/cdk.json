@@ -2,6 +2,6 @@
   "app": "npx tsx bin/app.ts",
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
-    "agentImageTag": "mcp-3"
+    "agentImageTag": "assist-1"
   }
 }
