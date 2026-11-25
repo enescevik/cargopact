@@ -1,3 +1,4 @@
+import { Notifications } from "./Notifications";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft, ArrowRight, CalendarClock, Check, CreditCard, LogOut, MessageSquare, PackageSearch, Search, Truck, Warehouse, Ban,
@@ -34,6 +35,7 @@ export function CustomerPortal({ displayName, tenant, onLogout }: { displayName:
           <div className="small" style={{ textAlign: "right" }}>
             <b>{displayName}</b>{tenant && <div className="tiny">{tenant}</div>}
           </div>
+          <Notifications onOpen={(n) => n.reservationId && setView({ name: "res", id: n.reservationId })} />
           <button className="btn sm" onClick={onLogout}><LogOut size={14} />Çıkış</button>
         </div>
       </header>

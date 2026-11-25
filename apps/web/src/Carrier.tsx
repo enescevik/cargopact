@@ -1,3 +1,4 @@
+import { Notifications } from "./Notifications";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, Truck, X,
@@ -29,6 +30,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
         {nav.map(([k, l, ic]) => (
           <button key={k} className={`navlink ${tab === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)}>{ic}{l}</button>
         ))}
+        <div style={{ margin: "12px 12px 0" }}><Notifications side onOpen={(n) => n.tripId && setView({ name: "trip", id: n.tripId })} /></div>
         <div className="who">
           <b style={{ color: "#fff" }}>{displayName}</b><div>{tenant}</div><div style={{ opacity: .7 }}>{role}</div>
           <button className="btn sm" style={{ marginTop: 10 }} onClick={onLogout}><LogOut size={14} />Çıkış</button>

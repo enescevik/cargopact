@@ -91,6 +91,9 @@ export const API_OPERATIONS: Operation[] = [
   { method: "GET", path: "/carrier/dashboard", summary: "Sefer panosu", tag: "Taşıyıcı sefer", roles: CARRIER_ALL, query: z.object({ tripId: z.string().optional() }), response: looseResponse },
   { method: "POST", path: "/carrier/integrations/tms/trips", summary: "TMS sefer yayını (taslak sefer oluşturur; externalTripNo ile idempotent)", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], body: tmsTripInput, response: looseResponse, status: 201, idempotent: true },
   { method: "POST", path: "/warehouse/integrations/wms/pallet-events", summary: "WMS palet olayı (tüm paletler bildirilince rezervasyon olayı uygulanır)", tag: "Entegrasyon", roles: CARRIER_ALL, body: wmsPalletEventInput, response: looseResponse, idempotent: true },
+  { method: "GET", path: "/notifications", summary: "Uygulama içi bildirimler (kiracı ve role göre)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], query: z.object({ unread: z.enum(["true", "false", "1", "0"]).optional() }), response: looseResponse },
+  { method: "POST", path: "/notifications/read-all", summary: "Tüm bildirimleri okundu işaretle (idempotent)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], response: looseResponse },
+  { method: "POST", path: "/notifications/{id}/read", summary: "Bildirimi okundu işaretle (idempotent)", tag: "Bildirim", roles: [...CARRIER_ALL, "customer_user"], response: looseResponse },
   { method: "GET", path: "/carrier/integrations/status", summary: "Olay yayın durumu", tag: "Entegrasyon", roles: CARRIER_ALL, response: integrationStatusResponse },
   { method: "POST", path: "/carrier/integrations/events/flush", summary: "Bekleyen olayları şimdi yayınla", tag: "Entegrasyon", roles: ["carrier_admin", "carrier_planner"], response: looseResponse , idempotent: true },
 ];

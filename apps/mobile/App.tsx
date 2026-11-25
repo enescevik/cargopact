@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { api, signIn, signOut } from "./src/api";
 import { c } from "./src/theme";
 import { ToastProvider, Row } from "./src/ui";
+import { NotificationBell } from "./src/Notifications";
 import { Login } from "./src/Login";
 import { Chat } from "./src/common";
 import { Send } from "./src/customer/Send";
@@ -62,6 +63,7 @@ function Shell() {
             </View>
           </Row>
           {!isCustomer && <QueuePill />}
+          <NotificationBell onGo={() => setTab(isCustomer ? "res" : "trips")} />
           <Pressable onPress={logout} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 4 }}>
             <Text style={{ color: c.cobalt600, fontWeight: "700", fontSize: 13 }}>Çıkış</Text>
           </Pressable>
