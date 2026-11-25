@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "./api";
 import type { Quote, Reservation, TripCard } from "./types";
-import { dt, day, full, num, time, tl } from "./format";
+import { dt, day, full, num, place, time, tl } from "./format";
 import {
   Empty, ErrorBox, Field, MiniBars, Modal, PricePop, QrVisual, SkeletonCards, StatusBadge, errText, useFetch, useToast, Skeleton,
 } from "./ui";
@@ -58,8 +58,12 @@ const CITIES = ["Gebze", "Ankara", "Bursa", "Kemalpaşa", "Konya", "Adana", "Çe
 function SearchView({ onOpen }: { onOpen: (id: string, pallets: number) => void }) {
   const [f, setF] = useState({ originCity: "", destinationCity: "", date: "", pallets: "" });
   const [applied, setApplied] = useState(f);
-  const q = new URLSearchParams(Object.entries(applied).filter(([, v]) => v)).toString();
-  const { data, error, loading, reload } = useFetch((s) => api<{ items: TripCard[] }>("GET", `/customer/trips${q ? `?${q}` : ""}`, undefined, { signal: s }), [q]);
+  const q = new URLSearchParams(Object.entries({ date: applied.date, pallets: applied.pallets }).filter(([, v]) => v)).toString();
+  const all = useFetch((s) => api<{ items: TripCard[] }>("GET", `/customer/trips${q ? `?${q}` : ""}`, undefined, { signal: s }), [q]);
+  const { error, loading, reload } = all;
+  const norm = (x: string) => x.toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const hit = (term: string, fac: TripCard["origin"]) => !term.trim() || [fac.city, fac.district ?? "", fac.name].some((v) => norm(v).includes(norm(term)));
+  const data = all.data ? { items: all.data.items.filter((t) => hit(applied.originCity, t.origin) && hit(applied.destinationCity, t.destination)) } : null;
   const pallets = Number(applied.pallets) || 1;
   return (
     <div className="page">
@@ -70,8 +74,8 @@ function SearchView({ onOpen }: { onOpen: (id: string, pallets: number) => void 
       </div>
       <form className="card" style={{ marginBottom: 22 }} onSubmit={(e) => { e.preventDefault(); setApplied(f); }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 120px auto", gap: 12, alignItems: "end" }}>
-          <Field label="Çıkış şehri"><input className="input" list="cities" placeholder="Gebze" value={f.originCity} onChange={(e) => setF({ ...f, originCity: e.target.value })} /></Field>
-          <Field label="Varış şehri"><input className="input" list="cities" placeholder="Ankara" value={f.destinationCity} onChange={(e) => setF({ ...f, destinationCity: e.target.value })} /></Field>
+          <Field label="Çıkış şehri"><input className="input" name="origin" list="cities" placeholder="Gebze" value={f.originCity} onChange={(e) => setF({ ...f, originCity: e.target.value })} /></Field>
+          <Field label="Varış şehri"><input className="input" name="destination" list="cities" placeholder="Ankara" value={f.destinationCity} onChange={(e) => setF({ ...f, destinationCity: e.target.value })} /></Field>
           <Field label="Tarih"><input type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
           <Field label="Palet"><input type="number" min={1} className="input" placeholder="3" value={f.pallets} onChange={(e) => setF({ ...f, pallets: e.target.value })} /></Field>
           <button className="btn primary lg"><Search size={16} />Sefer ara</button>
@@ -91,8 +95,8 @@ function TripRow({ t, onOpen }: { t: TripCard; onOpen: () => void }) {
   return (
     <div className="card trip">
       <div>
-        <div className="route">{t.origin.city} <ArrowRight size={22} style={{ verticalAlign: -2, color: "var(--champ)" }} /> {t.destination.city}</div>
-        <div className="small muted" style={{ marginTop: 6 }}>{t.origin.name} → {t.destination.name}</div>
+        <div className="route" data-testid="route">{place(t.origin)} <ArrowRight size={22} style={{ verticalAlign: -2, color: "var(--champ)" }} /> {place(t.destination)}</div>
+        <div className="small muted" style={{ marginTop: 6 }}>{t.origin.city} → {t.destination.city} · {t.origin.name} → {t.destination.name}</div>
         <div className="row wrap" style={{ marginTop: 10 }}>
           <span className="badge info">{t.carrier.name}</span>
           <span className="small"><b>{day(t.departureAt)}</b>, kalkış {time(t.departureAt)}</span>
@@ -179,8 +183,8 @@ function TripDetail({ id, initialPallets, onBack, onDone }: { id: string; initia
           <div className="col" style={{ gap: 20 }}>
             <div>
               <div className="kicker">{t.carrier.name} · {t.reference}</div>
-              <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{t.origin.city} → {t.destination.city}</h1>
-              <div className="muted" style={{ marginTop: 8 }}>{t.origin.name} → {t.destination.name}</div>
+              <h1 className="title" style={{ fontSize: 46, marginTop: 4 }}>{place(t.origin)} → {place(t.destination)}</h1>
+              <div className="muted" style={{ marginTop: 8 }}>{t.origin.city} → {t.destination.city} · {t.origin.name} → {t.destination.name}</div>
             </div>
             <div className="card">
               <div className="grid2">
@@ -292,7 +296,7 @@ function Done({ r, onList, onNew }: { r: Reservation; onList: () => void; onNew:
       <div className="card" style={{ textAlign: "center", padding: 40 }}>
         <div className="empty" style={{ padding: 0 }}><div className="ic" style={{ background: "var(--m1)", color: "var(--m6)" }}><Check size={28} /></div></div>
         <div className="kicker">Teklifiniz alındı</div>
-        <h1 className="title" style={{ margin: "6px 0 14px" }}>{r.trip.origin.city} → {r.trip.destination.city}</h1>
+        <h1 className="title" style={{ margin: "6px 0 14px" }}>{place(r.trip.origin)} → {place(r.trip.destination)}</h1>
         <div className="mono" style={{ fontSize: 22, color: "var(--c8)" }}>{r.reference}</div>
         <div style={{ margin: "14px 0" }}><StatusBadge status={r.status} label={r.statusLabel || "Taşıyıcı onayı bekliyor"} /></div>
         <p className="muted">{num(r.pallets)} palet · {tl(r.totalPriceMinor)}. Taşıyıcı onayladığında sipariş numaranız ve palet QR kodlarınız burada görünür.</p>
@@ -319,7 +323,7 @@ function ResList({ onOpen, onSearch }: { onOpen: (id: string) => void; onSearch:
           <button key={r.id} className="card" onClick={() => onOpen(r.id)} style={{ textAlign: "left", cursor: "pointer", font: "inherit" }}>
             <div className="row between wrap">
               <div>
-                <div className="route" style={{ fontSize: 24 }}>{r.trip.origin.city} → {r.trip.destination.city}</div>
+                <div className="route" style={{ fontSize: 24 }}>{place(r.trip.origin)} → {place(r.trip.destination)}</div>
                 <div className="small muted" style={{ marginTop: 4 }}>{dt(r.trip.departureAt)} · {r.trip.carrier.name} · {num(r.pallets)} palet · {num(r.grossKg)} kg</div>
               </div>
               <div style={{ textAlign: "right" }}>
@@ -370,14 +374,15 @@ function ResDetail({ id, onBack, onTrack }: { id: string; onBack: () => void; on
           <div className="col" style={{ gap: 20 }}>
             <div>
               <div className="row wrap"><span className="kicker">{r.reference}</span><StatusBadge status={r.status} label={r.statusLabel} /></div>
-              <h1 className="title" style={{ fontSize: 44, marginTop: 4 }}>{r.trip.origin.city} → {r.trip.destination.city}</h1>
+              <h1 className="title" style={{ fontSize: 44, marginTop: 4 }}>{place(r.trip.origin)} → {place(r.trip.destination)}</h1>
               <div className="muted" style={{ marginTop: 6 }}>{r.trip.carrier.name} · kalkış {full(r.trip.departureAt)}</div>
             </div>
             {r.orderNumber && (
               <div className="card" style={{ background: "linear-gradient(135deg, var(--c8), var(--c9))", color: "#fff", border: 0 }}>
                 <div className="tiny" style={{ color: "#b9c3ef" }}>SİPARİŞ NUMARASI</div>
-                <div className="mono" style={{ fontSize: 30 }}>{r.orderNumber}</div>
-                <button className="btn sm" style={{ marginTop: 10 }} onClick={() => onTrack(r.orderNumber!)}><PackageSearch size={14} />Yükü takip et</button>
+                <div className="row between"><div><div className="mono" data-testid="order-number" style={{ fontSize: 30 }}>{r.orderNumber}</div>
+                <button className="btn sm" style={{ marginTop: 10, color: "var(--c9)", background: "#fff" }} onClick={() => onTrack(r.orderNumber!)}><PackageSearch size={14} />Yükü takip et</button></div>
+                <div style={{ background: "#fff", padding: 6, borderRadius: 10 }}><QrVisual code={r.orderNumber} size={96} /></div></div>
               </div>
             )}
             <div className="card">
@@ -470,6 +475,10 @@ type Tracking = {
   origin: { name: string; city: string }; destination: { name: string; city: string };
   intakeCutoffAt: string; pickupWindow: { from: string; to: string } | null; palletCodes: string[];
 };
+const win = (w: { from: string; to: string }) => {
+  const iso = (x: string) => /^\d{4}-\d{2}-\d{2}T/.test(x) && !Number.isNaN(Date.parse(x));
+  return iso(w.from) && iso(w.to) ? `${dt(w.from)} – ${time(w.to)}` : `${w.from} – ${w.to}`;
+};
 function Tracking({ initial }: { initial?: string }) {
   const [input, setInput] = useState(initial ?? "");
   const [order, setOrder] = useState(initial ?? "");
@@ -508,7 +517,7 @@ function Tracking({ initial }: { initial?: string }) {
               <div className="row wrap small muted" style={{ marginTop: 14 }}>
                 <span>Çıkış: {data.origin.name} (son kabul {time(data.intakeCutoffAt)})</span>
                 <span>Varış: {data.destination.name}</span>
-                {data.pickupWindow && <span>Teslim penceresi: {dt(data.pickupWindow.from)} – {time(data.pickupWindow.to)}</span>}
+                {data.pickupWindow && <span>Teslim penceresi: {win(data.pickupWindow)}</span>}
               </div>
               <div className="row wrap" style={{ marginTop: 12 }}>{data.palletCodes.map((c) => <span key={c} className="chip mono">{c}</span>)}</div>
               <div className="tiny" style={{ marginTop: 10 }}>Son güncelleme {full(data.updatedAt)}</div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { api } from "./api";
 import type { Dashboard } from "./types";
-import { full, initials, num, time, tl } from "./format";
+import { full, initials, place, num, time, tl } from "./format";
 import { Empty, ErrorBox, SkeletonCards, StatusBadge, useFetch } from "./ui";
 
 const COLORS = ["#2547E0", "#12A675", "#C98A06", "#7A5AF8", "#D6456B", "#0E8FB5", "#E2772B"];
@@ -38,8 +38,8 @@ export function DashboardView() {
       <div className="page-head row between wrap">
         <div>
           <div className="row"><span className="kicker">Jüri panosu</span><span className="row tiny"><span className="live" /> her 4 sn yenilenir</span></div>
-          <h1 className="title" style={{ fontSize: 52 }}>{d.trip.origin.city} → {d.trip.destination.city}</h1>
-          <div className="muted">{d.trip.reference} · kalkış {full(d.trip.departureAt)} · {d.trip.vehicle.plate}</div>
+          <h1 className="title" style={{ fontSize: 52 }}>{place(d.trip.origin)} → {place(d.trip.destination)}</h1>
+          <div className="muted">{d.trip.origin.city} → {d.trip.destination.city} · {d.trip.reference} · kalkış {full(d.trip.departureAt)} · {d.trip.vehicle.plate}</div>
         </div>
         <div className="tabs">
           <button className={mode === "planned" ? "on" : ""} onClick={() => setMode("planned")}>Planlanan</button>
@@ -55,7 +55,7 @@ export function DashboardView() {
         <div className="kpi"><div className="muted small">Değişken maliyet</div><div className="v">{tl(d.variableCostMinor)}</div><div className="small muted">{tl(d.costPerPalletMinor)} / satılan palet</div></div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.7fr 1fr", gap: 16, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
         <div className="card">
           <div className="row between" style={{ marginBottom: 16 }}>
             <h3 className="serif" style={{ fontSize: 24 }}>Araç yerleşimi · {mode === "planned" ? "planlanan" : "fiili"}</h3>
@@ -63,7 +63,7 @@ export function DashboardView() {
           </div>
           <div className="pgrid">
             {cells.map((c, i) => (
-              <div key={i} className={`pos ${c.kind === "int" ? "int" : c.kind === "empty" ? "empty" : c.held ? "held" : ""}`}
+              <div key={i} className={`pos ${c.kind === "int" ? "int" : c.kind === "empty" ? "vacant" : c.held ? "held" : ""}`}
                 style={c.kind === "cust" ? { background: colorOf.get(c.name!) } : undefined}
                 title={c.kind === "int" ? "İç transfer yükü" : c.name ?? "Boş"}>
                 {c.kind === "cust" ? initials(c.name!) : c.kind === "int" ? "İÇ" : i + 1}

@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, createContext, isValidElement, useId, type ReactElement, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import QRCode from "qrcode";
 import { AlertCircle, Inbox, X } from "lucide-react";
 import { ApiError } from "./api";
 import type { Capacity, Dim, Price } from "./types";
@@ -100,7 +101,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 export function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="field"><label>{label}</label>{children}</div>;
+  const id = useId();
+  const child = isValidElement(children) && !(children.props as { id?: string }).id ? cloneElement(children as ReactElement<{ id?: string }>, { id }) : children;
+  return <div className="field"><label htmlFor={id}>{label}</label>{child}</div>;
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -208,16 +211,14 @@ export function PricePop({ price }: { price: Price }) {
 }
 
 /* ---------- QR-like ---------- */
-export function QrVisual({ code }: { code: string }) {
-  let h = 2166136261;
-  for (const ch of code) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const cells: boolean[] = [];
-  const N = 11;
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const finder = (x < 3 && y < 3) || (x > 7 && y < 3) || (x < 3 && y > 7);
-    if (finder) { cells.push(!(x % 2 === 1 && y % 2 === 1 && false) && !((x === 1 || x === 9) && (y === 1 || y === 9)) ? true : false); continue; }
-    h = (Math.imul(h, 1103515245) + 12345) >>> 0;
-    cells.push((h >>> 16) % 2 === 0);
-  }
-  return <div className="qr" aria-label={`QR ${code}`}>{cells.map((k, i) => <i key={i} className={k ? "k" : ""} />)}</div>;
+export function QrVisual({ code, size = 120 }: { code: string; size?: number }) {
+  const [url, setUrl] = useState<string>("");
+  useEffect(() => {
+    let live = true;
+    QRCode.toDataURL(code, { margin: 1, width: size * 2, errorCorrectionLevel: "M" }).then((u) => live && setUrl(u)).catch(() => {});
+    return () => { live = false; };
+  }, [code, size]);
+  return url
+    ? <img src={url} width={size} height={size} alt={`QR ${code}`} data-testid="qr" style={{ borderRadius: 8, border: "1px solid var(--line)", background: "#fff" }} />
+    : <div style={{ width: size, height: size }} aria-label={`QR ${code}`} />;
 }
