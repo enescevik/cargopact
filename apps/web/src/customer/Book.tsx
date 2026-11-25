@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, BellRing, Check, CreditCard, FileCode2, Boxes, SlidersHorizontal, Plus, Info, X } from "lucide-react";
 import { api, ApiError } from "../api";
-import type { Quote, Reservation, TripCard } from "../types";
+import type { AlternativeScenario, ContractPreview, Quote, Reservation, TripCard } from "../types";
 import { addDays, dayNum, full, isoDay, num, place, time, tl, today, weekday } from "../format";
 import { Empty, ErrorBox, Modal, PricePop, Skeleton, useFetch, useToast } from "../ui";
 import { ChipSelect, Countdown, OptionCard, RollNumber, Segmented, Stepper } from "../components/controls";
 import { TruckMap, customerCells } from "../components/TruckMap";
 import { CarbonBadge } from "../components/extras";
+import { ContractSignModal } from "../components/Contract";
 import { parseDespatchAdvice, type Declaration } from "../lib/irsaliye";
 import { loadAlarms, loadRecipients, rememberRecipient, saveAlarms, type Alarm } from "../lib/store";
 
@@ -23,7 +24,7 @@ const FOOT = { EUR: { l: "Euro 80×120", a: 0.96 }, IND: { l: "Endüstriyel 100�
 
 const routeKey = (t: TripCard) => `${place(t.origin)}→${place(t.destination)}`;
 
-export function BookView({ onDone, alarmHits, who }: { onDone: (r: Reservation) => void; alarmHits: (a: Alarm[]) => void; who?: string }) {
+export function BookView({ onDone, alarmHits, who, displayName }: { onDone: (r: Reservation) => void; alarmHits: (a: Alarm[]) => void; who?: string; displayName?: string }) {
   const all = useFetch((s) => api<{ items: TripCard[] }>("GET", "/customer/trips", undefined, { signal: s }), [], 30000);
   const trips = all.data?.items ?? [];
 
@@ -124,7 +125,7 @@ export function BookView({ onDone, alarmHits, who }: { onDone: (r: Reservation) 
         <div className="pane-foot"><button className="link small" onClick={() => setAlarmFor(trip ? isoDay(trip.departureAt) : today())}><BellRing size={13} /> Bu rota için boş yer alarmı</button></div>
       </aside>
 
-      {trip ? <TripAndQuote key={trip.id} trip={trip} pallets={pallets} setPallets={setPallets} onDone={onDone} />
+      {trip ? <TripAndQuote key={trip.id} trip={trip} pallets={pallets} setPallets={setPallets} onDone={onDone} displayName={displayName ?? ""} />
         : <><section className="panel"><Empty title="Sefer seçin" text="Soldan rota ve sefer seçtiğinizde araçtaki yeriniz ve teklif burada görünür." /></section><aside className="noir quote-pane" /></>}
 
       {alarmFor && origin && dest && (
@@ -154,7 +155,7 @@ function Meters({ t }: { t: TripCard }) {
 }
 
 /* ================= sefer + beyan + teklif ================= */
-function TripAndQuote({ trip, pallets, setPallets, onDone }: { trip: TripCard; pallets: number; setPallets: (n: number) => void; onDone: (r: Reservation) => void }) {
+function TripAndQuote({ trip, pallets, setPallets, onDone, displayName }: { trip: TripCard; pallets: number; setPallets: (n: number) => void; onDone: (r: Reservation) => void; displayName: string }) {
   const toast = useToast();
   const classes = useFetch(async (s) => {
     const r = await api<{ items?: Pc[] } | Pc[]>("GET", "/catalog/product-classes", undefined, { signal: s });
@@ -177,7 +178,8 @@ function TripAndQuote({ trip, pallets, setPallets, onDone }: { trip: TripCard; p
 
   const grossKg = kgTotal ?? pallets * kgPer;
   const volumeM3 = m3Override ?? Math.round(pallets * FOOT[foot].a * height * 10) / 10;
-  const body = useMemo(() => ({ pallets, grossKg, productClassCode: cls, volumeM3 }), [pallets, grossKg, cls, volumeM3]);
+  const [scenario, setScenario] = useState<AlternativeScenario | null>(null);
+  const body = useMemo(() => ({ pallets, grossKg, productClassCode: cls, volumeM3, ...(scenario ? { alternativeScenario: scenario } : {}) }), [pallets, grossKg, cls, volumeM3, scenario]);
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [qErr, setQErr] = useState<ApiError | null>(null);
@@ -197,21 +199,52 @@ function TripAndQuote({ trip, pallets, setPallets, onDone }: { trip: TripCard; p
   const [idem, setIdem] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState<ApiError | null>(null);
-  async function submit() {
+  /* ---- sözleşme adımı ---- */
+  const [contractOpen, setContractOpen] = useState(false);
+  const [preview, setPreview] = useState<ContractPreview | null>(null);
+  const [pErr, setPErr] = useState<ApiError | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pTick, setPTick] = useState(0);
+  const previewKey = JSON.stringify([body, plan, recipient, pTick]);
+  useEffect(() => {
+    if (!contractOpen) return;
+    const ac = new AbortController();
+    setPErr(null);
+    api<ContractPreview>("POST", `/customer/trips/${trip.id}/contract-preview`,
+      { ...body, paymentPlan: plan, ...(recipient ? { recipientName: recipient } : {}) }, { signal: ac.signal })
+      .then((p) => { setPreview(p); setPErr(null); })
+      .catch((e) => { if (e?.name !== "AbortError") { setPreview(null); setPErr(e); } });
+    return () => ac.abort();
+  }, [contractOpen, previewKey, trip.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // beyan/plan değişirse (modal açıkken) eski metin geçersiz sayılır
+  useEffect(() => { setPreview(null); }, [previewKey]);
+
+  async function submit(signerName: string) {
+    if (!preview) return;
     setSubmitting(true); setSubmitErr(null);
     const c = CARDS.find((x) => x.id === cardId)!;
     try {
       const r = await api<Reservation>("POST", "/customer/reservations", {
         tripId: trip.id, ...body, paymentPlan: plan, ...(recipient ? { recipientName: recipient } : {}),
         card: { holder: c.holder, number: c.number, expiry: c.expiry, cvc: c.cvc },
+        contract: { version: preview.version, renderedHash: preview.renderedHash, signerName, accepted: true },
       }, { idempotencyKey: idem });
       if (recipient) rememberRecipient(recipient);
+      setContractOpen(false);
       toast("Teklifiniz taşıyıcıya iletildi.", "ok");
       onDone(r);
     } catch (e) {
       const err = e as ApiError;
-      setSubmitErr(err);
-      if (err.reason === "PAYMENT_DECLINED" || err.status === 409 || err.status === 400) setIdem(crypto.randomUUID());
+      setIdem(crypto.randomUUID());
+      if (err.status === 409 && (err.code === "CONTRACT_STALE" || err.reason === "CONTRACT_STALE")) {
+        setNotice("Fiyat veya koşullar değişti. Sözleşme güncellendi; lütfen yeni metni okuyup yeniden onaylayın.");
+        setPTick((n) => n + 1);
+      } else if (err.reason === "CONTRACT_NOT_ACCEPTED") {
+        setNotice("Sözleşme metni doğrulanamadı; güncel metin yüklendi. Lütfen yeniden okuyup onaylayın.");
+        setPTick((n) => n + 1);
+      } else {
+        setContractOpen(false); setSubmitErr(err);
+      }
     } finally { setSubmitting(false); }
   }
 
@@ -312,7 +345,15 @@ function TripAndQuote({ trip, pallets, setPallets, onDone }: { trip: TripCard; p
               <div className="q-price" data-testid="quote-total"><RollNumber value={quote.price.totalPriceMinor} format={tl} /></div>
               <div className="q-sub">{num(pallets)} palet × {tl(quote.price.unitPriceMinor)} · {num(grossKg)} kg · {num(volumeM3)} m³</div>
               <div className="row between q-meta"><PricePop price={quote.price} /><Countdown to={quote.quoteExpiresAt} prefix="Fiyat sabit:" /></div>
-              <CarbonBadge from={trip.origin} to={trip.destination} pallets={pallets} positions={positions} variant="dark" />
+              <CarbonBadge carbon={quote.carbon} variant="dark" />
+              <div className="carbon-q">
+                <span className="eyebrow light">Bu yükü CargoPact olmasaydı nasıl gönderirdiniz? <small>(isteğe bağlı)</small></span>
+                <div className="q-plans" role="group" aria-label="Alternatif gönderim senaryosu" style={{ marginTop: 6 }}>
+                  {([["dedicated", "Ayrı araçla"], ["groupage", "Parsiyel / ambar ile"], [null, "Belirtmek istemiyorum"]] as [AlternativeScenario | null, string][]).map(([v, l]) => (
+                    <OptionCard key={String(v)} on={scenario === v} onClick={() => setScenario(v)}><b>{l}</b></OptionCard>
+                  ))}
+                </div>
+              </div>
               {!quote.eligible && (
                 <div className="alert err" role="alert"><div><b>Bu yük bu sefere uygun değil</b>
                   <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>{quote.reasons.map((r) => <li key={r.code}>{r.message}</li>)}</ul></div></div>
@@ -357,12 +398,16 @@ function TripAndQuote({ trip, pallets, setPallets, onDone }: { trip: TripCard; p
               : submitErr.status === 409 ? new ApiError("Bu sırada kapasite doldu veya sefer değişti. Lütfen yeniden kontrol edin.", 409, undefined, submitErr.correlationId)
               : submitErr} />
           )}
-          <button className="btn cta block" disabled={!quote || !quote.eligible || submitting} onClick={submit} data-testid="accept">
+          <button className="btn cta block" disabled={!quote || !quote.eligible || submitting} onClick={() => { setNotice(null); setPreview(null); setContractOpen(true); }} data-testid="accept">
             {submitting ? "Gönderiliyor…" : <>Teklifi kabul et{due ? ` · ${tl(due.dueNowMinor)}` : ""} <Check size={18} /></>}
           </button>
           <div className="tiny light center">Taşıyıcı onayına kadar tutar yalnızca provizyonda bekler.</div>
         </div>
       </aside>
+      {contractOpen && (
+        <ContractSignModal preview={preview} busy={submitting} error={pErr} notice={notice} defaultName={displayName}
+          ctaLabel="Sözleşmeyi onayla ve teklifi gönder" onClose={() => setContractOpen(false)} onSign={submit} />
+      )}
     </>
   );
 }

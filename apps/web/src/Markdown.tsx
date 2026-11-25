@@ -20,8 +20,27 @@ export function Markdown({ text }: { text: string }) {
       : <ul key={blocks.length} style={{ margin: "4px 0", paddingLeft: 20 }}>{items}</ul>);
     list = null;
   };
+  let table: string[][] | null = null;
+  const flushTable = () => {
+    if (!table) return;
+    const [head, ...rows] = table;
+    blocks.push(
+      <table key={blocks.length} className="md-table">
+        <thead><tr>{head!.map((c, i) => <th key={i}>{inline(c)}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{inline(c)}</td>)}</tr>)}</tbody>
+      </table>,
+    );
+    table = null;
+  };
   for (const raw of text.split("\n")) {
     const line = raw.trim();
+    if (line.startsWith("|")) {
+      flush();
+      if (/^\|[\s:|-]+\|?$/.test(line)) continue; // ayırıcı satır
+      (table ??= []).push(line.replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
+      continue;
+    }
+    flushTable();
     const ul = /^[-*•]\s+(.*)$/.exec(line);
     const ol = /^\d+[.)]\s+(.*)$/.exec(line);
     if (ul || ol) {
@@ -38,6 +57,6 @@ export function Markdown({ text }: { text: string }) {
     if (h) { blocks.push(<div key={blocks.length} style={{ fontWeight: 700, fontSize: h[1].length <= 2 ? 16 : 14.5, margin: "10px 0 4px" }}>{inline(h[2])}</div>); continue; }
     blocks.push(<p key={blocks.length} style={{ margin: "5px 0" }}>{inline(line)}</p>);
   }
-  flush();
+  flush(); flushTable();
   return <div style={{ lineHeight: 1.55 }}>{blocks}</div>;
 }

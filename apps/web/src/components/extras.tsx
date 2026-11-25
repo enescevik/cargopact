@@ -1,7 +1,7 @@
-import { ChevronLeft, ChevronRight, Leaf, Printer, Share2, BellRing } from "lucide-react";
-import type { Facility, TripCard } from "../types";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Info, Leaf, Printer, Share2, BellRing } from "lucide-react";
+import type { Carbon, TripCard } from "../types";
 import { addDays, dayNum, full, isoDay, place, time, tl, today, weekday } from "../format";
-import { co2Saved, roadKm } from "../lib/carbon";
 import { QrVisual, useToast } from "../ui";
 
 /* ---------------- Esnek tarih fiyat takvimi ---------------- */
@@ -39,21 +39,69 @@ export function PriceCalendar({ trips, pallets, value, start, onStart, onSelect,
   );
 }
 
-/* ---------------- Karbon rozeti ---------------- */
-export function CarbonBadge({ from, to, pallets, positions, variant }: { from: Facility; to: Facility; pallets: number; positions: number; variant?: "dark" }) {
-  const km = roadKm(from, to);
-  if (km == null || pallets <= 0) return null;
-  const { savedKg } = co2Saved(km, pallets, positions);
-  if (savedKg < 1) return null;
-  const fmt = savedKg >= 1000 ? `${(savedKg / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} t` : `${Math.round(savedKg).toLocaleString("tr-TR")} kg`;
+/* ---------------- Karbon (yalnız sunucu değerleri) ---------------- */
+export const kgFmt = (kg: number) => {
+  if (kg >= 1000) return `${(kg / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} t`;
+  return `${kg.toLocaleString("tr-TR", { maximumFractionDigits: kg < 10 ? 1 : 0 })} kg`;
+};
+const SCENARIO: Record<string, string> = { dedicated: "ayrı araçla gönderim", groupage: "parsiyel / ambar ile gönderim" };
+export function CarbonInfo({ carbon, dark }: { carbon: Carbon; dark?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
   return (
-    <div className={`carbon ${variant ?? ""}`} title={`Tahmini: ~${Math.round(km)} km yol, paylaşımlı tır payı ile ayrı araç karşılaştırması (GLEC yaklaşımı, varsayılan katsayılar).`}>
-      <Leaf size={14} />
-      <span>≈ <b>{fmt}</b> CO₂ tasarrufu <small>tahmini</small></span>
+    <span className="pop carbon-info" ref={ref}>
+      <button type="button" className="link" aria-label="Karbon hesabı hakkında" aria-expanded={open} onClick={() => setOpen((o) => !o)}><Info size={13} /></button>
+      {open && (
+        <div className="popbox" style={dark ? { color: "var(--i9)" } : undefined}>
+          <b>Karbon hesabı</b> <span className="demo-tag">demo katsayıları · tahmini</span>
+          <ul>
+            <li>Yöntem: {carbon.method}</li>
+            <li>Mesafe: ≈ {Math.round(carbon.distanceKm).toLocaleString("tr-TR")} km · araç sınıfı: {carbon.vehicleClass}</li>
+            <li>Araç katsayısı: {carbon.vehicleFactorKgPerKm.toLocaleString("tr-TR")} kg CO₂e/km</li>
+            {carbon.alternativeScenario && carbon.alternativeKg != null && <li>Alternatif ({SCENARIO[carbon.alternativeScenario]}): ≈ {kgFmt(carbon.alternativeKg)} CO₂e</li>}
+          </ul>
+          <div className="tiny muted">{carbon.note}</div>
+        </div>
+      )}
+    </span>
+  );
+}
+export function CarbonBadge({ carbon, variant }: { carbon?: Carbon | null; variant?: "dark" }) {
+  if (!carbon) return null;
+  return (
+    <div className={`carbon-card ${variant ?? ""}`} data-testid="carbon">
+      <Leaf size={16} className="cc-leaf" />
+      <div className="cc-body">
+        <div>Bu yükün payına düşen emisyon ≈ <b data-testid="carbon-allocated">{kgFmt(carbon.allocatedKg)} CO₂e</b> <CarbonInfo carbon={carbon} dark={variant === "dark"} /></div>
+        {carbon.savedKg != null && <div className="cc-saved" data-testid="carbon-saved">Seçtiğiniz alternatife göre ≈ <b>{kgFmt(carbon.savedKg)}</b> daha az</div>}
+        <small>demo katsayıları · tahmini</small>
+      </div>
     </div>
   );
 }
-
+/** Sunucu değerleriyle sunum dostu büyük karbon kartı (jüri panosu, KPI sayfası). */
+export function CarbonHero({ allocatedKg, declaredSavedKg, perPalletKg, withScenario, total, method, title = "Karbon ayak izi" }: {
+  allocatedKg: number; declaredSavedKg: number; perPalletKg?: number; withScenario: number; total: number; method: string; title?: string;
+}) {
+  return (
+    <div className="carbon-hero" data-testid="carbon-hero">
+      <div className="ch-top"><span className="ch-ic"><Leaf size={20} /></span><div><div className="eyebrow light">{title}</div><span className="demo-tag">demo katsayıları · tahmini</span></div></div>
+      <div className="ch-grid">
+        <div><div className="ch-big" data-testid="carbon-hero-allocated">{kgFmt(allocatedKg)}</div><div className="ch-l">dış yükün payına düşen CO₂e</div></div>
+        <div><div className="ch-big mint" data-testid="carbon-hero-saved">{kgFmt(declaredSavedKg)}</div><div className="ch-l">müşteri beyanına göre tasarruf</div></div>
+        {perPalletKg != null && <div><div className="ch-mid">{kgFmt(perPalletKg)}</div><div className="ch-l">palet başına</div></div>}
+        <div><div className="ch-mid">{withScenario} / {total}</div><div className="ch-l">senaryo beyan eden rezervasyon</div></div>
+      </div>
+      <div className="ch-foot">{method}</div>
+    </div>
+  );
+}
 /* ---------------- Alıcı cüzdan kartı ---------------- */
 export function WalletCard({ orderNumber, trip, recipients, pallets, code }: {
   orderNumber: string; trip: TripCard; recipients: string[]; pallets: number; code?: string | null;
@@ -76,7 +124,7 @@ export function WalletCard({ orderNumber, trip, recipients, pallets, code }: {
         <div>
           <div className="eyebrow light">Teslim kartı · yetkili alıcı</div>
           <div className="wallet-route">{place(trip.origin)} → {place(d)}</div>
-          <div className="mono wallet-no">{orderNumber}</div>
+          <div className="mono wallet-no" data-testid="order-number">{orderNumber}</div>
         </div>
         <div className="wallet-qr"><QrVisual code={orderNumber} size={92} /></div>
       </div>

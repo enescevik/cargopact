@@ -35,7 +35,7 @@ export function CustomerPortal({ displayName, tenant, onLogout }: { displayName:
         </div>
       </aside>
       <main className="stage">
-        {view.name === "book" && <BookView who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} alarmHits={onHits} onDone={(r: Reservation) => setView({ name: "loads", id: r.id, fresh: true })} />}
+        {view.name === "book" && <BookView displayName={displayName} who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} alarmHits={onHits} onDone={(r: Reservation) => setView({ name: "loads", id: r.id, fresh: true })} />}
         {view.name === "loads" && <LoadsView initialId={view.id} justCreated={view.fresh} />}
       </main>
       <AssistantDrawer open={chat} onClose={closeChat} prompts={["Gebze'den Ankara'ya 3 palet yüküm var, uygun sefer var mı?", "CP-2026-000001 numaralı yüküm nerede?", "Hangi gün göndermek daha ucuz?"]} />

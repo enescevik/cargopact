@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Ban, BellRing, Check, PackageSearch, Search, Trash2, Warehouse } from "lucide-react";
 import { api, ApiError } from "../api";
-import type { Reservation } from "../types";
+import type { CustomerCarbonSummary, Reservation } from "../types";
 import { dayNum, dt, full, isoDay, num, place, time, tl } from "../format";
 import { Empty, ErrorBox, Modal, QrVisual, Skeleton, StatusBadge, useFetch, useToast } from "../ui";
 import { Segmented } from "../components/controls";
 import { TruckMap } from "../components/TruckMap";
-import { CarbonBadge, WalletCard } from "../components/extras";
-import { co2Saved, roadKm } from "../lib/carbon";
+import { CarbonBadge, WalletCard, kgFmt } from "../components/extras";
+import { ContractSection } from "../components/Contract";
 import { loadAlarms, saveAlarms, type Alarm } from "../lib/store";
 import { PickupCard } from "../PickupCard";
 import { WarehouseGuide } from "../WarehouseGuide";
@@ -41,10 +41,7 @@ export function LoadsView({ initialId, justCreated }: { initialId?: string; just
   const list = filter === "alarms" ? [] : groups[filter].filter((r) => !q || `${r.orderNumber ?? ""} ${r.reference}`.toUpperCase().includes(q.toUpperCase()));
   const current = items.find((r) => r.id === sel) ?? list[0] ?? null;
 
-  const yearCo2 = useMemo(() => items.filter((r) => !["RET", "IPTAL", "SURESI_DOLDU", "GELMEDI"].includes(r.status)).reduce((s, r) => {
-    const km = roadKm(r.trip.origin, r.trip.destination);
-    return s + (km ? co2Saved(km, r.pallets, r.trip.vehicleType.palletPositions).savedKg : 0);
-  }, 0), [items]);
+  const co2 = useFetch((s) => api<CustomerCarbonSummary>("GET", "/customer/carbon/summary", undefined, { signal: s }), [items.length], 15000);
 
   return (
     <div className="md">
@@ -72,7 +69,13 @@ export function LoadsView({ initialId, justCreated }: { initialId?: string; just
               </button>
             ))}
         </div>
-        {yearCo2 > 0 && <div className="pane-foot carbon-sum">🌿 Paylaşımlı taşımayla bu dönem <b>≈ {yearCo2 >= 1000 ? `${(yearCo2 / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} t` : `${Math.round(yearCo2)} kg`}</b> CO₂ tasarrufu <small>(tahmini)</small></div>}
+        {co2.data && co2.data.reservations > 0 && (
+          <div className="pane-foot carbon-sum" data-testid="carbon-summary">
+            <span>🌿 Bu dönem {co2.data.reservations} yükünüzün payına düşen emisyon <b>≈ {kgFmt(co2.data.allocatedKg)} CO₂e</b></span>
+            {co2.data.declaredSavedKg > 0 && <span>Beyanınıza göre ≈ <b>{kgFmt(co2.data.declaredSavedKg)}</b> tasarruf</span>}
+            <small>demo katsayıları · tahmini</small>
+          </div>
+        )}
       </aside>
       <section className="panel center-pane">
         {current && filter !== "alarms" ? <LoadDetail key={current.id} id={current.id} fresh={justCreated && current.id === initialId} onChanged={reload} />
@@ -124,7 +127,7 @@ function LoadDetail({ id, fresh, onChanged }: { id: string; fresh?: boolean; onC
         </div>
         <div className="col" style={{ alignItems: "flex-end", gap: 8 }}>
           <StatusBadge status={r.status} label={r.statusLabel} />
-          <CarbonBadge from={r.trip.origin} to={r.trip.destination} pallets={r.pallets} positions={positions} />
+          <CarbonBadge carbon={r.carbon} />
         </div>
       </header>
 
@@ -159,6 +162,7 @@ function LoadDetail({ id, fresh, onChanged }: { id: string; fresh?: boolean; onC
               <div className="tiny" style={{ marginTop: 8 }}>Etiketleri paletlere yapıştırıp çıkış transfer merkezinde okutun.</div>
             </div>
           )}
+          <ContractSection contract={r.contract} path={`/customer/reservations/${r.id}/contract`} />
           <div className="sub-panel">
             <div className="row between"><span className="eyebrow">Ödeme</span><span className="price-m">{tl(r.totalPriceMinor)}</span></div>
             <div className="kv"><span>Plan</span><b>{r.paymentPlan === "deposit" ? `%${r.depositPercent} kapora` : "Peşin"}</b></div>

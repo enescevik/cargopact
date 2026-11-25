@@ -17,7 +17,7 @@ export type TripCard = {
   id: string; reference: string; carrier: { id: string; name: string };
   origin: Facility; destination: Facility; vehicleType: { code: string; name: string; palletPositions: number };
   departureAt: string; arrivalEta: string; bookingCutoffAt: string; intakeCutoffAt: string;
-  sellable: Dim; remaining: Dim; price: Price;
+  sellable: Dim; remaining: Dim; price: Price; carbon?: Carbon;
 };
 export type Capacity = {
   totalPositions: number; internalPallets: number; internalKg: number; maxGrossKg: number;
@@ -42,7 +42,19 @@ export type Measurement = {
   declared: { pallets: number; kg: number }; measured: { pallets: number; kg: number; heightMm: number | null };
   diff: { pallets: number; kg: number }; outcome: "ok" | "review" | "partial" | "rejected"; note: string | null; at: string;
 };
+export type AlternativeScenario = "dedicated" | "groupage";
+export type Carbon = {
+  distanceKm: number; vehicleClass: "kamyonet" | "kamyon" | "tir"; vehicleFactorKgPerKm: number; allocatedKg: number;
+  alternativeScenario: AlternativeScenario | null; alternativeKg: number | null; savedKg: number | null;
+  method: string; isDemoFactors: true; note: string;
+};
+export type CustomerCarbonSummary = { allocatedKg: number; declaredSavedKg: number; reservations: number; method: string; isDemoFactors: true };
+export type ContractPreview = { contractCode: string; version: string; isDraft: boolean; title: string; renderedMarkdown: string; renderedHash: string };
+export type ContractAcceptance = { signerName: string; acceptedAt: string; version: string; renderedHash: string };
+export type ContractView = { renderedMarkdown: string; acceptance: ContractAcceptance };
 export type Reservation = {
+  carbon?: Carbon;
+  contract?: ContractAcceptance | null;
   id: string; reference: string; orderNumber: string | null; status: string; statusLabel: string;
   trip: TripCard; customer: { id: string; name: string };
   pallets: number; grossKg: number; volumeM3: number; productClass: { code: string; name: string };
@@ -67,7 +79,7 @@ export type CarrierReservation = Reservation & {
 };
 export type Quote = {
   eligible: boolean; reasons: Reason[]; price: Price; bookingCutoffAt: string; intakeCutoffAt: string;
-  quoteExpiresAt: string;
+  quoteExpiresAt: string; carbon?: Carbon;
   paymentPlans: { code: "full" | "deposit"; label: string; depositPercent?: number; dueNowMinor: number; remainingMinor?: number }[];
   cancellationPolicy: { label: string; refundPercent: number }[];
 };

@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowRight, BarChart3, Check, ClipboardList, Users, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
+  AlertTriangle, ArrowRight, BarChart3, Check, ClipboardList, Users, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Leaf, Truck, X, Sparkles,
 } from "lucide-react";
 import { api, sendChat } from "./api";
-import type { CarrierTrip } from "./types";
+import type { CarrierTrip, TripCarbon } from "./types";
 import { dayNum, full, isoDay, num, place, time, tl, today, addDays } from "./format";
 import { Empty, ErrorBox, Modal, Skeleton, SkeletonCards, StatusBadge, errText, useFetch, useToast } from "./ui";
 import { AssistantDrawer } from "./Chat";
@@ -22,6 +22,8 @@ import { ExceptionsView } from "./Exceptions";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 import { ChipSelect, Countdown, Segmented, Sheet } from "./components/controls";
 import { TruckMap, operatorCells } from "./components/TruckMap";
+import { kgFmt } from "./components/extras";
+import { ContractViewerModal, shortHash } from "./components/Contract";
 
 type View = { name: "ops"; id?: string } | { name: "new" } | { name: "customers" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string } | { name: "traces" };
 
@@ -140,6 +142,18 @@ const CONFIRMED = ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "T
 
 const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı bu araca uygun değil", "Zamanlama uymuyor", "Ağırlık sınırı aşılıyor"];
 
+function TripCarbonCard({ c }: { c?: TripCarbon }) {
+  if (!c) return null;
+  return (
+    <div className="carbon-card" style={{ marginTop: 10 }} data-testid="trip-carbon">
+      <Leaf size={16} className="cc-leaf" />
+      <div className="cc-body">
+        <div>Bu seferde dış yük payı ≈ <b>{kgFmt(c.allocatedExternalKg)} CO₂e</b> · müşteri beyanına göre ≈ <b>{kgFmt(c.declaredSavedKg)}</b> tasarruf ({c.reservationsWithScenario}/{c.reservationsTotal} rezervasyon)</div>
+        <small>{c.method} · ≈ {Math.round(c.distanceKm).toLocaleString("tr-TR")} km · demo katsayıları · tahmini</small>
+      </div>
+    </div>
+  );
+}
 function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged: () => void; onManifest: () => void }) {
   const toast = useToast();
   const { data: t, error, loading, reload } = useFetch((s) => api<TripFull>("GET", `/carrier/trips/${id}`, undefined, { signal: s }), [id], 5000);
@@ -151,6 +165,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
   const [measure, setMeasure] = useState<CarrierRes | null>(null);
   const [problem, setProblem] = useState<{ r: CarrierRes; type: "EKSIK_HASAR" | "GELMEDI" } | null>(null);
   const [editing, setEditing] = useState(false);
+  const [contractFor, setContractFor] = useState<string | null>(null);
   const [insight, setInsight] = useState<{ r: CarrierRes; text: string; err: Error | null; busy: boolean } | null>(null);
 
   const { pending, active } = useMemo(() => {
@@ -212,6 +227,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
             <span className="cut">Çıkış deposu son kabul (T−1) <b>{time(t.intakeCutoffAt)}</b></span>
           </div>
           <TruckMap operator positions={cap.totalPositions} cells={cells} caption={`${cap.plannedPallets} planlanan, ${cap.heldPallets} bloke`} />
+          <TripCarbonCard c={t.carbon} />
           {over && <div className="alert warn" style={{ marginTop: 8 }}><AlertTriangle size={15} /><span>Planlanan {cap.plannedPallets} palet, {cap.totalPositions} pozisyonu aşıyor.</span></div>}
           <div className="capgrid">
             {([
@@ -259,6 +275,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
                       <AlertTriangle size={13} /> {r.customerHistory.historicalReservationCount} geçmiş talep · {r.customerHistory.verifiedNoShows} doğrulanmış gelmeme <span><Sparkles size={12} /> yorum</span>
                     </button>
                   )}
+                  {r.contract && <button className="link small" onClick={() => setContractFor(r.id)} data-testid="contract-open"><ScrollText size={12} /> Sözleşme · {r.contract.signerName}</button>}
                   <div className="row req-act">
                     <button className="btn sm mint grow" disabled={busy === r.id || !r.eligibility.eligible} onClick={() => act(r.id, `/carrier/reservations/${r.id}/decision`, { decision: "approve" }, `${r.customer.name} talebi onaylandı.`)}><Check size={14} />Onayla</button>
                     <button className="btn sm danger" disabled={busy === r.id} onClick={() => setReject(r)}><X size={14} />Reddet</button>
@@ -273,6 +290,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
                   <article key={r.id} className="lrow static">
                     <div className="row between"><b>{r.customer.name}</b><StatusBadge status={r.status} label={r.statusLabel} /></div>
                     <div className="row between"><span className="mono tiny">{r.orderNumber ?? r.reference}</span><span className="tiny">{num(r.pallets)} palet · {num(r.grossKg)} kg</span></div>
+                    {r.contract && <button className="link small" onClick={() => setContractFor(r.id)} data-testid="contract-open"><ScrollText size={12} /> Sözleşme · {r.contract.signerName} · {shortHash(r.contract.renderedHash)}</button>}
                     <PodThumbs files={r.pod?.attachments ?? []} recipient={r.pod?.recipientName} />
                     <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
                       {r.status === "INCELEME" && <button className="btn sm primary" onClick={() => setMeasure(r)}>İncele <ArrowRight size={13} /></button>}
@@ -287,6 +305,7 @@ function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged:
         </div>
       </aside>
 
+      {contractFor && <ContractViewerModal path={`/carrier/reservations/${contractFor}/contract`} onClose={() => setContractFor(null)} />}
       {measure && <MeasureModal r={measure} onClose={() => setMeasure(null)} onDone={(msg) => { toast(msg, "ok"); setMeasure(null); reload(); }} />}
       {teslim && <TeslimModal r={teslim} onClose={() => setTeslim(null)} onDone={() => { toast(`Teslim kaydedildi: ${teslim.customer.name}`, "ok"); setTeslim(null); reload(); }} />}
       {editing && <EditTripModal trip={t} onClose={() => setEditing(false)} onSaved={(r: TripUpdateResult) => {
