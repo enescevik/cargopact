@@ -1,8 +1,9 @@
+import { notify } from "./notify";
 import { randomBytes } from "node:crypto";
 import type pg from "pg";
-import { withTx } from "@cargopact/db";
+import { derivePickupCode, PICKUP_MAX_ATTEMPTS, withTx } from "@cargopact/db";
 import { presignGet, uploadsBucket } from "./s3";
-import { defaultPolicy, priceQuote, checkEligibility, type PriceQuote } from "@cargopact/domain";
+import { defaultPolicy, priceQuote, checkEligibility, withTierOverride, type ContractTariff, type PriceQuote } from "@cargopact/domain";
 
 export type Q = pg.Pool | pg.PoolClient;
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -24,11 +25,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 export const round2 = r2;
 
 export const TRIP_SELECT = `select t.id, t.carrier_id, t.reference, t.departure_at, t.arrival_eta, t.booking_cutoff_at, t.intake_cutoff_at, t.status,
-  t.total_positions, t.internal_pallets, t.internal_kg, t.max_gross_kg, t.sellable_pallets, t.sellable_kg, t.sellable_m3, t.base_price_minor,
+  t.total_positions, t.internal_pallets, t.internal_kg, t.max_gross_kg, t.sellable_pallets, t.sellable_kg, t.sellable_m3, t.base_price_minor, t.pricing_tiers,
   t.floor_ratio, t.ceiling_ratio, t.is_demo, t.version trip_version, t.capacity_version, ca.name carrier_name, ca.status carrier_status,
   vt.code vt_code, vt.name vt_name, vt.pallet_positions vt_positions, v.id vehicle_id, v.plate,
-  o.id o_id, o.code o_code, o.name o_name, o.city o_city, o.district o_district, o.address o_address, o.intake_window o_intake, o.pickup_window o_pickup,
-  d.id d_id, d.code d_code, d.name d_name, d.city d_city, d.district d_district, d.address d_address, d.intake_window d_intake, d.pickup_window d_pickup,
+  o.id o_id, o.code o_code, o.name o_name, o.city o_city, o.district o_district, o.address o_address, o.latitude o_lat, o.longitude o_lng, o.contact_phone o_phone, o.opening_hours o_hours, o.intake_window o_intake, o.pickup_window o_pickup,
+  d.id d_id, d.code d_code, d.name d_name, d.city d_city, d.district d_district, d.address d_address, d.latitude d_lat, d.longitude d_lng, d.contact_phone d_phone, d.opening_hours d_hours, d.intake_window d_intake, d.pickup_window d_pickup,
   coalesce(cap.held_pallets,0) held_pallets, coalesce(cap.held_kg,0) held_kg, coalesce(cap.held_m3,0) held_m3,
   coalesce(cap.confirmed_pallets,0) confirmed_pallets, coalesce(cap.confirmed_kg,0) confirmed_kg, coalesce(cap.confirmed_m3,0) confirmed_m3,
   coalesce(cap.loaded_pallets,0) loaded_pallets, coalesce(cap.loaded_kg,0) loaded_kg
@@ -41,6 +42,8 @@ export async function loadTrips(q: Q, where: string, params: unknown[]): Promise
 
 const facility = (r: Row, p: "o" | "d") => ({
   id: r[`${p}_id`], code: r[`${p}_code`], name: r[`${p}_name`], city: r[`${p}_city`], district: r[`${p}_district`] ?? null, address: r[`${p}_address`],
+  latitude: r[`${p}_lat`] == null ? null : Number(r[`${p}_lat`]), longitude: r[`${p}_lng`] == null ? null : Number(r[`${p}_lng`]),
+  contactPhone: r[`${p}_phone`] ?? null, openingHours: r[`${p}_hours`] ?? null,
   intakeWindow: r[`${p}_intake`] ?? null, pickupWindow: r[`${p}_pickup`] ?? null,
 });
 
@@ -57,19 +60,29 @@ export const capacityOf = (r: Row) => {
   };
 };
 
-export const policyOf = (r: Row) => defaultPolicy(Number(r.base_price_minor), Number(r.floor_ratio), Number(r.ceiling_ratio));
+export const policyOf = (r: Row) => withTierOverride(defaultPolicy(Number(r.base_price_minor), Number(r.floor_ratio), Number(r.ceiling_ratio)), r.pricing_tiers);
 
-export function quoteFor(r: Row, pallets: number, now: Date): PriceQuote {
-  return priceQuote(policyOf(r), r.booking_cutoff_at, { heldPallets: r.held_pallets, confirmedPallets: r.confirmed_pallets, sellablePallets: r.sellable_pallets }, pallets, now);
+/** Kayıtlı ticari koşul: geçerli sözleşme tarifesi (sefere özel olan genel olana göre önceliklidir). */
+export async function contractFor(q: Q, r: Row, customerId: string, now: Date): Promise<ContractTariff | null> {
+  const { rows } = await q.query(
+    `select tf.base_price_minor, cu.name from carrier_customer_tariffs tf join tenants cu on cu.id = tf.customer_id
+      where tf.carrier_id = $1 and tf.customer_id = $2 and (tf.trip_id is null or tf.trip_id = $3)
+        and (tf.valid_from is null or tf.valid_from <= $4) and (tf.valid_to is null or tf.valid_to > $4)
+      order by (tf.trip_id is null), tf.created_at desc limit 1`, [r.carrier_id, customerId, r.id, now]);
+  return rows[0] ? { basePriceMinor: Number(rows[0].base_price_minor), customerName: rows[0].name } : null;
+}
+
+export function quoteFor(r: Row, pallets: number, now: Date, contract?: ContractTariff | null): PriceQuote {
+  return priceQuote(policyOf(r), r.booking_cutoff_at, { heldPallets: r.held_pallets, confirmedPallets: r.confirmed_pallets, sellablePallets: r.sellable_pallets }, pallets, now, contract);
 }
 export const toPrice = (p: PriceQuote) => {
   const { roundedFromMinor: _drop, ...bd } = p.breakdown;
   return { unitPriceMinor: p.unitPriceMinor, totalPriceMinor: p.totalPriceMinor, currency: "TRY" as const, breakdown: bd };
 };
 
-export function tripCard(r: Row, pallets: number, now: Date, locked?: { unitPriceMinor: number; totalPriceMinor: number; breakdown: Row }) {
+export function tripCard(r: Row, pallets: number, now: Date, locked?: { unitPriceMinor: number; totalPriceMinor: number; breakdown: Row }, contract?: ContractTariff | null) {
   const cap = capacityOf(r);
-  const price = locked ? { unitPriceMinor: locked.unitPriceMinor, totalPriceMinor: locked.totalPriceMinor, currency: "TRY" as const, breakdown: locked.breakdown } : toPrice(quoteFor(r, pallets, now));
+  const price = locked ? { unitPriceMinor: locked.unitPriceMinor, totalPriceMinor: locked.totalPriceMinor, currency: "TRY" as const, breakdown: locked.breakdown } : toPrice(quoteFor(r, pallets, now, contract));
   return {
     id: r.id, reference: r.reference, carrier: { id: r.carrier_id, name: r.carrier_name },
     origin: facility(r, "o"), destination: facility(r, "d"),
@@ -140,6 +153,7 @@ export async function expireHolds(c: pg.PoolClient, tripId: string, now: Date): 
   for (const r of rows) {
     await setStatus(c, r.id, "SURESI_DOLDU", now, "Blokaj süresi doldu");
     await addEvent(c, r.id, "SURESI_DOLDU", "Blokaj süresi doldu", null, now, r.is_demo);
+    await notify(c, r.id, "customer", "HOLD_EXPIRED", "Blokaj süresi doldu · {ref}", "Taşıyıcı süre içinde onaylamadı; provizyon serbest bırakıldı.");
     await addLedger(c, r.id, "RELEASED", amt.get(r.id) ?? 0, "Blokaj süresi doldu; provizyon serbest", `${r.id}:RELEASED`, now, r.is_demo);
     p += r.pallets; kg += r.gross_kg; m3 += Number(r.volume_m3);
   }
@@ -235,6 +249,12 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       .map((e) => ({ type: e.type, label: STATUS_LABELS[e.type] ?? e.type, at: iso(e.created_at), note: e.note ?? null, attachments: e.type === "TESLIM" ? podFiles : [] }));
     const teslim = events.find((e) => e.type === "TESLIM");
     const pod = r.status === "TESLIM" && teslim ? { recipientName: r.pod_recipient_name ?? null, deliveredAt: teslim.at, attachments: podFiles } : null;
+    const recips = (Array.isArray(r.pickup_recipients) ? r.pickup_recipients : r.recipient_name ? [{ name: r.recipient_name }] : []) as { name: string; phone?: string }[];
+    const pickup = {
+      recipients: recips, hint: r.pickup_code_hint ?? null, locked: Number(r.pickup_failed_attempts ?? 0) >= PICKUP_MAX_ATTEMPTS,
+      // Düz kod yalnız müşteriye gösterilir; taşıyıcı görünümünde asla.
+      ...(opts.carrierView ? {} : { code: r.pickup_code_hash && CONFIRMED_STATES.includes(r.status) && r.status !== "TESLIM" ? derivePickupCode(r.id) : null }),
+    };
     const base = {
       id: r.id, reference: r.reference, orderNumber: r.order_number ?? null, status: r.status, statusLabel: STATUS_LABELS[r.status] ?? r.status,
       trip: tripCard(t, r.pallets, now, { unitPriceMinor: Number(r.unit_price_minor), totalPriceMinor: Number(r.total_price_minor), breakdown: r.price_breakdown }),
@@ -244,7 +264,7 @@ export async function reservationViews(q: Q, rows: Row[], now: Date, opts: ViewO
       paymentPlan: r.payment_plan, depositPercent: r.deposit_percent,
       payment: paymentView(r, led.rows.filter((e) => e.reservation_id === r.id)),
       holdExpiresAt: r.status === "TASIYICI_ONAYI_BEKLIYOR" && r.hold_expires_at ? iso(r.hold_expires_at) : null,
-      decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[], pod,
+      decisionReason: r.decision_reason ?? null, createdAt: iso(r.created_at), events, palletCodes: (r.pallet_codes ?? []) as string[], pod, pickup,
     };
     if (!opts.carrierView) return base;
     const pending = r.status === "TASIYICI_ONAYI_BEKLIYOR";

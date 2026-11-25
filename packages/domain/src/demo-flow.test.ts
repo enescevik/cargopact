@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cancellationRefund, checkEligibility, defaultPolicy, priceQuote } from "./index";
+import { cancellationRefund, checkEligibility, defaultPolicy, priceQuote, withTierOverride } from "./index";
 const dep = new Date("2026-11-27T15:00:00Z");
 const cutoff = new Date(dep.getTime() - 3 * 3_600_000);
 const trip = { status: "published", bookingCutoffAt: cutoff, internalKg: 17000, maxGrossKg: 22000, sellablePallets: 8, sellableKg: 5000, sellableM3: 12 };
@@ -62,4 +62,24 @@ describe("cancellationRefund", () => {
   it("≥24 saat %100", () => expect(cancellationRefund(d, at(24), { approved: true }).refundPercent).toBe(100));
   it("24 saat–T−3 arası %50", () => { expect(cancellationRefund(d, at(10), { approved: true }).refundPercent).toBe(50); expect(cancellationRefund(d, at(3), { approved: true }).refundPercent).toBe(50); });
   it("T−3 sonrası ve no-show %0", () => { expect(cancellationRefund(d, at(2), { approved: true }).refundPercent).toBe(0); expect(cancellationRefund(d, at(30), { approved: true, noShow: true }).refundPercent).toBe(0); });
+});
+
+describe("kayıtlı ticari koşullar", () => {
+  const c = (h: number, k: number) => ({ heldPallets: h, confirmedPallets: k, sellablePallets: 8 });
+  const tiers = withTierOverride(defaultPolicy(110000), { demandTiers: [{ minUtilization: 0, multiplier: 1 }], timeTiers: [] });
+  it("sözleşme tabanı + sefer kademesi: talep/zamandan bağımsız sabit fiyat", () => {
+    const near = new Date(cutoff.getTime() - 5 * 3_600_000);
+    for (const [name, base, unit] of [["Marmara Ambar", 125000, 125000], ["Anadolu Parsiyel", 110000, 110000], ["Başkent Nakliye", 95000, 95000]] as const) {
+      for (const [k, n] of [[0, now], [7, near]] as const) {
+        const q = priceQuote(tiers, cutoff, c(0, k), 3, n, { basePriceMinor: base, customerName: name });
+        expect(q.unitPriceMinor).toBe(unit);
+        expect(q.totalPriceMinor).toBe(unit * 3);
+      }
+    }
+    const q = priceQuote(tiers, cutoff, c(0, 0), 3, now, { basePriceMinor: 125000, customerName: "Marmara Ambar" });
+    expect(q.breakdown.explanation[0]).toBe("Sözleşmeli fiyat (Marmara Ambar): 1.250 TL/palet");
+  });
+  it("sözleşmesiz müşteri dinamik kalır", () => {
+    expect(priceQuote(defaultPolicy(110000), cutoff, c(0, 4), 1, now).unitPriceMinor).toBe(121000);
+  });
 });

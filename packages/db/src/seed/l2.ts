@@ -1,5 +1,6 @@
 import type pg from "pg";
 import { withTx } from "../tx";
+import { pickupFields } from "../pickup";
 import { demoId } from "./ids";
 import { assertSeedAllowed, tenantId, upsert } from "./seed";
 
@@ -22,10 +23,17 @@ const LOADED = ["YUKLENDI", "VARISTA", "TESLIM", "EKSIK_HASAR"];
 
 async function deleteReservationsOf(pool: pg.Pool, where: string, params: unknown[]) {
   const sub = `select id from reservations where ${where}`;
-  for (const t of ["ledger_entries", "reservation_events", "reservation_attachments"]) {
+  for (const t of ["notifications", "ledger_entries", "reservation_events", "reservation_attachments"]) {
     await withTx(pool, (c) => c.query(`delete from ${t} where reservation_id in (${sub})`, params));
   }
   await withTx(pool, (c) => c.query(`delete from reservations where ${where}`, params));
+}
+
+/** Onaylı seed siparişlerine yetkili alıcı + teslim kodu (hash) yazar; bekleyenlere yalnız alıcı. */
+function seedPickup(id: string, approved: boolean) {
+  const recipients = [{ name: "Mehmet Yılmaz", phone: "+90 532 000 00 01" }];
+  const pk = pickupFields(id);
+  return { pickup_recipients: recipients, pickup_code_hash: approved ? pk.pickup_code_hash : null, pickup_code_hint: approved ? pk.pickup_code_hint : null, pickup_failed_attempts: 0 };
 }
 
 /** Seed L2: sunum seferleri, geçmiş rezervasyonlar, tutarlı kapasite/defter. Tekrar çalıştırılabilir; demo seferini sıfırlar. */
@@ -79,10 +87,17 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       departure_at: t.dep, arrival_eta: new Date(t.dep.getTime() + t.hours * HOUR), booking_cutoff_at: new Date(t.dep.getTime() - 3 * HOUR), intake_cutoff_at: new Date(t.dep.getTime() - HOUR),
       status: t.status, total_positions: v.pos, internal_pallets: internalPallets, internal_kg: internalKg, max_gross_kg: maxGross,
       sellable_pallets: sellablePallets, sellable_kg: sellableKg, sellable_m3: demoShape ? 12 : Math.round(sellablePallets * 1.5 * 100) / 100,
-      base_price_minor: t.base, floor_ratio: 0.8, ceiling_ratio: 1.5, capacity_version: 1, is_demo: true, updated_at: now,
+      base_price_minor: t.base, pricing_tiers: t.ref === DEMO_TRIP_REF ? { demandTiers: [{ minUtilization: 0, multiplier: 1 }], timeTiers: [] } : null,
+      floor_ratio: 0.8, ceiling_ratio: 1.5, capacity_version: 1, is_demo: true, updated_at: now,
     };
   });
   await upsert(pool, "trips", tripRows, ["id"], log);
+  // Kayıtlı ticari koşullar (PROJECT_PLAN §5 jüri senaryosu): demo seferinde sözleşmeli birim fiyatlar.
+  const demoTrip = demoId("trips", DEMO_TRIP_REF);
+  await upsert(pool, "carrier_customer_tariffs", [["marmara", 125000], ["anadolu", 110000], ["baskent", 95000]].map(([cu, price]) => ({
+    id: demoId("carrier_customer_tariffs", `${DEMO_TRIP_REF}:${cu}`), carrier_id: tenantId("dincer"), customer_id: tenantId(cu as string), trip_id: demoTrip,
+    base_price_minor: price, valid_from: null, valid_to: null, is_demo: true,
+  })), ["id"], log);
   const tripBy = new Map(tripRows.map((t) => [t.reference, t]));
 
   // 3) Geçmiş / geçmiş-durum rezervasyonları (deterministik).
@@ -123,7 +138,7 @@ export async function seedDemo(pool: pg.Pool, log: (m: string) => void = console
       unit_price_minor: t.base_price_minor, total_price_minor: total,
       price_breakdown: { basePriceMinor: t.base_price_minor, utilization: 0, demandMultiplier: 1, hoursToCutoff: 0, timeMultiplier: 1, timeDecayApplied: false, clampedTo: null, explanation: ["Standart fiyat: talep ve zaman etkisi yok"] },
       payment_plan: "full", deposit_percent: 30, hold_expires_at: pending ? t.booking_cutoff_at : null,
-      needs_review: false, pod_recipient_name: null, pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
+      needs_review: false, pod_recipient_name: s.status === "TESLIM" ? "Mehmet Yılmaz" : null, ...seedPickup(id, orderNo !== null), pallet_codes: orderNo ? Array.from({ length: s.pallets }, (_, i) => `${orderNo}-P${i + 1}`) : [], is_demo: true, created_at: at(s.createdHoursBeforeDep), updated_at: now,
     });
     for (const [type, h] of s.events) eventRows.push({ reservation_id: id, type, note: null, is_demo: true, created_at: at(h) });
     ledgerRows.push({ reservation_id: id, type: "AUTHORIZED", amount_minor: total, reason: "Tam tutar provizyonu (simüle)", idempotency_key: `${id}:AUTHORIZED`, is_demo: true, created_at: at(s.createdHoursBeforeDep) });

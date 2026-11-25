@@ -104,6 +104,9 @@ const baskentOrder = r.body.orderNumber;
 d = await dash();
 expect("planlanan 33/33, kg dolu", d.trip.capacity.plannedPallets === 33 && d.trip.capacity.plannedGrossKg === 17000 + 1500 + 1200 + 1900, d.trip.capacity);
 expect("dashboard geliri/maliyeti", d.grossRevenueMinor > 0 && d.variableCostMinor === 8 * 20000 && d.contributionMinor === d.grossRevenueMinor - d.variableCostMinor && d.customers.length === 3, d);
+expect("kayıtlı ticari koşul: birim fiyatlar 125000/110000/95000", marmara.unitPriceMinor === 125000 && anadolu.unitPriceMinor === 110000 && baskent.unitPriceMinor === 95000, [marmara.unitPriceMinor, anadolu.unitPriceMinor, baskent.unitPriceMinor]);
+expect("sözleşmeli fiyat açıklaması", marmara.breakdown?.explanation?.[0] === "Sözleşmeli fiyat (Marmara Ambar): 1.250 TL/palet" || JSON.stringify(marmara).includes("Sözleşmeli fiyat (Marmara Ambar): 1.250 TL/palet"), marmara);
+expect("jüri tutarları: brüt 880000, katkı 720000", d.grossRevenueMinor === 880000 && d.contributionMinor === 720000, [d.grossRevenueMinor, d.contributionMinor]);
 
 // 4) Depo olayları
 r = await event(YONETICI, marmara.id, "YUKLENDI");

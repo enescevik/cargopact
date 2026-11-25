@@ -12,7 +12,7 @@ export function assertSeedAllowed(): void {
 }
 
 type Row = Record<string, unknown>;
-const JSON_COLS = new Set(["opening_hours", "intake_window", "pickup_window", "price_breakdown", "pallet_codes"]);
+const JSON_COLS = new Set(["opening_hours", "intake_window", "pickup_window", "price_breakdown", "pallet_codes", "pricing_tiers", "pickup_recipients"]);
 
 /** Satırları ≤3000'lik işlemlerle upsert eder. Kimlik deterministik olduğundan tekrar çalıştırma aynı satırları günceller. */
 export async function upsert(pool: pg.Pool, table: string, rows: Row[], conflict: string[], log: (m: string) => void) {

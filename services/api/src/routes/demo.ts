@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { z } from "zod";
 import {
-  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, type Role,
+  cancelInput, decisionInput, quoteInput, reservationEventInput, reservationInput, tripCreateInput, tripStatusInput, tripUpdateInput, podUploadInput, recipientsInput, type Role,
 } from "@cargopact/contracts";
-import { withTx } from "@cargopact/db";
+import { hashPickupCode, normalizeName, PICKUP_MAX_ATTEMPTS, pickupFields, withTx } from "@cargopact/db";
+import { notify } from "../lib/notify";
 import {
   CANCELLATION_POLICY_TABLE, cancellationRefund, checkEligibility, defaultVolume, isWithinCutoff,
 } from "@cargopact/domain";
@@ -15,7 +16,7 @@ import { idempotent } from "../lib/idempotency";
 import { objectExists, POD_EXT, POD_PUT_TTL, presignPut, uploadsBucket } from "../lib/s3";
 import {
   addEvent, addLedger, adjustCap, capacityOf, carrierTrip, COST_PER_PALLET_MINOR, CONFIRMED_STATES, round2, expireDue, expireHolds, HOLD_MS, iso,
-  loadTrips, newReference, pendingCounts, quoteFor, RESERVATION_SELECT, reservationViews, setStatus, STATUS_LABELS, toPrice, tripCard, type Q,
+  contractFor, loadTrips, newReference, pendingCounts, quoteFor, RESERVATION_SELECT, reservationViews, setStatus, STATUS_LABELS, toPrice, tripCard, type Q,
 } from "../lib/trips";
 import type { Route } from "./master-data";
 
@@ -36,6 +37,14 @@ const trLower = (s: string) => s.toLocaleLowerCase("tr-TR").trim();
 const sumOf = (rows: Record<string, unknown>[], t: string) => rows.filter((e) => e.type === t).reduce((a, e) => a + Number(e.amount_minor), 0);
 const dueNow = (total: number, plan: "full" | "deposit") => (plan === "full" ? total : Math.floor((total * DEPOSIT_PERCENT) / 100));
 
+const EVENT_NOTES: Record<string, [string, string]> = {
+  DEPO_KABUL: ["Yükünüz çıkış deposunda kabul edildi · {order}", "Paletleriniz kabul edildi, araca yüklenecek."],
+  YUKLENDI: ["Yükünüz araca yüklendi · {order}", "Araç yola çıkmak üzere."],
+  VARISTA: ["Varış deposunda teslime hazır · {order}", "Alım penceresi {window}. Müşteri veya yetkili alıcı depoya gelebilir."],
+  TESLIM: ["Teslimat tamamlandı · {order}", "Teslim alan: {recipient}."],
+  GELMEDI: ["Yük kabul süresinde getirilmedi · {order}", "Gelmeme kaydı oluşturuldu; iptal politikası uygulandı."],
+  EKSIK_HASAR: ["Eksik/hasar kaydı açıldı · {order}", "{note}"],
+};
 export function demoRoutes(pool: pg.Pool): Route[] {
   const oneView = async (q: Q, id: string, now: Date, carrierView: boolean) => (await reservationViews(q, await fetchRes(q, "where r.id = $1", [id]), now, { carrierView }))[0];
   const publishedTrip = async (q: Q, id: string) => (await loadTrips(q, "where t.id = $1 and t.status = 'published' and ca.status = 'active'", [uid(id)]))[0];
@@ -84,11 +93,14 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       const ctr = await c.query("insert into order_counters (year, last_value) values ($1, 1) on conflict (year) do update set last_value = order_counters.last_value + 1 returning last_value", [year]);
       const order = `CP-${year}-${String(ctr.rows[0].last_value).padStart(6, "0")}`;
       const codes = Array.from({ length: r.pallets }, (_, i) => `${order}-P${i + 1}`);
-      await setStatus(c, id, "ONAYLI", now, null, { order_number: order, pallet_codes: JSON.stringify(codes), hold_expires_at: null });
+      // Teslim kodu: yalnız hash + son 2 hane saklanır; düz kod müşteri görünümünde sunucu sırrından türetilir.
+      const pk = pickupFields(id);
+      await setStatus(c, id, "ONAYLI", now, null, { order_number: order, pallet_codes: JSON.stringify(codes), hold_expires_at: null, pickup_code_hash: pk.pickup_code_hash, pickup_code_hint: pk.pickup_code_hint, pickup_failed_attempts: 0 });
       const led = (await c.query("select type, amount_minor from ledger_entries where reservation_id = $1", [id])).rows;
       await addLedger(c, id, "CAPTURED", sumOf(led, "AUTHORIZED"), r.payment_plan === "full" ? "Onayda tam tahsilat" : `Onayda %${r.deposit_percent} kapora tahsilatı`, `${id}:CAPTURED:approve`, now, r.is_demo);
       await addEvent(c, id, "ONAYLI", `Sipariş ${order}`, ctx.userId, now, r.is_demo);
       await audit(c, ctx, { action: "reservation.approve", entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: "ONAYLI", orderNumber: order } });
+      await notify(c, id, "customer", "RESERVATION_APPROVED", "Rezervasyonunuz onaylandı · {order}, son kabul {cutoff}", "Yükünüzü çıkış merkezine {cutoff} (İstanbul) saatine kadar getirin.");
       return done();
     }
     if (r.status === "RET") return done();
@@ -100,6 +112,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
     await setStatus(c, id, "RET", now, input.reason.trim());
     await addEvent(c, id, "RET", input.reason.trim(), ctx.userId, now, r.is_demo);
     await audit(c, ctx, { action: "reservation.reject", entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: "RET" }, reason: input.reason });
+    await notify(c, id, "customer", "RESERVATION_REJECTED", "Talebiniz reddedildi · {ref}", "Gerekçe: {reason}", { reason: input.reason.trim() });
     return done();
   }
 
@@ -123,6 +136,22 @@ export function demoRoutes(pool: pg.Pool): Route[] {
       case "TESLIM": {
         const name = input.recipientName?.trim();
         if (!name) throw validation("Teslim alan kişinin adı zorunludur.", { field: "recipientName" });
+        if (!input.pickupCode) throw validation("Teslim kodu zorunludur.", { field: "pickupCode" });
+        const authorized = (Array.isArray(r.pickup_recipients) ? r.pickup_recipients : r.recipient_name ? [{ name: r.recipient_name }] : []) as { name: string }[];
+        if ((r.pickup_failed_attempts ?? 0) >= PICKUP_MAX_ATTEMPTS) throw conflict("Hatalı deneme sınırı aşıldı; bu sevkiyatın teslimi kilitlendi. Operasyona başvurun.", "PICKUP_LOCKED");
+        if (!r.pickup_code_hash) throw conflict("Bu siparişte teslim kodu tanımlı değil.", "PICKUP_CODE_MISSING");
+        if (authorized.length === 0) throw conflict("Müşteri yetkili alıcı tanımlamamış.", "NO_AUTHORIZED_RECIPIENT");
+        const nameOk = authorized.some((x) => normalizeName(x.name) === normalizeName(name));
+        const codeOk = hashPickupCode(id, input.pickupCode) === r.pickup_code_hash;
+        if (!nameOk || !codeOk) {
+          // Başarısız deneme geri alınmasın diye ayrı işlemde (ayrı bağlantı) kalıcılaştırılır.
+          const attempts = await withTx(pool, async (c2) => {
+            const u = await c2.query("update reservations set pickup_failed_attempts = coalesce(pickup_failed_attempts, 0) + 1 where id = $1 returning pickup_failed_attempts n", [id]);
+            await audit(c2, ctx, { action: "reservation.pickup.unauthorized", entityType: "reservation", entityId: id, after: { attempts: u.rows[0].n, attemptedRecipient: name }, reason: "Yetkisiz teslim denemesi" });
+            return Number(u.rows[0].n);
+          });
+          throw new HttpError("FORBIDDEN", "Teslim alan kişi veya teslim kodu doğrulanamadı.", { reason: "UNAUTHORIZED_RECIPIENT", remainingAttempts: Math.max(0, PICKUP_MAX_ATTEMPTS - attempts) });
+        }
         const keys = [...new Set(input.podKeys ?? [])];
         const prefix = `pod/${r.carrier_id}/${id}/`;
         if (keys.some((k) => !k.startsWith(prefix) || k.includes(".."))) throw validation("e-POD dosya anahtarı bu rezervasyona ait değil.", { field: "podKeys" });
@@ -132,7 +161,8 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           for (const k of keys) if (!(await objectExists(k))) throw validation("e-POD dosyası henüz yüklenmemiş.", { field: "podKeys", key: k });
           await c.query("update reservation_attachments set attached = true where reservation_id = $1 and s3_key = any($2::text[])", [id, keys]);
         }
-        extra.pod_recipient_name = name;
+        extra.pod_recipient_name = authorized.find((x) => normalizeName(x.name) === normalizeName(name))!.name;
+        extra.pickup_failed_attempts = 0;
         break;
       }
       case "DEPO_KABUL": {
@@ -159,6 +189,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
     await setStatus(c, id, input.type, now, undefined, extra);
     await addEvent(c, id, input.type, input.note ?? null, ctx.userId, now, r.is_demo);
     await audit(c, ctx, { action: `reservation.event.${input.type}`, entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: input.type }, reason: input.note });
+    await notify(c, id, "customer", `RESERVATION_${input.type}`, EVENT_NOTES[input.type][0], EVENT_NOTES[input.type][1], { note: input.note ?? "Ayrıntı için rezervasyonu açın.", recipient: input.recipientName?.trim() ?? "" });
     return done();
   }
 
@@ -201,9 +232,9 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           .filter((r) => !q.originCity || trLower(r.o_city) === trLower(q.originCity))
           .filter((r) => !q.destinationCity || trLower(r.d_city) === trLower(q.destinationCity))
           .filter((r) => !q.date || istanbulDate(r.departure_at) === q.date)
-          .filter((r) => !q.pallets || capacityOf(r).remaining.pallets >= q.pallets)
-          .map((r) => tripCard(r, q.pallets ?? 1, now));
-        return ok({ items });
+          .filter((r) => !q.pallets || capacityOf(r).remaining.pallets >= q.pallets);
+        const cards = await Promise.all(items.map(async (r) => tripCard(r, q.pallets ?? 1, now, undefined, await contractFor(pool, r, ctx.tenantId, now))));
+        return ok({ items: cards });
       },
     },
     {
@@ -214,7 +245,8 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         await expireDue(pool, uid(req.params.id));
         const t = await publishedTrip(pool, req.params.id);
         if (!t) throw notFound("Sefer");
-        return ok(tripCard(t, pallets, new Date()));
+        const nowD = new Date();
+        return ok(tripCard(t, pallets, nowD, undefined, await contractFor(pool, t, ctx.tenantId, nowD)));
       },
     },
     {
@@ -238,7 +270,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           { pallets: input.pallets, grossKg: input.grossKg, volumeM3: input.volumeM3 ?? defaultVolume(input.pallets), productClassAccepted: Boolean(pc.accepted) },
           { now },
         );
-        const price = toPrice(quoteFor(t, input.pallets, now));
+        const price = toPrice(quoteFor(t, input.pallets, now, await contractFor(pool, t, ctx.tenantId, now)));
         const total = price.totalPriceMinor;
         const dep = dueNow(total, "deposit");
         return ok({
@@ -287,7 +319,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             if (codes.includes("INSUFFICIENT_PALLETS")) throw conflict("Seferde yeterli boş palet yok.", "CAPACITY_EXCEEDED", { reasons: elig.reasons });
             throw validation("Talep bu sefer için uygun değil.", { reason: codes.includes("BOOKING_CUTOFF_PASSED") ? "BOOKING_CUTOFF_PASSED" : "NOT_ELIGIBLE", reasons: elig.reasons });
           }
-          const price = toPrice(quoteFor(t, input.pallets, now));
+          const price = toPrice(quoteFor(t, input.pallets, now, await contractFor(c, t, ctx.tenantId, now)));
           // Kapasite blokajı: taşma korumalı tek UPDATE; eşzamanlı yazım OCC ile serileşir.
           const upd = await c.query(
             `update trip_capacity set held_pallets = held_pallets + $2, held_kg = held_kg + $3, held_m3 = held_m3 + $4, version = version + 1, updated_at = now()
@@ -300,14 +332,16 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           const holdAt = new Date(Math.min(now.getTime() + HOLD_MS, t.booking_cutoff_at.getTime()));
           await c.query(
             `insert into reservations (id, customer_id, carrier_id, trip_id, reference, status, pallets, gross_kg, volume_m3, product_class_id, unit_price_minor, total_price_minor,
-               price_breakdown, payment_plan, deposit_percent, hold_expires_at, recipient_name, is_demo, created_at, updated_at)
-             values ($1,$2,$3,$4,$5,'TASIYICI_ONAYI_BEKLIYOR',$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$18)`,
+               price_breakdown, payment_plan, deposit_percent, hold_expires_at, recipient_name, is_demo, created_at, updated_at, pickup_recipients)
+             values ($1,$2,$3,$4,$5,'TASIYICI_ONAYI_BEKLIYOR',$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14,$15,$16,$17,$18,$18,$19::jsonb)`,
             [id, ctx.tenantId, t.carrier_id, tripId, reference, input.pallets, input.grossKg, volume, pc.id, price.unitPriceMinor, price.totalPriceMinor,
-              JSON.stringify(price.breakdown), input.paymentPlan, DEPOSIT_PERCENT, holdAt, input.recipientName ?? null, Boolean(t.is_demo), now]);
+              JSON.stringify(price.breakdown), input.paymentPlan, DEPOSIT_PERCENT, holdAt, input.recipientName ?? null, Boolean(t.is_demo), now,
+              JSON.stringify(input.recipients ?? (input.recipientName?.trim() ? [{ name: input.recipientName.trim() }] : []))]);
           const authAmt = dueNow(price.totalPriceMinor, input.paymentPlan);
           await addLedger(c, id, "AUTHORIZED", authAmt, input.paymentPlan === "full" ? "Tam tutar provizyonu (simüle)" : `%${DEPOSIT_PERCENT} kapora provizyonu (simüle)`, `${id}:AUTHORIZED`, now, Boolean(t.is_demo));
           await addEvent(c, id, "TASIYICI_ONAYI_BEKLIYOR", "Talep oluşturuldu", ctx.userId, now, Boolean(t.is_demo));
           await audit(c, ctx, { action: "reservation.create", entityType: "reservation", entityId: id, after: { tripId, pallets: input.pallets, grossKg: input.grossKg, totalPriceMinor: price.totalPriceMinor } });
+          await notify(c, id, "carrier", "RESERVATION_REQUESTED", "Yeni talep: {customer} {pallets} palet", "Onay bekliyor · {ref}");
           return ok(await oneView(c, id, now, false), 201);
         });
       },
@@ -329,6 +363,25 @@ export function demoRoutes(pool: pg.Pool): Route[] {
         const rows = await fetchRes(pool, "where r.id = $1 and r.customer_id = $2", [uid(req.params.id), ctx.tenantId]);
         if (!rows[0]) throw notFound("Rezervasyon");
         return ok((await reservationViews(pool, rows, new Date()))[0]);
+      },
+    },
+    {
+      method: "PUT", pattern: "/customer/reservations/{id}/recipients",
+      handler: async (ctx, req) => {
+        requireRole(ctx, CUSTOMER);
+        const input = recipientsInput.parse(req.body);
+        const id = uid(req.params.id);
+        const list = input.recipients.map((x) => ({ name: x.name.trim(), ...(x.phone?.trim() ? { phone: x.phone.trim() } : {}) }));
+        if (new Set(list.map((x) => normalizeName(x.name))).size !== list.length) throw validation("Aynı alıcı iki kez eklenemiş.", { field: "recipients" });
+        return idempotent(pool, ctx, "reservation.recipients", req.headers["idempotency-key"], { id, ...input }, async (c) => {
+          const now = new Date();
+          const r = (await fetchRes(c, "where r.id = $1 and r.customer_id = $2", [id, ctx.tenantId]))[0];
+          if (!r) throw notFound("Rezervasyon");
+          if (["TESLIM", "IPTAL", "RET", "SURESI_DOLDU", "GELMEDI"].includes(r.status)) throw conflict(`${STATUS_LABELS[r.status] ?? r.status} durumunda yetkili alıcılar değiştirilemez.`, "INVALID_TRANSITION");
+          await c.query("update reservations set pickup_recipients = $2::jsonb, version = version + 1, updated_at = $3 where id = $1", [id, JSON.stringify(list), now]);
+          await audit(c, ctx, { action: "reservation.recipients.update", entityType: "reservation", entityId: id, before: { recipients: r.pickup_recipients ?? [] }, after: { recipients: list } });
+          return ok(await oneView(c, id, now, false));
+        });
       },
     },
     {
@@ -358,6 +411,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
           if (r.status !== "TASIYICI_ONAYI_BEKLIYOR" && r.status !== "ONAYLI") throw conflict(`${STATUS_LABELS[r.status] ?? r.status} durumundaki rezervasyon iptal edilemez.`, "INVALID_TRANSITION");
           await cancelCore(c, r, now, { full: false, reason: input.reason, userId: ctx.userId });
           await audit(c, ctx, { action: "reservation.cancel", entityType: "reservation", entityId: id, before: { status: r.status }, after: { status: "IPTAL" }, reason: input.reason });
+          await notify(c, id, "carrier", "RESERVATION_CANCELLED", "Talep iptal edildi: {customer} {pallets} palet", "{ref} müşteri tarafından iptal edildi; kapasite iade edildi.");
           return ok(await oneView(c, id, now, false));
         });
       },
@@ -589,6 +643,7 @@ export function demoRoutes(pool: pg.Pool): Route[] {
             if (!elig.eligible) {
               await c.query("update reservations set needs_review = true, updated_at = $2 where id = $1", [r.id, now]);
               await c.query("delete from reservation_events where reservation_id = $1 and type = 'YENIDEN_DEGERLENDIRME'", [r.id]);
+              if (!flagged) await notify(c, r.id, "carrier", "NEEDS_REVIEW", "İnceleme gerekli: {customer} {pallets} palet", "Araç/kapasite değişti; {ref} yeniden değerlendirilmeli.");
               await addEvent(c, r.id, "YENIDEN_DEGERLENDIRME", `Araç/kapasite değişti, yeniden değerlendirme gerekli: ${elig.reasons.map((x) => x.message).join("; ")}`.slice(0, 290), ctx.userId, now, r.is_demo);
             } else if (flagged) {
               await c.query("update reservations set needs_review = false, updated_at = $2 where id = $1", [r.id, now]);

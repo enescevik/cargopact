@@ -20,6 +20,16 @@ export const defaultPolicy = (basePriceMinor: number, floorRatio = 0.8, ceilingR
   basePriceMinor, floorRatio, ceilingRatio, demandTiers: DEFAULT_DEMAND_TIERS, timeTiers: DEFAULT_TIME_TIERS,
   timeDecayMaxUtilization: 0.6, roundingMinor: 1000,
 });
+export interface PricingTiersOverride {
+  demandTiers?: { minUtilization: number; multiplier: number }[];
+  timeTiers?: { maxHoursToCutoff: number; multiplier: number }[];
+}
+/** Sefere özel kademe geçersiz kılması: varsa varsayılanların yerine geçer (boş dizi = etki yok). */
+export const withTierOverride = (policy: PricingPolicy, o?: PricingTiersOverride | null): PricingPolicy =>
+  !o ? policy : { ...policy, demandTiers: Array.isArray(o.demandTiers) ? o.demandTiers : policy.demandTiers, timeTiers: Array.isArray(o.timeTiers) ? o.timeTiers : policy.timeTiers };
+/** Kayıtlı ticari koşul: taşıyıcı–müşteri sözleşme tarifesi, sefer taban fiyatının yerine geçer. */
+export interface ContractTariff { basePriceMinor: number; customerName: string }
+const trMoney = (minor: number) => (minor / 100).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 export interface PriceCapacity { heldPallets: number; confirmedPallets: number; sellablePallets: number }
 export interface PriceBreakdown {
   basePriceMinor: number; utilization: number; demandMultiplier: number; hoursToCutoff: number;
@@ -30,7 +40,8 @@ export interface PriceQuote { unitPriceMinor: number; totalPriceMinor: number; b
 const milli = (x: number) => Math.round(x * 1000);
 const pct = (m: number) => Math.round(Math.abs(m - 1) * 100);
 /** Saf ve deterministik: aynı girdi (saat dahil) aynı fiyatı üretir. Para kuruş tamsayısıdır. */
-export function priceQuote(policy: PricingPolicy, bookingCutoffAt: Date, capacity: PriceCapacity, palletCount: number, now: Date): PriceQuote {
+export function priceQuote(policy: PricingPolicy, bookingCutoffAt: Date, capacity: PriceCapacity, palletCount: number, now: Date, contract?: ContractTariff | null): PriceQuote {
+  if (contract) policy = { ...policy, basePriceMinor: contract.basePriceMinor };
   const sellable = capacity.sellablePallets;
   const utilization = sellable > 0 ? Math.min(1, (capacity.heldPallets + capacity.confirmedPallets) / sellable) : 1;
   const demandMultiplier = [...policy.demandTiers].sort((a, b) => a.minUtilization - b.minUtilization)
@@ -49,6 +60,7 @@ export function priceQuote(policy: PricingPolicy, bookingCutoffAt: Date, capacit
   if (demandMultiplier > 1) explanation.push(`Talep yoğun: +${pct(demandMultiplier)}%`);
   if (decay && timeMultiplier < 1) explanation.push(`Kalkışa ${Math.max(0, Math.ceil(hoursToCutoff))} saat kaldı: −${pct(timeMultiplier)}%`);
   if (clampedTo) explanation.push(clampedTo === "floor" ? "Fiyat taşıyıcının alt sınırında tutuldu" : "Fiyat taşıyıcının üst sınırında tutuldu");
+  if (contract) explanation.unshift(`Sözleşmeli fiyat (${contract.customerName}): ${trMoney(contract.basePriceMinor)} TL/palet`);
   if (explanation.length === 0) explanation.push("Standart fiyat: talep ve zaman etkisi yok");
   return {
     unitPriceMinor: unit, totalPriceMinor: unit * palletCount,
