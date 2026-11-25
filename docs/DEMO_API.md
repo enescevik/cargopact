@@ -60,6 +60,12 @@ type CarrierReservation = Reservation & {
     verifiedNoShows: number;                // ONAYLI olup T−1'e kadar getirilmeyen yükler
   };
   eligibility: { eligible: boolean; reasons: { code: string; message: string }[] } };
+type CustomerManagementItem = {
+  id: string; name: string; tenantStatus: string;
+  totalReservations: number; delivered: number; verifiedNoShows: number; cancelled: number; rejected: number; damaged: number; pending: number; active: number;
+  score: number; category: "UYGUN"|"IZLENMELI"|"RISKLI"; evidenceCount: number; scoreExplanation: string;
+  lastReservationAt: string; recentEvents: { type: string; label: string; at: string; reservationReference: string }[];
+};
 ```
 
 ## Müşteri uçları (rol: customer_user, firma aktif)
@@ -80,6 +86,7 @@ type CarrierReservation = Reservation & {
 ## Transfer merkezi uçları (rol: carrier_admin, carrier_planner; olaylar için carrier_warehouse da)
 | Yöntem | Yol | Gövde | Yanıt |
 |---|---|---|---|
+| GET | `/carrier/customers` | | `{ items: CustomerManagementItem[] }`. Yalnız taşıyıcı admin/planlamacı; metrikler aynı taşıyıcıyla rezervasyon geçmişinden, skor deterministik hesaplanır. KB skoru üretmez. |
 | GET | `/carrier/trips` | `?status=` | `{ items: CarrierTrip[] }` (kalkışa göre) |
 | POST | `/carrier/trips` | `{ originFacilityId, destinationFacilityId, vehicleId, departureAt, arrivalEta, internalPallets, internalKg, maxGrossKg, sellablePallets, sellableKg, sellableM3, basePriceMinor, publish: boolean }` | 201 `CarrierTrip` ("Aracım var, yük ekle") |
 | GET | `/carrier/trips/{id}` | | `CarrierTrip & { reservations: CarrierReservation[] }` (bekleyenler öncelik sırasıyla) |
@@ -111,3 +118,9 @@ TASIYICI_ONAYI_BEKLIYOR "Taşıyıcı onayı bekliyor" · ONAYLI "Onaylandı" ·
 - Kural: palet eşit ve kg farkı ≤ %3 → `ok` (kapasite değişmez). Beyandan az → `ok`, fark kapasiteden iade edilir. Beyandan fazla → uygunluk ölçülen değerle yeniden çalışır: uygunsa `ok` ve onaylı kapasite güncellenir; değilse durum `INCELEME` ("İncelemede – ölçüm farkı").
 - Fiyat: kilitli birim fiyat korunur; toplam = birim × palet, yalnız palet adedi değişirse değişir (fazla ödeme tahsil, eksik palet iade edilir). Kg farkı fiyatı değiştirmez.
 - `POST /carrier/reservations/{id}/review` `{decision:"accept_partial", acceptedPallets}` → `DEPO_KABUL` (kabul edilmeyen paletler için iade iptal politikasına göre, defter nedeni "Kısmi kabul…", palletCodes kırpılır, kapasite bir kez düşer) veya `{decision:"reject"}` → `RET_DEPO` ("Depoda reddedildi"; kapasite bir kez iade, iade politikaya göre).
+
+## İstisnalar ve manifest (taşıyıcı)
+- `GET /carrier/exceptions?status=open|resolved&tripId=` — mevcut verilerden hesaplanan iş kuyruğu (GELMEDI, EKSIK_HASAR, LATE_DROPOFF, NOT_PICKED_UP, NEEDS_REVIEW, MEASUREMENT_DIFF, EXPIRED_HOLD). `id = TÜR:rezervasyonId`.
+- `POST /carrier/exceptions/{id}/resolve` `{note}` — idempotent; ilk not korunur, denetim kaydı yazılır.
+- `GET /carrier/trips/{id}/manifest` — onaylı+ rezervasyonlar, palet kodları, alıcılar. Web: sefer detayında "Manifest" (yazdır).
+- Smoke: `node scripts/smoke-exceptions.mjs`

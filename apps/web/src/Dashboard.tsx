@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "./api";
 import type { Dashboard } from "./types";
 import { full, initials, place, num, time, tl } from "./format";
+import { KpiStrip } from "./Kpis";
 import { TracesPanel } from "./Traces";
 import { FIRM_COLORS, TruckMap, operatorCells } from "./components/TruckMap";
 import { Empty, ErrorBox, SkeletonCards, StatusBadge, useFetch } from "./ui";
@@ -102,6 +103,7 @@ export function DashboardView() {
         )}
       </div>
       <TracesPanel />
+      <KpiStrip />
     </div>
   );
 }

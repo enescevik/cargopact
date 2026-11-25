@@ -17,6 +17,17 @@ Onaylı bir yükün T−1 saate kadar çıkış deposuna getirilmemesi doğrulan
 ## Öncelik
 Doğrulanmış gelmeme kaydı olan firma uygun talepler arasında daha düşük önceliktedir; eşitlikte başvuru sırası belirler. Planlamacının seçim gerekçesi denetim izine yazılır. Başka firmanın geçmişi müşteriye gösterilmez.
 
+## Müşteri yönetimi operasyonel güven skoru
+- Skor 0–100 arasındadır ve işlem API'si tarafından deterministik hesaplanır; Knowledge Base skoru hesaplamaz, yalnız kuralı açıklar.
+- Girdiler yalnız `TESLIM` ve doğrulanmış `GELMEDI` sonuçlarıdır. Başlangıç öncülü 4 başarılı / 1 başarısızdır; her teslim bir olumlu, her gelmeme iki olumsuz ağırlık taşır.
+- Formül: `100 × (teslim + 4) / (teslim + 4 + 2 × gelmeme + 1)`, en yakın tam sayıya yuvarlanır.
+- Kategoriler: 75–100 **UYGUN**, 50–74 **İZLENMELİ**, 0–49 **RİSKLİ PROFİL**.
+- İptal, ret ve eksik/hasar olaylarında sorumlu taraf mevcut veriden kesin çıkarılamadığı için skora katılmaz; ekranda ayrı metrik olarak gösterilir.
+- Skor rezervasyon uygunluğu, kredi skoru veya otomatik onay/ret değildir. Güncel kapasite, ürün ve zaman uygunluğu ayrıca değerlendirilir.
+- Doğrulanmış gelmeme varsa mevcut düşük öncelik kuralı skordan bağımsız uygulanmaya devam eder.
+- Kişi bilgisi, ödeme tutarı, adres, telefon, teslim alan kişi ve serbest metin notları skorda kullanılmaz.
+- Güncel skor ve adetlerde işlem API'si esastır; bu doküman yalnız açıklama kaynağıdır.
+
 ## İptal ve iade dilimleri
 - Kalkışa 24 saat veya daha fazla kala iptal: %100 iade.
 - Kalkışa 24 saatten az, T−3 sınırından önce iptal: %50 iade.

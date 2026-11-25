@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import {
-  AlertTriangle, ArrowRight, Check, LayoutDashboard, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
+  AlertTriangle, ArrowRight, BarChart3, Check, ClipboardList, LayoutDashboard, Users, Pencil, LogOut, MessageSquare, PackagePlus, ScrollText, Truck, X, Sparkles,
 } from "lucide-react";
 import { api, sendChat } from "./api";
 import type { CarrierTrip } from "./types";
@@ -14,24 +14,31 @@ import { EditTripModal } from "./carrier/EditTrip";
 import { PodThumbs, TeslimModal } from "./carrier/Pod";
 import { MeasureModal } from "./carrier/Measure";
 import { NewTripWizard } from "./carrier/NewTrip";
+import { CustomerManagement } from "./carrier/Customers";
+import { ManifestView } from "./carrier/Manifest";
+import { KpiView } from "./Kpis";
+import { ExceptionsView } from "./Exceptions";
 import type { CarrierRes, CarrierTripV, TripUpdateResult } from "./carrier/http";
 import { ChipSelect, Countdown, Segmented } from "./components/controls";
 import { TruckMap, operatorCells } from "./components/TruckMap";
 
-type View = { name: "ops"; id?: string } | { name: "new" } | { name: "dash" } | { name: "chat" } | { name: "traces" };
+type View = { name: "ops"; id?: string } | { name: "new" } | { name: "customers" } | { name: "exceptions" } | { name: "kpis" } | { name: "manifest"; id: string } | { name: "dash" } | { name: "chat" } | { name: "traces" };
 
 export function CarrierPortal({ displayName, tenant, role, onLogout }: { displayName: string; tenant?: string; role: string; onLogout: () => void }) {
   const [view, setView] = useState<View>({ name: "ops" });
   const nav: [View["name"], string, React.ReactNode][] = [
     ["ops", "Operasyon", <Truck size={19} />], ["new", "Aracım var, yük ekle", <PackagePlus size={19} />],
+    ["exceptions", "İstisnalar", <AlertTriangle size={19} />], ["kpis", "Performans", <BarChart3 size={19} />],
     ["dash", "Jüri panosu", <LayoutDashboard size={19} />], ["chat", "Asistan", <MessageSquare size={19} />], ["traces", "Asistan işlem izi", <ScrollText size={19} />],
   ];
+  if (role === "carrier_admin" || role === "carrier_planner") nav.splice(2, 0, ["customers", "Müşteriler", <Users size={19} />]);
+  const active = view.name === "manifest" ? "ops" : view.name;
   return (
     <div className="app rail-shell">
       <aside className="rail" aria-label="Menü">
         <div className="logo-mark rail-logo"><img src="/logo-mark.svg" alt="CargoPact" /></div>
         {nav.map(([k, l, ic]) => (
-          <button key={k} className={`rail-btn ${view.name === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)} aria-label={l} title={l}>{ic}<span>{l.split(",")[0]}</span></button>
+          <button key={k} className={`rail-btn ${active === k ? "on" : ""}`} onClick={() => setView({ name: k } as View)} aria-label={l} title={l}>{ic}<span>{l.split(",")[0]}</span></button>
         ))}
         <div className="rail-bottom">
           <Notifications side onOpen={(n) => n.tripId && setView({ name: "ops", id: n.tripId })} />
@@ -39,8 +46,12 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
         </div>
       </aside>
       <main className="stage">
-        {view.name === "ops" && <Cockpit initialId={view.id} onNew={() => setView({ name: "new" })} who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} />}
+        {view.name === "ops" && <Cockpit initialId={view.id} onNew={() => setView({ name: "new" })} onManifest={(id) => setView({ name: "manifest", id })} who={`${displayName}${tenant ? ` · ${tenant}` : ""}`} />}
         {view.name === "new" && <NewTripWizard onCreated={(id) => setView({ name: "ops", id })} />}
+        {view.name === "customers" && <div className="scroll"><CustomerManagement /></div>}
+        {view.name === "exceptions" && <div className="scroll"><ExceptionsView onOpenTrip={(id) => setView({ name: "ops", id })} /></div>}
+        {view.name === "kpis" && <div className="scroll"><KpiView /></div>}
+        {view.name === "manifest" && <div className="scroll"><ManifestView tripId={view.id} onBack={() => setView({ name: "ops", id: view.id })} /></div>}
         {view.name === "dash" && <div className="scroll"><DashboardView /></div>}
         {view.name === "chat" && <div className="pagepad scroll"><Chat prompts={["DNC-DEMO-GEB-ANK seferinde bekleyen talepleri öncelik sırasıyla özetle"]} /></div>}
         {view.name === "traces" && <div className="scroll"><TracesView /></div>}
@@ -50,7 +61,7 @@ export function CarrierPortal({ displayName, tenant, role, onLogout }: { display
 }
 
 /* ================= KOKPİT: seferler · araç · talepler ================= */
-function Cockpit({ initialId, onNew, who }: { initialId?: string; onNew: () => void; who: string }) {
+function Cockpit({ initialId, onNew, onManifest, who }: { initialId?: string; onNew: () => void; onManifest: (id: string) => void; who: string }) {
   const { data, error, loading, reload } = useFetch((s) => api<{ items: CarrierTrip[] }>("GET", "/carrier/trips", undefined, { signal: s }), [], 8000);
   const items = data?.items ?? [];
   const [sel, setSel] = useState<string | null>(initialId ?? null);
@@ -101,7 +112,7 @@ function Cockpit({ initialId, onNew, who }: { initialId?: string; onNew: () => v
             ))}
         </div>
       </aside>
-      {current ? <TripOps key={current.id} id={current.id} onListChanged={reload} /> : !loading && <section className="panel"><Empty title="Sefer seçin" /></section>}
+      {current ? <TripOps key={current.id} id={current.id} onListChanged={reload} onManifest={() => onManifest(current.id)} /> : !loading && <section className="panel"><Empty title="Sefer seçin" /></section>}
     </div>
   );
 }
@@ -126,7 +137,7 @@ const CONFIRMED = ["ONAYLI", "INCELEME", "DEPO_KABUL", "YUKLENDI", "VARISTA", "T
 
 const REJECT_REASONS = ["Kapasite yetersiz", "Ürün sınıfı bu araca uygun değil", "Zamanlama uymuyor", "Ağırlık sınırı aşılıyor"];
 
-function TripOps({ id, onListChanged }: { id: string; onListChanged: () => void }) {
+function TripOps({ id, onListChanged, onManifest }: { id: string; onListChanged: () => void; onManifest: () => void }) {
   const toast = useToast();
   const { data: t, error, loading, reload } = useFetch((s) => api<TripFull>("GET", `/carrier/trips/${id}`, undefined, { signal: s }), [id], 5000);
   const [tab, setTab] = useState<"req" | "loads">("req");
@@ -187,7 +198,10 @@ function TripOps({ id, onListChanged }: { id: string; onListChanged: () => void 
             </div>
             <div className="trip-times">
               <div><span className="eyebrow">Kalkış</span><b>{full(t.departureAt)}</b></div>
-              {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Düzenle</button>}
+              <div className="row" style={{ gap: 6 }}>
+                {["draft", "published", "closed"].includes(t.status) && <button className="btn sm" onClick={() => setEditing(true)}><Pencil size={13} />Düzenle</button>}
+                <button className="btn sm" onClick={onManifest}><ClipboardList size={13} />Manifest</button>
+              </div>
             </div>
           </header>
           <div className="cut-row">

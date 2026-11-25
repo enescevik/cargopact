@@ -11,6 +11,7 @@ import { Chat } from "./src/common";
 import { Send } from "./src/customer/Send";
 import { Reservations, TrackingScreen } from "./src/customer/Reservations";
 import { Trips, Warehouse, QueuePill } from "./src/carrier/Carrier";
+import { Exceptions } from "./src/carrier/Exceptions";
 import type { Me } from "./src/types";
 
 type Tab = { key: string; label: string; icon: string };
@@ -19,7 +20,7 @@ const CUSTOMER_TABS: Tab[] = [
   { key: "track", label: "Takip", icon: "◎" }, { key: "chat", label: "Asistan", icon: "✦" },
 ];
 const CARRIER_TABS: Tab[] = [
-  { key: "trips", label: "Seferler", icon: "▦" }, { key: "wh", label: "Depo", icon: "▣" }, { key: "chat", label: "Asistan", icon: "✦" },
+  { key: "trips", label: "Seferler", icon: "▦" }, { key: "wh", label: "Depo", icon: "▣" }, { key: "exc", label: "İstisnalar", icon: "!" }, { key: "chat", label: "Asistan", icon: "✦" },
 ];
 
 function Shell() {
@@ -75,6 +76,7 @@ function Shell() {
         {tab === "track" && <TrackingScreen />}
         {tab === "trips" && <Trips />}
         {tab === "wh" && <Warehouse />}
+        {tab === "exc" && <Exceptions />}
         {tab === "chat" && <Chat suggestions={isCustomer
           ? ["Gebze'den Ankara'ya 3 palet yüküm var, uygun sefer var mı?", "Rezervasyonlarımın durumu nedir?", "Fiyat nasıl hesaplanıyor?"]
           : ["Yarınki Gebze-Ankara seferinde kaç palet boş?", "Bekleyen talepleri öncelik sırasıyla özetle", "Gelmeme kaydı olan firmalar hangileri?"]} />}

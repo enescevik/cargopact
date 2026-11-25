@@ -2,7 +2,10 @@ import type pg from "pg";
 import { authenticate } from "./lib/auth";
 import { HttpError, notFound, type Req, type Res } from "./lib/http";
 import { coreRoutes, meHandler, platformRoutes } from "./routes/core";
+import { customerRoutes } from "./routes/customers";
 import { demoRoutes } from "./routes/demo";
+import { exceptionRoutes } from "./routes/exceptions";
+import { kpiRoutes } from "./routes/kpis";
 import { integrationRoutes } from "./routes/integrations";
 import { notificationRoutes } from "./routes/notifications";
 import { masterDataRoutes, type Route } from "./routes/master-data";
@@ -14,7 +17,7 @@ const compile = (pattern: string) => {
   return { re, names };
 };
 
-export const allRoutes = (pool: pg.Pool): Route[] => [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool), ...demoRoutes(pool), ...integrationRoutes(pool), ...notificationRoutes(pool), ...traceRoutes(pool)];
+export const allRoutes = (pool: pg.Pool): Route[] => [...coreRoutes(pool), ...platformRoutes(pool), ...masterDataRoutes(pool), ...customerRoutes(pool), ...demoRoutes(pool), ...integrationRoutes(pool), ...notificationRoutes(pool), ...traceRoutes(pool), ...exceptionRoutes(pool), ...kpiRoutes(pool)];
 /** /me yönlendiricide özel ele alınır; sözleşme testi için listeye eklenir. */
 export const ROUTE_TABLE = (pool: pg.Pool) => [{ method: "GET", pattern: "/me" }, ...allRoutes(pool).map((r) => ({ method: r.method, pattern: r.pattern }))];
 
