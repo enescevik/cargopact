@@ -1,0 +1,5 @@
+# Expo prebuild (native) çıktıları — `npx expo prebuild` ile yeniden üretilir
+/ios/
+/android/
+# Yerel iOS archive/export/upload çıktıları
+/build/
